@@ -9,6 +9,7 @@
 
 #include <boost/date_time/local_time/local_time.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
+#include <boost/date_time/gregorian/gregorian.hpp>
 
 using namespace std;
 
@@ -21,6 +22,11 @@ namespace boost
 {
   namespace gregorian
   {
+    inline tuple<int, int, int> to_tuple(const date& d)
+    {
+      return make_tuple(d.year(), d.month(), d.day());
+    }
+
     inline int to_int(const date& d)
     {
       return d.year() * 10000 + d.month() * 100 + d.day();
@@ -39,6 +45,11 @@ namespace Sloppy
 {
   namespace DateTime {
     static constexpr int MIN_YEAR = 1900;
+
+    inline tuple<int, int, int> YearMonthDayFromInt(int ymd)
+    {
+      return make_tuple(ymd / 10000,  (ymd % 10000) / 100, ymd % 100);
+    }
 
     // a wrapper class for boost's ptime
     class CommonTimestamp
@@ -60,6 +71,11 @@ namespace Sloppy
       static bool isValidDate(int year, int month, int day);
       static bool isValidTime(int hour, int min, int sec);
       static bool isLeapYear(int year);
+
+      inline boost::posix_time::ptime getRawPtime() const
+      {
+        return raw;
+      }
 
       inline bool operator< (const CommonTimestamp& other) const
       {
@@ -125,49 +141,172 @@ namespace Sloppy
     typedef unique_ptr<LocalTimestamp> upLocalTimestamp;
     typedef unique_ptr<UTCTimestamp> upUTCTimestamp;
 
-    // a time period
-    class TimePeriod
+    // a generic period class
+    template <class T>
+    class GenericPeriod
     {
     public:
-      static constexpr int IS_BEFORE_PERIOD = -1;
-      static constexpr int IS_IN_PERIOD = 0;
-      static constexpr int IS_AFTER_PERIOD = 1;
+      enum class Relation
+      {
+        isBefore,
+        isIn,
+        isAfter,
+        _undefined
+      };
 
-      TimePeriod(const UTCTimestamp& _start);
-      TimePeriod(const UTCTimestamp& _start, const UTCTimestamp& _end);
-      bool hasOpenEnd() const;
-      bool isInPeriod(const UTCTimestamp& ts) const;
-      int determineRelationToPeriod(const UTCTimestamp& ts) const;
-      long getLength_Sec() const;
-      double getLength_Minutes() const;
-      double getLength_Hours() const;
-      double getLength_Days() const;
-      double getLength_Weeks() const;
-      virtual bool setStart(const UTCTimestamp& _start);
-      virtual bool setEnd(const UTCTimestamp& _end);
+      GenericPeriod(const T& _start, const T& _end)
+        :start{_start}, end{make_unique<T>(_end)}
+      {
+        if (*end < start)
+        {
+          throw invalid_argument("GenericPeriod ctor: 'end'' may not be before start!");
+        }
+      }
 
-      virtual bool applyOffsetToStart(long secs);
-      virtual bool applyOffsetToEnd(long secs);
+      GenericPeriod(const T& _start)
+        :start(_start), end(nullptr)
+      {
+      }
 
-      UTCTimestamp getStartTime() const;
-      upUTCTimestamp getEndTime() const;
+      inline bool hasOpenEnd() const
+      {
+        return (end == nullptr);
+      }
 
-      inline bool startsEarlierThan (const TimePeriod& other) const
+      inline bool isInPeriod(const T& sample)
+      {
+        if (end != nullptr)
+        {
+          return ((sample >= start) && (sample <= *end));
+        }
+        return (sample >= start);
+      }
+
+      inline Relation determineRelationToPeriod(const T& sample) const
+      {
+        if (sample < start) return Relation::isBefore;
+
+        if (end != nullptr)
+        {
+          return (sample > *end) ? Relation::isAfter : Relation::isIn;
+        }
+
+        return Relation::isIn;
+      }
+
+      inline bool setStart(const T& newStart)
+      {
+        if (newStart > *end) return false;
+        start = newStart;
+        return true;
+      }
+
+      inline bool setEnd(const T& newEnd)
+      {
+        if (newEnd < start) return false;
+        end = make_unique<T>(newEnd);
+        return true;
+      }
+
+      inline T getStart() const
+      {
+        return start;
+      }
+
+      inline unique_ptr<T> getEnd() const
+      {
+        if (end != nullptr)
+        {
+          return make_unique<T>(*end);
+        }
+        return nullptr;
+      }
+
+      inline bool startsEarlierThan (const GenericPeriod<T>& other) const
       {
         return (start < other.start);
       }
-      inline bool startsLaterThan (const TimePeriod& other) const
+
+      inline bool startsLaterThan (const GenericPeriod<T>& other) const
       {
         return (start > other.start);
       }
 
     protected:
-      UTCTimestamp start;
-      UTCTimestamp end;
-      bool isOpenEnd;
+      T start;
+      unique_ptr<T> end;
     };
 
-    tuple<int, int, int> YearMonthDayFromInt(int ymd);
+    // a time period
+    class TimePeriod : public GenericPeriod<UTCTimestamp>
+    {
+    public:
+      TimePeriod(const UTCTimestamp& _start)
+        :GenericPeriod<UTCTimestamp>(_start){}
+
+      TimePeriod(const UTCTimestamp& _start, const UTCTimestamp& _end)
+        :GenericPeriod<UTCTimestamp>(_start, _end){}
+
+      inline boost::posix_time::time_period toBoost() const
+      {
+        boost::posix_time::ptime pStart = start.getRawPtime();
+
+        if (end != nullptr)
+        {
+          boost::posix_time::ptime pEnd = end->getRawPtime();
+          pEnd += boost::posix_time::time_duration(0, 0, 0, 1);
+          return boost::posix_time::time_period(pStart, pEnd);
+        }
+
+        // return an invalid duration
+        return boost::posix_time::time_period(pStart, pStart);
+      }
+
+      long getLength_Sec() const;
+      double getLength_Minutes() const;
+      double getLength_Hours() const;
+      double getLength_Days() const;
+      double getLength_Weeks() const;
+
+      bool applyOffsetToStart(long secs);
+      bool applyOffsetToEnd(long secs);
+    };
+
+    // a date period
+    class DatePeriod : public GenericPeriod<boost::gregorian::date>
+    {
+    public:
+      DatePeriod(const boost::gregorian::date& _start, const boost::gregorian::date& _end)
+        :GenericPeriod<boost::gregorian::date>(_start, _end) {}
+
+      DatePeriod(const boost::gregorian::date& _start)
+        :GenericPeriod<boost::gregorian::date>(_start) {}
+
+      inline boost::gregorian::date_period toBoost() const
+      {
+        if (end != nullptr)
+        {
+          boost::gregorian::date oneDayAfterEnd = (*end) + boost::gregorian::date_duration(1);
+          return boost::gregorian::date_period(start, oneDayAfterEnd);
+        }
+
+        // return an invalid duration
+        return boost::gregorian::date_period(start, start);
+      }
+
+      inline long getLength_Days() const
+      {
+        if (end == nullptr) return -1;
+
+        auto dp = toBoost();
+        return dp.length().days();
+      }
+
+      inline double getLength__Weeks() const
+      {
+        return (end == nullptr) ? -1 : getLength_Days() / 7.0;
+      }
+    };
   }
 }
 

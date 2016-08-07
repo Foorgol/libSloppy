@@ -45,6 +45,8 @@ set(LIB_SOURCES_TST
     tests/BasicTestClass.cpp
     tests/tstDateTime.cpp
     tests/tstTimestamps.cpp
+    tests/tstTimePeriods.cpp
+    tests/tstDatePeriods.cpp
 )
 
 find_package(GTest)

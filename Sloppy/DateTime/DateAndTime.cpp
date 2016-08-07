@@ -364,55 +364,11 @@ namespace Sloppy
     //----------------------------------------------------------------------------
     //----------------------------------------------------------------------------
 
-    TimePeriod::TimePeriod(const UTCTimestamp &_start)
-      :start(_start), isOpenEnd(true)
-    {
-
-    }
-
-    //----------------------------------------------------------------------------
-
-    TimePeriod::TimePeriod(const UTCTimestamp &_start, const UTCTimestamp &_end)
-      :start(_start), end(_end), isOpenEnd(false)
-    {
-      if (end < start)
-      {
-        throw invalid_argument("TimePeriod ctor: 'end'' may not be before start!");
-      }
-    }
-
-    //----------------------------------------------------------------------------
-
-    bool TimePeriod::hasOpenEnd() const
-    {
-      return isOpenEnd;
-    }
-
-    //----------------------------------------------------------------------------
-
-    bool TimePeriod::isInPeriod(const UTCTimestamp &ts) const
-    {
-      return (determineRelationToPeriod(ts) == IS_IN_PERIOD);
-    }
-
-    //----------------------------------------------------------------------------
-
-    int TimePeriod::determineRelationToPeriod(const UTCTimestamp &ts) const
-    {
-      if (ts < start) return IS_BEFORE_PERIOD;
-      if (isOpenEnd) return IS_IN_PERIOD;
-
-      if (ts > end) return IS_AFTER_PERIOD;
-      return IS_IN_PERIOD;
-    }
-
-    //----------------------------------------------------------------------------
-
     long TimePeriod::getLength_Sec() const
     {
-      if (isOpenEnd) return -1;
+      if (hasOpenEnd()) return -1;
 
-      return end.getRawTime() - start.getRawTime();
+      return end->getRawTime() - start.getRawTime();
     }
 
     //----------------------------------------------------------------------------
@@ -453,78 +409,33 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    bool TimePeriod::setStart(const UTCTimestamp &_start)
-    {
-      if (_start > end) return false;
-
-      start = _start;
-      return true;
-    }
-
-    //----------------------------------------------------------------------------
-
-    bool TimePeriod::setEnd(const UTCTimestamp &_end)
-    {
-      if (_end < start) return false;
-
-      end = _end;
-      isOpenEnd = false;
-
-      return true;
-    }
-
-    //----------------------------------------------------------------------------
-
     bool TimePeriod::applyOffsetToStart(long secs)
     {
       UTCTimestamp newStart{start.getRawTime() + secs};
 
-      if (newStart > end) return false;
-
-      start = newStart;
-      return true;
+      return setStart(newStart);
     }
 
     //----------------------------------------------------------------------------
 
     bool TimePeriod::applyOffsetToEnd(long secs)
     {
-      if (isOpenEnd) return false;
+      if (hasOpenEnd()) return false;
 
-      UTCTimestamp newEnd{end.getRawTime() + secs};
-
-      if (newEnd < start) return false;
-
-      end = newEnd;
-      return true;
+      UTCTimestamp newEnd{end->getRawTime() + secs};
+      return setEnd(newEnd);
     }
 
     //----------------------------------------------------------------------------
 
-    UTCTimestamp TimePeriod::getStartTime() const
-    {
-      return start;
-    }
+
+    //----------------------------------------------------------------------------
+    //----------------------------------------------------------------------------
+    //----------------------------------------------------------------------------
+
 
     //----------------------------------------------------------------------------
 
-    upUTCTimestamp TimePeriod::getEndTime() const
-    {
-      if (isOpenEnd) return nullptr;
-
-      return make_unique<UTCTimestamp>(end);
-    }
-
-    //----------------------------------------------------------------------------
-
-    tuple<int, int, int> YearMonthDayFromInt(int ymd)
-    {
-      int year = ymd / 10000;
-      int month = (ymd % 10000) / 100;
-      int day = ymd % 100;
-
-      return make_tuple(year, month, day);
-    }
 
     //----------------------------------------------------------------------------
 

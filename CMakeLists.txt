@@ -4,8 +4,13 @@ aux_source_directory(. SRC_LIST)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmakeModules/")
 
-find_package(Boost REQUIRED)
-include_directories("." ${Boost_INCLUDE_DIRS})
+find_package(Threads REQUIRED)
+set(LIBS ${LIBS} ${CMAKE_THREAD_LIBS_INIT})
+
+find_package(Boost REQUIRED COMPONENTS log log_setup thread date_time filesystem system)
+include_directories(${Boost_INCLUDE_DIRS})
+set(LIBS ${LIBS} ${Boost_LIBRARIES})
+add_definitions(-DBOOST_LOG_DYN_LINK=1)  # linking fails if this is not set
 
 # detect if we are on windows, because for windows
 # we have to use special code for timegm()
@@ -14,6 +19,9 @@ IF (WIN32)
 ENDIF()
 
 set(LIB_SOURCES
+    libSloppy.h
+    Sloppy/DateTime/DateAndTime.cpp
+    Sloppy/Logger/Logger.cpp
 )
 
 add_library(${PROJECT_NAME} SHARED ${LIB_SOURCES})
@@ -33,18 +41,22 @@ set_target_properties(${PROJECT_NAME} PROPERTIES VERSION ${LIB_VERSION_STRING}
 # Unit tests
 #
 set(LIB_SOURCES_TST
+    tests/unitTestMain.cpp
+    tests/BasicTestClass.cpp
+    tests/tstDateTime.cpp
+    tests/tstTimestamps.cpp
 )
 
 find_package(GTest)
 
 if (GTEST_FOUND)
-    include_directories("." ${GTEST_INCLUDE_DIRS})
-    link_directories(".")
+    include_directories(${GTEST_INCLUDE_DIRS})
 
-    #add_executable(${PROJECT_NAME}_Tests EXCLUDE_FROM_ALL ${LIB_SOURCES} ${LIB_SOURCES_TST})
     add_executable(${PROJECT_NAME}_Tests ${LIB_SOURCES} ${LIB_SOURCES_TST})
     set_property(TARGET ${PROJECT_NAME}_Tests PROPERTY CXX_STANDARD 14)
     set_property(TARGET ${PROJECT_NAME}_Tests PROPERTY CXX_STANDARD_REQUIRED ON)
 
-    target_link_libraries(${PROJECT_NAME}_Tests ${PROJECT_NAME} ${GTEST_BOTH_LIBRARIES} ${Boost_LIBRARIES})
+    message("Using these libs: ${LIBS}")
+
+    target_link_libraries(${PROJECT_NAME}_Tests ${LIBS} ${LIBS} ${GTEST_BOTH_LIBRARIES})
 endif (GTEST_FOUND)

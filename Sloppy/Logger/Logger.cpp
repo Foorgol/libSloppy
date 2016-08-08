@@ -21,6 +21,8 @@ namespace Sloppy
 
     void Logger::log(SeverityLevel lvl, const string& msg)
     {
+      if (lvl < minLvl) return;
+
       record rec = lg.open_record(keywords::severity = lvl);
       if (rec)
       {

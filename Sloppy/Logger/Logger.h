@@ -58,11 +58,17 @@ namespace Sloppy
         defaultLvl = newDefaultLvl;
       }
 
+      inline void setMinLogLevel(SeverityLevel newMinLvl)
+      {
+        minLvl = newMinLvl;
+      }
+
     protected:
       sources::severity_logger<SeverityLevel> lg;
       boost::shared_ptr<sinks::synchronous_sink<sinks::text_ostream_backend>> sink;
       string sender;
       SeverityLevel defaultLvl = SeverityLevel::normal;
+      SeverityLevel minLvl = SeverityLevel::normal;
     };
   }
 }

@@ -104,22 +104,112 @@ namespace Sloppy
     }
 
     //----------------------------------------------------------------------------
+
+    string Header::getFieldBody_Simple(const string& fieldName) const
+    {
+      auto it = find_if(fields.begin(), fields.end(), [&fieldName](const HeaderField& f) {
+        return f == fieldName;
+      });
+      if (it == fields.end()) return "";
+
+      return it->getBody();
+    }
+
+    //----------------------------------------------------------------------------
     //----------------------------------------------------------------------------
     //----------------------------------------------------------------------------
 
     HeaderField::HeaderField(const string& fName, const string& fBody)
-      : fieldName{fName}, fieldBody{fBody}
+      : fieldName{fName}, fieldBody_raw{fBody}, fieldBody{}
     {
       // trim field names on both sides
       boost::trim(fieldName);
 
       // trim the body only on the left side. This is a possible
       // space between the colon and the field body
-      boost::trim_left(fieldBody);
+      boost::trim_left(fieldBody_raw);
 
       // since field names are case-insensitive, we store
       // all field names as lower case values
       boost::to_lower(fieldName);
+
+      // erase comments from the field body
+      //
+      // FIX: what to do if after removing the comments the remaining
+      // body is empty or only consisting of white spaces?
+      fieldBody = removeCommentsFromBody(fieldBody_raw);
+    }
+
+    //----------------------------------------------------------------------------
+
+    string HeaderField::removeCommentsFromBody(const string& rawBody)
+    {
+      // a little helper function that determines whether a character
+      // in rawBody is escaped (preceded by '\') or not
+      auto pred_isEscaped = [&rawBody](size_t pos)
+      {
+        if (pos == 0) return false;
+        return rawBody[pos-1] == '\\';
+      };
+
+      // a placeholder for the result
+      string result;
+
+      // a lambda for a recursive search of (nested) comments
+      function<size_t(size_t, int)> searchComment_recursion = [&](size_t startPos, int lvl) -> size_t
+      {
+        size_t i = startPos;
+        if (lvl > 0) ++i;   // if we are at levels > 0, startPos is already the first valid opening bracket
+
+        // search for the associated closing bracket or
+        // dive recursively into a nested comment
+        while (i < rawBody.length())
+        {
+          // test for a valid closing bracket
+          if (rawBody[i] == ')')
+          {
+            if (!(pred_isEscaped(i)))
+            {
+              if (lvl == 0) throw MalformedHeader(); // ERROR: found closing bracket without opening bracket
+              return i;
+            }
+          }
+
+          // test for a (maybe nested) comment
+          if (rawBody[i] == '(')
+          {
+            if (!(pred_isEscaped(i)))
+            {
+              size_t cmtEnd = searchComment_recursion(i, lvl+1);
+              if (cmtEnd == string::npos) return string::npos; // ERROR!!!!
+              if (lvl == 0)
+              {
+                result += rawBody.substr(startPos, i - startPos);
+                startPos = cmtEnd + 1;
+              }
+
+              // fast-forward to the end of the nested comment
+              i = cmtEnd;
+            }
+          }
+          ++i;
+        }
+
+        if (lvl != 0) throw MalformedHeader();  // we should never reach the end of the string while we're in a comment (--> lvl > 0)
+
+        // add the remaining part of the source string, in case the source
+        // doesn't end with a comment
+        result += rawBody.substr(startPos, string::npos);
+
+        return 0;  // 0 = dummy value for a regular end of the recursion
+      };
+
+
+      // find all comments and add the non-comment-part of the field body
+      // directly to 'result'
+      searchComment_recursion(0, 0);
+
+      return result;
     }
 
     //----------------------------------------------------------------------------

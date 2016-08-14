@@ -19,9 +19,12 @@ IF (WIN32)
 ENDIF()
 
 set(LIB_SOURCES
-    libSloppy.h
+    libSloppy.cpp
     Sloppy/DateTime/DateAndTime.cpp
     Sloppy/Logger/Logger.cpp
+    Sloppy/MailAndMIME/MailAndMIME.cpp
+    Sloppy/MailAndMIME/Message.cpp
+    Sloppy/MailAndMIME/Header.cpp
 )
 
 add_library(${PROJECT_NAME} SHARED ${LIB_SOURCES})
@@ -47,6 +50,7 @@ set(LIB_SOURCES_TST
     tests/tstTimestamps.cpp
     tests/tstTimePeriods.cpp
     tests/tstDatePeriods.cpp
+    tests/tstRFC822.cpp
 )
 
 find_package(GTest)

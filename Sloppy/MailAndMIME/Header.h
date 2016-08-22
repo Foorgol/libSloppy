@@ -6,7 +6,7 @@
 
 #include <boost/algorithm/string.hpp>
 
-#include "../../libSloppy.h"
+#include "../libSloppy.h"
 #include "MailAndMIME.h"
 
 using namespace std;

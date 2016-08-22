@@ -19,7 +19,7 @@ IF (WIN32)
 ENDIF()
 
 set(LIB_SOURCES
-    libSloppy.cpp
+    Sloppy/libSloppy.cpp
     Sloppy/DateTime/DateAndTime.cpp
     Sloppy/Logger/Logger.cpp
     Sloppy/MailAndMIME/MailAndMIME.cpp
@@ -41,6 +41,18 @@ set_target_properties(${PROJECT_NAME} PROPERTIES VERSION ${LIB_VERSION_STRING}
                                           SOVERSION ${LIB_VERSION_MAJOR})
 
 #
+# Installation data for the lib
+#
+# CMake's default destination path is /usr/local which is just fine
+#
+install(TARGETS ${PROJECT_NAME}
+        LIBRARY DESTINATION lib
+       )
+install(DIRECTORY Sloppy DESTINATION include
+    FILES_MATCHING PATTERN "*.h"
+    )
+
+#
 # Unit tests
 #
 set(LIB_SOURCES_TST
@@ -55,7 +67,7 @@ set(LIB_SOURCES_TST
 
 find_package(GTest)
 
-if (GTEST_FOUND)
+if (GTEST_FOUND AND BUILD_TESTS)
     include_directories(${GTEST_INCLUDE_DIRS})
 
     add_executable(${PROJECT_NAME}_Tests ${LIB_SOURCES} ${LIB_SOURCES_TST})
@@ -65,4 +77,4 @@ if (GTEST_FOUND)
     message("Using these libs: ${LIBS}")
 
     target_link_libraries(${PROJECT_NAME}_Tests ${LIBS} ${LIBS} ${GTEST_BOTH_LIBRARIES})
-endif (GTEST_FOUND)
+endif (GTEST_FOUND AND BUILD_TESTS)

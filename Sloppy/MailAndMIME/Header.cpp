@@ -2,7 +2,7 @@
 
 #include <boost/algorithm/string.hpp>
 
-#include "../../libSloppy.h"
+#include "../libSloppy.h"
 #include "Header.h"
 
 namespace Sloppy

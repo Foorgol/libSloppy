@@ -19,6 +19,14 @@ namespace Sloppy
 
   // convert a list of strings into a comma-separated string
   string commaSepStringFromStringList(const StringList& lst, const string& separator=", ");
+
+  // assign a value to a pointed-to variable if
+  // the pointer is not empty
+  template<typename T>
+  inline void assignIfNotNull(T* ptr, const T& val)
+  {
+    if (ptr != nullptr) *ptr = val;
+  }
 }
 
 #endif

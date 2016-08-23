@@ -25,6 +25,7 @@ set(LIB_SOURCES
     Sloppy/MailAndMIME/MailAndMIME.cpp
     Sloppy/MailAndMIME/Message.cpp
     Sloppy/MailAndMIME/Header.cpp
+    Sloppy/ConfigFileParser/ConfigFileParser.cpp
 )
 
 add_library(${PROJECT_NAME} SHARED ${LIB_SOURCES})
@@ -63,6 +64,7 @@ set(LIB_SOURCES_TST
     tests/tstTimePeriods.cpp
     tests/tstDatePeriods.cpp
     tests/tstRFC822.cpp
+    tests/tstConfigParser.cpp
 )
 
 find_package(GTest)
@@ -76,5 +78,5 @@ if (GTEST_FOUND AND BUILD_TESTS)
 
     message("Using these libs: ${LIBS}")
 
-    target_link_libraries(${PROJECT_NAME}_Tests ${LIBS} ${LIBS} ${GTEST_BOTH_LIBRARIES})
+    target_link_libraries(${PROJECT_NAME}_Tests ${LIBS} ${GTEST_BOTH_LIBRARIES})
 endif (GTEST_FOUND AND BUILD_TESTS)

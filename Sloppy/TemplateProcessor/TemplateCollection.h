@@ -21,13 +21,18 @@ namespace Sloppy
       TemplateCollection() {}
       TemplateCollection(const string& dataDir);
 
-      bool addTemplate(istream& inData, const string& shortName);
-      bool addTemplate(const string& inData, const string& shortName);
-      bool addTemplateFromFile(const string& fName, const string& shortName);
+      bool addTemplate(const string& shortName, istream& inData);
+      bool addTemplate(const string& shortName, const string& inData);
+      bool addTemplateFromFile(const string& shortName, const string& fName);
 
       bool removeTemplate(const string& shortName);
 
-      bool getSubstitutedData(const string& tName, const SubstDic& dic, string& outString, const string& keyPrefix="", const string& keyPostfix="") const;
+      bool replaceTemplate(const string& shortName, istream& inData);
+      bool replaceTemplate(const string& shortName, const string& inData);
+
+      void applyPermanentSubstitution(const string& shortName, const SubstDic& dic, const string& keyPrefix="", const string& keyPostfix="");
+
+      bool getSubstitutedData(const string& shortName, string& outString, const SubstDic& dic=SubstDic{}, const string& keyPrefix="", const string& keyPostfix="") const;
 
     protected:
       TemplateStore store;

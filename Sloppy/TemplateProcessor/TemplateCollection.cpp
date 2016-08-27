@@ -17,7 +17,7 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    bool TemplateCollection::addTemplate(istream& inData, const string& shortName)
+    bool TemplateCollection::addTemplate(const string& shortName, istream& inData)
     {
       //auto result = store.emplace(piecewise_construct, forward_as_tuple(shortName), forward_as_tuple(inData));
       auto result = store.emplace(shortName, inData);
@@ -27,7 +27,7 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    bool TemplateCollection::addTemplate(const string& inData, const string& shortName)
+    bool TemplateCollection::addTemplate(const string& shortName, const string& inData)
     {
       auto result = store.emplace(shortName, inData);
 
@@ -36,12 +36,12 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    bool TemplateCollection::addTemplateFromFile(const string& fName, const string& shortName)
+    bool TemplateCollection::addTemplateFromFile(const string& shortName, const string& fName)
     {
       ifstream f{fName, ios::binary};
       if (!f) return false;
 
-      return addTemplate(f, shortName);
+      return addTemplate(shortName, f);
     }
 
     //----------------------------------------------------------------------------
@@ -53,14 +53,42 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    bool TemplateCollection::getSubstitutedData(const string& tName, const SubstDic& dic, string& outString, const string& keyPrefix, const string& keyPostfix) const
+    bool TemplateCollection::replaceTemplate(const string& shortName, istream& inData)
     {
-      auto it = store.find(tName);
+      bool isOk = removeTemplate(shortName);
+      if (!isOk) return false;
+      return addTemplate(shortName, inData);
+    }
+
+    //----------------------------------------------------------------------------
+
+    bool TemplateCollection::replaceTemplate(const string& shortName, const string& inData)
+    {
+      bool isOk = removeTemplate(shortName);
+      if (!isOk) return false;
+      return addTemplate(shortName, inData);
+    }
+
+    //----------------------------------------------------------------------------
+
+    void TemplateCollection::applyPermanentSubstitution(const string& shortName, const SubstDic& dic, const string& keyPrefix, const string& keyPostfix)
+    {
+      auto it = store.find(shortName);
+      if (it == store.end()) return;
+
+      it->second.applyPermanentSubstitution(dic, keyPrefix, keyPostfix);
+    }
+
+    //----------------------------------------------------------------------------
+
+    bool TemplateCollection::getSubstitutedData(const string& shortName, string& outString, const SubstDic& dic, const string& keyPrefix, const string& keyPostfix) const
+    {
+      auto it = store.find(shortName);
       if (it == store.end()) return false;
 
       const Template& tmpl = it->second;
 
-      tmpl.getSubstitutedData(dic, outString, keyPrefix, keyPostfix);
+      tmpl.getSubstitutedData(outString, dic, keyPrefix, keyPostfix);
 
       return true;
     }

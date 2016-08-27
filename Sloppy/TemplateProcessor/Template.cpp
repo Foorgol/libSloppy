@@ -37,7 +37,7 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    void Template::getSubstitutedData(const SubstDic& dic, string& outString, const string& keyPrefix, const string& keyPostfix) const
+    void Template::getSubstitutedData(string& outString, const SubstDic& dic, const string& keyPrefix, const string& keyPostfix) const
     {
       // copy the unsubstituted data to the result variable
       outString = data;
@@ -65,6 +65,15 @@ namespace Sloppy
         auto it = dic.find(srcKey);
         replaceString_All(outString, fullKey, it->second);
       }
+    }
+
+    //----------------------------------------------------------------------------
+
+    void Template::applyPermanentSubstitution(const SubstDic& dic, const string& keyPrefix, const string& keyPostfix)
+    {
+      string newData;
+      getSubstitutedData(newData, dic, keyPrefix, keyPostfix);
+      data = newData;
     }
 
     //----------------------------------------------------------------------------

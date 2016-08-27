@@ -19,7 +19,8 @@ namespace Sloppy
       explicit Template(istream& inData);
       explicit Template(const string& inData);
       unique_ptr<Template> fromFile(const string& fName);
-      void getSubstitutedData(const SubstDic& dic, string& outString, const string& keyPrefix="", const string& keyPostfix="") const;
+      void getSubstitutedData(string& outString, const SubstDic& dic=SubstDic{}, const string& keyPrefix="", const string& keyPostfix="") const;
+      void applyPermanentSubstitution(const SubstDic& dic, const string& keyPrefix="", const string& keyPostfix="");
 
     protected:
       string data;

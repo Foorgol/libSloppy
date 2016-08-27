@@ -26,6 +26,8 @@ set(LIB_SOURCES
     Sloppy/MailAndMIME/Message.cpp
     Sloppy/MailAndMIME/Header.cpp
     Sloppy/ConfigFileParser/ConfigFileParser.cpp
+    Sloppy/TemplateProcessor/Template.cpp
+    Sloppy/TemplateProcessor/TemplateCollection.cpp
 )
 
 add_library(${PROJECT_NAME} SHARED ${LIB_SOURCES})
@@ -65,6 +67,7 @@ set(LIB_SOURCES_TST
     tests/tstDatePeriods.cpp
     tests/tstRFC822.cpp
     tests/tstConfigParser.cpp
+    tests/tstTemplateProcessor.cpp
 )
 
 find_package(GTest)

@@ -53,4 +53,9 @@ TEST(TemplateProcessor, TemplateCollectionFunc)
   ASSERT_TRUE(tc.getSubstitutedData("t2", d, out));
   ASSERT_EQ("T2: abc 1 def", out);
   ASSERT_FALSE(tc.getSubstitutedData("sfdkjsdkf", d, out));
+
+  // test erase
+  ASSERT_FALSE(tc.removeTemplate("skdf"));
+  ASSERT_TRUE(tc.removeTemplate("t2"));
+  ASSERT_FALSE(tc.getSubstitutedData("t2", d, out));
 }

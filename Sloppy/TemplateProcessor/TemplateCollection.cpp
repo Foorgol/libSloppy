@@ -46,6 +46,13 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
+    bool TemplateCollection::removeTemplate(const string& shortName)
+    {
+      return (store.erase(shortName) != 0);
+    }
+
+    //----------------------------------------------------------------------------
+
     bool TemplateCollection::getSubstitutedData(const string& tName, const SubstDic& dic, string& outString, const string& keyPrefix, const string& keyPostfix) const
     {
       auto it = store.find(tName);

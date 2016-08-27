@@ -25,6 +25,8 @@ namespace Sloppy
       bool addTemplate(const string& inData, const string& shortName);
       bool addTemplateFromFile(const string& fName, const string& shortName);
 
+      bool removeTemplate(const string& shortName);
+
       bool getSubstitutedData(const string& tName, const SubstDic& dic, string& outString, const string& keyPrefix="", const string& keyPostfix="") const;
 
     protected:

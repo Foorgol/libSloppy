@@ -78,6 +78,24 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
+    void Template::doForEachLoop(string& outString, SubstDicList dl, const string& keyPrefix, const string& keyPostfix, const string& delim) const
+    {
+      outString.clear();
+      for (auto it = dl.begin(); it != dl.end(); ++it)
+      {
+        if ((!(delim.empty())) && (it != dl.begin()))
+        {
+          outString.append(delim);
+        }
+
+        string thisSubst;
+        getSubstitutedData(thisSubst, *it, keyPrefix, keyPostfix);
+        outString.append(thisSubst);
+      }
+    }
+
+    //----------------------------------------------------------------------------
+
 
     //----------------------------------------------------------------------------
 

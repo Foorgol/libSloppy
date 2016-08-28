@@ -34,6 +34,8 @@ namespace Sloppy
 
       bool getSubstitutedData(const string& shortName, string& outString, const SubstDic& dic=SubstDic{}, const string& keyPrefix="", const string& keyPostfix="") const;
 
+      bool doForEachLoop(const string& shortName, string& outString, SubstDicList dl, const string& keyPrefix="", const string& keyPostfix="", const string& delim="") const;
+
     protected:
       TemplateStore store;
     };

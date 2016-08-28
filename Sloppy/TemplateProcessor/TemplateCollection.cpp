@@ -93,6 +93,20 @@ namespace Sloppy
       return true;
     }
 
+    //----------------------------------------------------------------------------
+
+    bool TemplateCollection::doForEachLoop(const string& shortName, string& outString, SubstDicList dl, const string& keyPrefix, const string& keyPostfix, const string& delim) const
+    {
+      auto it = store.find(shortName);
+      if (it == store.end()) return false;
+
+      const Template& tmpl = it->second;
+
+      tmpl.doForEachLoop(outString, dl, keyPrefix, keyPostfix, delim);
+
+      return true;
+    }
+
 
     //----------------------------------------------------------------------------
 

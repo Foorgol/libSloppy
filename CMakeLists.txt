@@ -25,6 +25,7 @@ set(LIB_SOURCES
     Sloppy/MailAndMIME/MailAndMIME.cpp
     Sloppy/MailAndMIME/Message.cpp
     Sloppy/MailAndMIME/Header.cpp
+    Sloppy/MailAndMIME/MIME_Message.cpp
     Sloppy/ConfigFileParser/ConfigFileParser.cpp
     Sloppy/TemplateProcessor/Template.cpp
     Sloppy/TemplateProcessor/TemplateCollection.cpp

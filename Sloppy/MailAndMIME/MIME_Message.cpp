@@ -1,3 +1,5 @@
+#include <regex>
+
 #include "MIME_Message.h"
 
 namespace Sloppy
@@ -105,18 +107,11 @@ namespace Sloppy
     //----------------------------------------------------------------------------
 
     ContentTypeHeader::ContentTypeHeader(const string& hdrBody)
+      :body{hdrBody}
     {
-      // find the first semicolon
-      //
-      // npos as result is fine
-      size_t stopPos = hdrBody.find(';');
-
-      // extract the actual content type
-      string typeStr = hdrBody.substr(0, stopPos);
-
-      // parse the string
+      // parse the content type
       StringList parts;
-      stringSplitter(parts, typeStr, "/");
+      stringSplitter(parts, body.getValue(), "/");
       if (parts.size() != 2)
       {
         throw MalformedHeader();
@@ -130,65 +125,60 @@ namespace Sloppy
       if ((mainType == "text") && (subType == "html")) type = ContentType::Text_Html;
       if ((mainType == "text") && (subType == "plain")) type = ContentType::Text_Plain;
       if ((mainType == "multipart") && (subType == "form-data")) type = ContentType::Multipart_FormData;
+    }
 
-      // extract potential parameters
-      StringList paramList;
-      stringSplitter(paramList, hdrBody, ";");
-      if (paramList.size() > 1)
+    //----------------------------------------------------------------------------
+    //----------------------------------------------------------------------------
+    //----------------------------------------------------------------------------
+
+    StructuredHeaderBody::StructuredHeaderBody(const string& hdrBody)
+    {
+      // the header's value is everything up to the first ';'
+      //
+      // npos as result is fine, that means we have no ';' and thus
+      // no parameters
+      size_t stopPos = hdrBody.find(';');
+
+      // extract the actual header value
+      val = hdrBody.substr(0, stopPos);
+      boost::trim(val);
+
+      // find all name=value parameter pairs
+      regex reParam_QuotedString{"(\\w+)\\s*=\\s*\"(.*)\""};
+      regex reParam_Token{"(\\w+)\\s*=\\s*([^;=\"]+)"};
+      for (const regex& re : {reParam_QuotedString, reParam_Token})
       {
-        auto it = paramList.begin();
-        ++it;   // skip the first "parameter", because that's the content type
-
-        while (it != paramList.end())
+        for (sregex_iterator p{hdrBody.begin()+stopPos, hdrBody.end(), re};
+             p != sregex_iterator{}; ++p)
         {
-          StringList kv;
-          stringSplitter(kv, *it, "=");
-
-          string key = kv[0];
-          boost::to_lower(key);
-          boost::trim(key);
-
-          string value;
-          if (kv.size() > 1) value = kv[1];
-          boost::trim(value);
-
-          params.emplace(key, value);
-
-          ++it;
+          string key{(*p)[1]};
+          boost::to_lower(key);   // parameter names are case insensitive
+          params.emplace(key, (*p)[2]);
         }
       }
     }
 
     //----------------------------------------------------------------------------
 
-    ContentType ContentTypeHeader::getType() const
+    bool StructuredHeaderBody::hasParameter(const string& paraName) const
     {
-      return type;
-    }
+      string key{boost::to_lower_copy(paraName)};
 
-    //----------------------------------------------------------------------------
-
-    bool ContentTypeHeader::hasParam(const string& pName) const
-    {
-      auto it = params.find(boost::to_lower_copy(pName));
+      auto it = params.find(key);
       return (it != params.end());
     }
 
     //----------------------------------------------------------------------------
 
-    string ContentTypeHeader::getParam(const string& pName) const
+    string StructuredHeaderBody::getParameter(const string& paraName) const
     {
-      auto it = params.find(boost::to_lower_copy(pName));
+      string key{boost::to_lower_copy(paraName)};
+
+      auto it = params.find(key);
       if (it == params.end()) return "";
 
       return it->second;
     }
 
-    //----------------------------------------------------------------------------
-
-    bool ContentTypeHeader::isMultipart() const
-    {
-      return _isMultipart;
-    }
   }
 }

@@ -67,6 +67,7 @@ set(LIB_SOURCES_TST
     tests/tstTimePeriods.cpp
     tests/tstDatePeriods.cpp
     tests/tstRFC822.cpp
+    tests/tstRFC2045.cpp
     tests/tstConfigParser.cpp
     tests/tstTemplateProcessor.cpp
 )

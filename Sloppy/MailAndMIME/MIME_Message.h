@@ -35,26 +35,41 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
+    class StructuredHeaderBody
+    {
+    public:
+      explicit StructuredHeaderBody(const string& hdrBody);
+      bool hasParameter(const string& paraName) const;
+      string getParameter(const string& paraName) const;
+      inline string getValue() const { return val; }
+
+    protected:
+      string val;
+      unordered_map<string, string> params;
+    };
+
+    //----------------------------------------------------------------------------
+
     class ContentTypeHeader
     {
     public:
       explicit ContentTypeHeader()
-        :type{ContentType::Unknown} {}
+        :body{""}, type{ContentType::Unknown}, _isMultipart{false} {}
 
       explicit ContentTypeHeader(const string& hdrBody);
-      ContentType getType() const;
-      bool hasParam(const string& pName) const;
-      string getParam(const  string& pName) const;
-      bool isMultipart() const;
+      inline ContentType getType() const { return type; }
+      bool hasParam(const string& pName) const { return body.hasParameter(pName); }
+      string getParam(const  string& pName) const { return body.getParameter(pName); }
+      inline bool isMultipart() const { return _isMultipart; }
 
     protected:
-      string body;
+      StructuredHeaderBody body;
       ContentType type;
-      unordered_map<string, string> params;
       bool _isMultipart;
     };
 
     //----------------------------------------------------------------------------
+
     class MessagePart
     {
     public:

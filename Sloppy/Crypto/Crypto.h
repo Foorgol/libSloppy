@@ -18,6 +18,8 @@ namespace Sloppy
 
     string hashPassword(const string& pw, const string& salt, int numCycles);
 
+    bool checkPassword(const string& clearPw, const string& hashedPw, const string& salt, int numCycles);
+
     /*
      * !!! Everything we need for SHA256 starts here !!!
      *

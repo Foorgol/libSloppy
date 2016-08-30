@@ -55,6 +55,17 @@ namespace Sloppy
       return make_pair(salt, hashedPw);
     }
 
+    //----------------------------------------------------------------------------
+
+    bool checkPassword(const string& clearPw, const string& hashedPw, const string& salt, int numCycles)
+    {
+      if (clearPw.empty() || hashedPw.empty() || salt.empty() || (numCycles < 0)) return false;
+
+      string s = salt + clearPw;
+      for (int i=0; i < numCycles; ++i) s = SHA256::get(s);
+
+      return (s == hashedPw);
+    }
 
     //----------------------------------------------------------------------------
     //----------------------------------------------------------------------------

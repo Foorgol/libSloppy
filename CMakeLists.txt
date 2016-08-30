@@ -29,6 +29,7 @@ set(LIB_SOURCES
     Sloppy/ConfigFileParser/ConfigFileParser.cpp
     Sloppy/TemplateProcessor/Template.cpp
     Sloppy/TemplateProcessor/TemplateCollection.cpp
+    Sloppy/Crypto/Crypto.cpp
 )
 
 add_library(${PROJECT_NAME} SHARED ${LIB_SOURCES})

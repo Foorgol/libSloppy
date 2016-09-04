@@ -12,7 +12,7 @@ namespace Sloppy
   {
     void initSrand() { srand(time(0)); }
 
-    string getRandomAlphanumString(int len);
+    string getRandomAlphanumString(int len, bool initializeSrand = false);
 
     pair<string, string> hashPassword(const string& pw, int saltLen, int numCycles);
 

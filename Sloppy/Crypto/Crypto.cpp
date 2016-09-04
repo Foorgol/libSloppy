@@ -7,11 +7,11 @@ namespace Sloppy
   namespace Crypto
   {
 
-    string getRandomAlphanumString(int len)
+    string getRandomAlphanumString(int len, bool initializeSrand)
     {
       if (len < 1) return "";
 
-      if (initSrand) srand(time(0));
+      if (initializeSrand) srand(time(0));
 
       string result;
 

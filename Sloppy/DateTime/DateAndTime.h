@@ -101,6 +101,10 @@ namespace Sloppy
       {
         return (raw != other.raw);   // maybe I should use difftime() here...
       }
+      inline void applyOffset(long secs)
+      {
+        raw += boost::posix_time::seconds(secs);
+      }
 
     protected:
       boost::posix_time::ptime raw;

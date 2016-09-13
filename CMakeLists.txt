@@ -71,6 +71,7 @@ set(LIB_SOURCES_TST
     tests/tstRFC2045.cpp
     tests/tstConfigParser.cpp
     tests/tstTemplateProcessor.cpp
+    tests/tstEmailPattern.cpp
 )
 
 find_package(GTest)

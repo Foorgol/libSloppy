@@ -27,6 +27,11 @@ namespace Sloppy
   {
     if (ptr != nullptr) *ptr = val;
   }
+
+  // check whether a string is a valid email adress
+  //
+  // modifies the string in place (trimming)
+  bool isValidEmailAddress(const string& email);
 }
 
 #endif

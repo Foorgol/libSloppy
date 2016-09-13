@@ -1,3 +1,6 @@
+#include <regex>
+
+#include <boost/algorithm/string.hpp>
 
 #include "libSloppy.h"
 
@@ -65,6 +68,34 @@ namespace Sloppy
     }
 
     return result;
+  }
+
+  //----------------------------------------------------------------------------
+
+  bool isValidEmailAddress(const string& email)
+  {
+    //
+    // Well, this is weird. Using the case-insensitive mode
+    // of a regex doesn't work as expected. Example: the
+    // simple pattern ^[A-Z]+ used with regex::icase does match
+    // "ABC", "aaa" but not "abc". I would expect to match "abc"
+    // as well. Hmmm....
+    //
+    // So for the purpose of "simple" regex, I only use the
+    // character class A-Z and convert the email address to
+    // uppercase first. I hoped the uppercase conversion would
+    // not be necessary, but the simple test explained above
+    // proved me wrong.
+    //
+    // The regex is taken from
+    // http://www.regular-expressions.info/email.html
+    //
+    regex reEmail{R"(^(?=[A-Z0-9][A-Z0-9@._%+-]{5,253}+$)[A-Z0-9._%+-]{1,64}+@(?:(?=[A-Z0-9-]{1,63}+\.)[A-Z0-9]++(?:-[A-Z0-9]++)*+\.){1,8}+[A-Z]{2,63}+$)",
+                 regex::icase};
+
+    string e{email};
+    boost::to_upper(e);
+    return regex_match(e, reEmail);
   }
 
 

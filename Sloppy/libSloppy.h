@@ -11,7 +11,7 @@ namespace Sloppy
   using StringList = vector<string>;
 
   // split strings by delimiter string (easier to handle than Boost's function)
-  void stringSplitter(StringList& target, const string& src, const string& delim);
+  void stringSplitter(StringList& target, const string& src, const string& delim, bool trimStrings=false);
 
   // replace substrings (similar to what Boost provides)
   bool replaceString_First(string& src, const string& key, const string& value);

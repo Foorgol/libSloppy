@@ -6,7 +6,7 @@
 
 namespace Sloppy
 {
-  void stringSplitter(Sloppy::StringList& target, const std::__cxx11::string& src, const std::__cxx11::string& delim)
+  void stringSplitter(Sloppy::StringList& target, const std::__cxx11::string& src, const std::__cxx11::string& delim, bool trimStrings)
   {
     // split the source up at 'delim' positions
     //
@@ -19,12 +19,16 @@ namespace Sloppy
       size_t nextDelimPos = src.find(delim, nextStartPos);
       if (nextDelimPos == string::npos) break;
 
-      target.push_back(src.substr(nextStartPos, nextDelimPos - nextStartPos));
+      string s = src.substr(nextStartPos, nextDelimPos - nextStartPos);
+      if (trimStrings) boost::trim(s);
+      target.push_back(s);
       nextStartPos = nextDelimPos + delim.length();
     }
     if (nextStartPos < src.length())
     {
-      target.push_back(src.substr(nextStartPos, src.length() - nextStartPos));
+      string s = src.substr(nextStartPos, src.length() - nextStartPos);
+      if (trimStrings) boost::trim(s);
+      target.push_back(s);
     }
   }
 

@@ -32,6 +32,8 @@ namespace Sloppy
 
       string getValue(const string& secName, const string& keyName, bool* isOk=nullptr) const;
       string getValue(const string& keyName, bool* isOk=nullptr) const;
+      bool getValueAsBool(const string& secName, const string& keyName, bool* isOk=nullptr) const;
+      bool getValueAsBool(const string& keyName, bool* isOk=nullptr) const;
 
     protected:
       Parser();

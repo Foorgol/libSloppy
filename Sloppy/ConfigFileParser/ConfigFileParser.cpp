@@ -151,6 +151,47 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
+    bool Parser::getValueAsBool(const string& secName, const string& keyName, bool* isOk) const
+    {
+      bool ok;
+      string s = getValue(secName, keyName, &ok);
+      if (!ok)
+      {
+        assignIfNotNull<bool>(isOk, false);
+        return false;
+      }
+
+      boost::to_lower(s);
+      for (const string& val : {"1", "true", "on", "yes"})
+      {
+        if (s == val)
+        {
+          assignIfNotNull<bool>(isOk, true);
+          return true;
+        }
+      }
+      for (const string& val : {"0", "false", "off", "no"})
+      {
+        if (s == val)
+        {
+          assignIfNotNull<bool>(isOk, true);
+          return false;
+        }
+      }
+
+      assignIfNotNull<bool>(isOk, false);
+      return false;
+    }
+
+    //----------------------------------------------------------------------------
+
+    bool Parser::getValueAsBool(const string& keyName, bool* isOk) const
+    {
+      return getValueAsBool(defaultSectionName, keyName, isOk);
+    }
+
+    //----------------------------------------------------------------------------
+
     Parser::Parser()
     {
       content.emplace(defaultSectionName, SectionData());

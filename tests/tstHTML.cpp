@@ -30,6 +30,9 @@ TEST(HTML, StyledElement_Basics)
   e.addAttr("a1", "av1");
   e.addAttr("a2", "av2");
   ASSERT_EQ("<abc a2=\"av2\" a1=\"av1\" style=\"s1: v1; s2: v2;\" class=\"c1 c2\">xyz</abc>", e.to_html());
+
+  e.addAttr("a2", "av2New");
+  ASSERT_EQ("<abc a2=\"av2New\" a1=\"av1\" style=\"s1: v1; s2: v2;\" class=\"c1 c2\">xyz</abc>", e.to_html());
 }
 
 //----------------------------------------------------------------------------

@@ -31,6 +31,8 @@ set(LIB_SOURCES
     Sloppy/TemplateProcessor/TemplateCollection.cpp
     Sloppy/Crypto/Crypto.cpp
     Sloppy/HTML/StyledElement.cpp
+    Sloppy/HTML/BasicElements.cpp
+    Sloppy/HTML/Table.cpp
 )
 
 add_library(${PROJECT_NAME} SHARED ${LIB_SOURCES})

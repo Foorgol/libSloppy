@@ -96,6 +96,45 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
+    void StyledElement::setMargins(int top, int bottom, int left, int right)
+    {
+      for (pair<string, int>& p : vector<pair<string, int>>{{"top", top}, {"bottom", bottom}, {"left", left}, {"right", right}})
+      {
+        if (p.second != MarginIgnore)
+        {
+          addStyle("margin-" + p.first, to_string(p.second) + "px");
+        }
+      }
+    }
+
+    //----------------------------------------------------------------------------
+
+    void StyledElement::setTextAlignment(Alignment horAlign)
+    {
+      if (horAlign != Alignment::Default)
+      {
+        string a;
+        switch (horAlign)
+        {
+        case Alignment::Left:
+          a = "left";
+          break;
+
+        case Alignment::Center:
+          a = "center";
+          break;
+
+        case Alignment::Right:
+          a = "right";
+          break;
+        }
+
+        addStyle("text-align", a);
+      }
+    }
+
+    //----------------------------------------------------------------------------
+
     StyledElement::~StyledElement()
     {
       for (StyledElement* e : content)

@@ -11,9 +11,21 @@ namespace Sloppy
 {
   namespace HTML
   {
+    enum class Alignment
+    {
+      Left,
+      Center,
+      Right,
+      Default
+    };
+
+    //----------------------------------------------------------------------------
+
     class StyledElement
     {
     public:
+      static constexpr int MarginIgnore = -1;
+
       explicit StyledElement(const string& _elemName);
       virtual ~StyledElement();
 
@@ -36,6 +48,9 @@ namespace Sloppy
       StyledElement* createContentChild(const string& _elemName);
 
       void setPlainTextContent(const string& ptc) { plainTextContent = ptc; }
+
+      void setMargins(int top, int bottom = MarginIgnore, int left = MarginIgnore, int right = MarginIgnore);
+      void setTextAlignment(Alignment horAlign);
 
 
     protected:

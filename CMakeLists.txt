@@ -30,6 +30,7 @@ set(LIB_SOURCES
     Sloppy/TemplateProcessor/Template.cpp
     Sloppy/TemplateProcessor/TemplateCollection.cpp
     Sloppy/Crypto/Crypto.cpp
+    Sloppy/HTML/StyledElement.cpp
 )
 
 add_library(${PROJECT_NAME} SHARED ${LIB_SOURCES})
@@ -72,6 +73,7 @@ set(LIB_SOURCES_TST
     tests/tstConfigParser.cpp
     tests/tstTemplateProcessor.cpp
     tests/tstEmailPattern.cpp
+    tests/tstHTML.cpp
 )
 
 find_package(GTest)

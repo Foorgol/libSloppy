@@ -13,7 +13,7 @@ namespace Sloppy
       StyledElement* tr = thead->createContentChild("tr");
       for (const string& h : headers)
       {
-        StyledElement* hdrElem = createContentChild("th");
+        StyledElement* hdrElem = tr->createContentChild("th");
         hdrElem->setPlainTextContent(h);
         headerElems.push_back(hdrElem);
       }

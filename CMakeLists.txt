@@ -33,6 +33,7 @@ set(LIB_SOURCES
     Sloppy/HTML/StyledElement.cpp
     Sloppy/HTML/BasicElements.cpp
     Sloppy/HTML/Table.cpp
+    Sloppy/HTML/Bootstrap.cpp
 )
 
 add_library(${PROJECT_NAME} SHARED ${LIB_SOURCES})

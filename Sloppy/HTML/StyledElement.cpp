@@ -5,8 +5,8 @@ namespace Sloppy
   namespace HTML
   {
 
-    StyledElement::StyledElement(const string& _elemName)
-      :elemName{_elemName}
+    StyledElement::StyledElement(const string& _elemName, bool _omitClosingTag)
+      :elemName{_elemName}, omitClosingTag{_omitClosingTag}
     {
 
     }
@@ -76,8 +76,8 @@ namespace Sloppy
         result += plainTextContent;
       }
 
-      // write the closing tag
-      result += "</" + elemName + ">";
+      // write the closing tag, if necessary
+      if (!omitClosingTag) result += "</" + elemName + ">";
 
       // done
       return result;
@@ -85,9 +85,9 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    StyledElement* StyledElement::createContentChild(const string& _elemName)
+    StyledElement* StyledElement::createContentChild(const string& _elemName, bool _omitClosingTag)
     {
-      StyledElement* newElem = new StyledElement(_elemName);
+      StyledElement* newElem = new StyledElement(_elemName, _omitClosingTag);
       if (newElem == nullptr) return nullptr;
 
       content.push_back(newElem);

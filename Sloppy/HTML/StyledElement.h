@@ -26,7 +26,7 @@ namespace Sloppy
     public:
       static constexpr int MarginIgnore = -1;
 
-      explicit StyledElement(const string& _elemName);
+      explicit StyledElement(const string& _elemName, bool _omitClosingTag=false);
       virtual ~StyledElement();
 
       void addStyle(const string& sName, const string& sValue);
@@ -45,7 +45,7 @@ namespace Sloppy
         return newElem;
       }
 
-      StyledElement* createContentChild(const string& _elemName);
+      StyledElement* createContentChild(const string& _elemName, bool _omitClosingTag=false);
 
       void setPlainTextContent(const string& ptc) { plainTextContent = ptc; }
 
@@ -60,6 +60,7 @@ namespace Sloppy
       vector<StyledElement*> content;
       unordered_map<string, string> attr;
       string plainTextContent;
+      bool omitClosingTag;
     };
   }
 }

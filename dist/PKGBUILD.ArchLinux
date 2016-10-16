@@ -1,0 +1,52 @@
+pkgname="libSloppy"
+pkgver="0.0.0"
+pkgrel=1
+pkgdesc="A C++ lib of sloppyly implemented helper functions"
+arch=('i686' 'x86_64')
+url=""
+license=('GPL')
+groups=()
+depends=('boost' 'boost-libs')
+makedepends=('git') # 'bzr', 'git', 'mercurial' or 'subversion'
+provides=("${pkgname%-git}")
+conflicts=("${pkgname%-git}")
+replaces=()
+backup=()
+options=()
+install=
+source=()
+noextract=()
+md5sums=()
+
+# Please refer to the 'USING VCS SOURCES' section of the PKGBUILD man page for
+# a description of each element in the source array.
+
+pkgver() {
+	cd "$srcdir/${pkgname%-git}"
+
+# The examples below are not absolute and need to be adapted to each repo. The
+# primary goal is to generate version numbers that will increase according to
+# pacman's version comparisons with later commits to the repo. The format
+# VERSION='VER_NUM.rREV_NUM.HASH', or a relevant subset in case VER_NUM or HASH
+# are not available, is recommended.
+
+# Git, no tags available
+	printf "r%s.%s" "$(git rev-list --count HEAD)" "$(git rev-parse --short HEAD)"
+}
+
+prepare() {
+	cd "$srcdir"
+	git clone -b master --single-branch git@vps144805.ovh.net:/srv/git/libSloppy.git
+}
+
+build() {
+	cd "$srcdir/${pkgname%-git}"
+	cmake . -DCMAKE_BUILD_TYPE=Release
+	make
+}
+
+package() {
+	cd "$srcdir/${pkgname%-git}"
+	make DESTDIR="$pkgdir/" install
+}
+

@@ -51,6 +51,8 @@ namespace Sloppy
       return make_tuple(ymd / 10000,  (ymd % 10000) / 100, ymd % 100);
     }
 
+    bool parseDateString(const string& in, boost::gregorian::date& out, const string& fmtString="", bool strictChecking=true);
+
     // a wrapper class for boost's ptime
     class CommonTimestamp
     {

@@ -428,6 +428,73 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
+    bool parseDateString(const string& in, boost::gregorian::date& out, const string& fmtString, bool strictChecking)
+    {
+      // create a date input facet that represents the
+      // requested format or use extended ISO (yyyy-mm-dd) instead
+      boost::gregorian::date_input_facet* dif = new boost::gregorian::date_input_facet{};
+      if (fmtString.empty())
+      {
+        dif->set_iso_extended_format();
+      } else {
+        dif->format(fmtString.c_str());
+      }
+
+      // add this facet to a locale; the locale will own the facet object
+      // that has been instanciated with "new"
+      std::locale myLocale_in{std::locale::classic(), dif};
+
+      // try to parse the input string
+      try
+      {
+        istringstream is(in);
+        is.imbue(myLocale_in);
+
+        // the following tmp-date is initialized to "not_a_date_time"
+        boost::gregorian::date tmp;
+
+        // try to parse the stream into tmp
+        is >> tmp;
+
+        // if tmp now holds a valid date and not a special value
+        // such as "not_a_date_time", the conversion was successfull
+        if (!(tmp.is_special()))
+        {
+          string check{in};
+
+          if (strictChecking)
+          {
+            ostringstream os;
+            boost::gregorian::date_facet* df = new boost::gregorian::date_facet();
+            if (fmtString.empty())
+            {
+              df->set_iso_extended_format();
+            } else {
+              df->format(fmtString.c_str());
+            }
+            std::locale myLocale_out{std::locale::classic(), df};
+            os.imbue(myLocale_out);
+            os << tmp;
+            check = os.str();
+          }
+
+          if (check == in)
+          {
+            out = tmp;
+            return true;
+          }
+        }
+      }
+      catch (...)
+      {
+      }
+
+      out = boost::gregorian::date{};   // set output to "not_a_date_time"
+      return false;
+    }
+
+    //----------------------------------------------------------------------------
+
 
     //----------------------------------------------------------------------------
     //----------------------------------------------------------------------------

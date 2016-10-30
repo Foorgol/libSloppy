@@ -10,7 +10,7 @@ namespace Sloppy
 {
   namespace Crypto
   {
-    void initSrand() { srand(time(0)); }
+    inline void initSrand() { srand(time(0)); }
 
     string getRandomAlphanumString(int len, bool initializeSrand = false);
 

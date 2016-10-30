@@ -1,6 +1,6 @@
 #!/bin/bash
 
-PKGVER=0.1.0
+PKGVER=0.1.1
 PKGRELEASE=1
 PKGNAME=libSloppy
 BUILDDIR=/tmp/$PKGNAME-build

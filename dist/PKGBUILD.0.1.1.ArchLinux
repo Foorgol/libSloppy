@@ -1,0 +1,39 @@
+pkgname="libSloppy"
+pkgver=0.1.1
+pkgrel=1
+pkgdesc="A C++ lib of sloppyly implemented helper functions"
+arch=('i686' 'x86_64')
+url=""
+license=('GPL')
+groups=()
+depends=('boost' 'boost-libs')
+makedepends=('git') # 'bzr', 'git', 'mercurial' or 'subversion'
+provides=("${pkgname%-git}")
+conflicts=("${pkgname%-git}")
+replaces=()
+backup=()
+options=()
+install=
+source=()
+noextract=()
+md5sums=()
+
+# Please refer to the 'USING VCS SOURCES' section of the PKGBUILD man page for
+# a description of each element in the source array.
+
+prepare() {
+	cd "$srcdir"
+	git clone -b $pkgver --single-branch --depth 1 git@vps144805.ovh.net:/srv/git/libSloppy.git
+}
+
+build() {
+	cd "$srcdir/${pkgname%-git}"
+	cmake . -DCMAKE_BUILD_TYPE=Release
+	make
+}
+
+package() {
+	cd "$srcdir/${pkgname%-git}"
+	make DESTDIR="$pkgdir/" install
+}
+

@@ -20,6 +20,9 @@ namespace Sloppy
 
     bool checkPassword(const string& clearPw, const string& hashedPw, const string& salt, int numCycles);
 
+    string toBase64(const string& rawData);
+    string fromBase64(const string& b64Data);
+
     /*
      * !!! Everything we need for SHA256 starts here !!!
      *

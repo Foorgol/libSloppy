@@ -1,4 +1,5 @@
 #include <cstring>
+#include <vector>
 
 #include "Crypto.h"
 
@@ -65,6 +66,71 @@ namespace Sloppy
       for (int i=0; i < numCycles; ++i) s = SHA256::get(s);
 
       return (s == hashedPw);
+    }
+
+    //----------------------------------------------------------------------------
+
+    // Taken from https://stackoverflow.com/a/34571089
+    string toBase64(const string& rawData)
+    {
+      using uchar = unsigned char;
+
+      string out;
+
+      int val = 0;
+      int valb = -6;
+
+      for (uchar c : rawData)
+      {
+        val = (val<<8) + c;
+        valb += 8;
+
+        while (valb>=0) {
+          out.push_back("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"[(val>>valb)&0x3F]);
+          valb -= 6;
+        }
+      }
+
+      if (valb>-6)
+      {
+        out.push_back("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"[((val<<8)>>(valb+8))&0x3F]);
+      }
+
+      while (out.size()%4) out.push_back('=');
+
+      return out;
+    }
+
+    //----------------------------------------------------------------------------
+
+    // Taken from https://stackoverflow.com/a/34571089
+    string fromBase64(const string& b64Data)
+    {
+      using uchar = unsigned char;
+
+      string out;
+
+      vector<int> T(256,-1);
+      for (int i=0; i<64; i++) T["ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"[i]] = i;
+
+      int val = 0;
+      int valb =- 8;
+
+      for (uchar c : b64Data)
+      {
+        if (T[c] == -1) break;
+
+        val = (val<<6) + T[c];
+        valb += 6;
+
+        if (valb>=0)
+        {
+          out.push_back(char((val>>valb)&0xFF));
+          valb -= 8;
+        }
+      }
+
+      return out;
     }
 
     //----------------------------------------------------------------------------
@@ -205,5 +271,7 @@ namespace Sloppy
         sprintf(buf+i*2, "%02x", digest[i]);
       return string(buf);
     }
+
+
   }
 }

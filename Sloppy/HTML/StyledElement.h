@@ -35,10 +35,10 @@ namespace Sloppy
       void addContentElement(StyledElement* other); // TAKES OWNERSHIP!!
       string to_html();
 
-      template<typename ElemType>
-      ElemType* createCustomContentChild()
+      template<typename ElemType, typename... Args>
+      ElemType* createCustomContentChild(Args&&... args)
       {
-        ElemType* newElem = new ElemType;
+        ElemType* newElem = new ElemType(forward<Args>(args)...);
         if (newElem == nullptr) return nullptr;
 
         content.push_back(newElem);

@@ -48,6 +48,21 @@ namespace Sloppy
       explicit Anchor(const string& url, const string& linkText="");
       virtual ~Anchor(){}
     };
+
+    //----------------------------------------------------------------------------
+
+    enum class FormMethod
+    {
+      Post,
+      Get
+    };
+
+    class Form : public StyledElement
+    {
+    public:
+      Form(const string& id, const string& targetUrl, FormMethod method = FormMethod::Post, const string& encType = "multipart/form-data");
+      virtual ~Form(){}
+    };
   }
 }
 

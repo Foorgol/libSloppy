@@ -21,6 +21,17 @@ namespace Sloppy
       setPlainTextContent(linkText);
     }
 
+    //----------------------------------------------------------------------------
+
+    Form::Form(const string& id, const string& targetUrl, FormMethod method, const string& encType)
+      :StyledElement("form")
+    {
+      addAttr("id", id);
+      addAttr("action", targetUrl);
+      addAttr("method", (method == FormMethod::Get) ? "get" : "post");
+      addAttr("enctype", encType);
+    }
+
 
     //----------------------------------------------------------------------------
 

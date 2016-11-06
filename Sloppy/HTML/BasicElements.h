@@ -63,6 +63,23 @@ namespace Sloppy
       Form(const string& id, const string& targetUrl, FormMethod method = FormMethod::Post, const string& encType = "multipart/form-data");
       virtual ~Form(){}
     };
+
+    //----------------------------------------------------------------------------
+
+    enum class InputType
+    {
+      Text,
+      Radio,
+      CheckBox,
+      Hidden
+    };
+
+    class Input : public StyledElement
+    {
+    public:
+      Input(const string& id, InputType it, const string& value="", const string& content="", const string& name="");
+      virtual ~Input(){}
+    };
   }
 }
 

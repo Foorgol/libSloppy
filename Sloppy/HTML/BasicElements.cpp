@@ -32,6 +32,49 @@ namespace Sloppy
       addAttr("enctype", encType);
     }
 
+    //----------------------------------------------------------------------------
+
+    Input::Input(const string& id, InputType it, const string& value, const string& content, const string& name)
+      :StyledElement("input", true)
+    {
+      addAttr("id", id);
+      addAttr("name", name.empty() ? id : name);
+
+      string sType;
+      switch (it)
+      {
+      case InputType::CheckBox:
+        sType = "checkbox";
+        break;
+
+      case InputType::Radio:
+        sType = "radio";
+        break;
+
+      case InputType::Text:
+        sType = "text";
+        break;
+
+      case InputType::Hidden:
+        sType = "hidden";
+        break;
+
+      default:
+        sType = "text";
+      }
+      addAttr("type", sType);
+
+      if (!(value.empty()))
+      {
+        addAttr("value", value);
+      }
+
+      if (!(content.empty()))
+      {
+        setPlainTextContent(content);
+      }
+    }
+
 
     //----------------------------------------------------------------------------
 

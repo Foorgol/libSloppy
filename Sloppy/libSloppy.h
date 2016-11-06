@@ -3,6 +3,7 @@
 
 #include <string>
 #include <vector>
+#include <algorithm>
 
 using namespace std;
 
@@ -32,6 +33,14 @@ namespace Sloppy
   //
   // modifies the string in place (trimming)
   bool isValidEmailAddress(const string& email);
+
+
+  // check whether an element is in a vector
+  template<typename ElemType>
+  bool isInVector(vector<ElemType>& vec, const ElemType& el)
+  {
+    return (find(vec.begin(), vec.end(), el) != vec.end());
+  }
 }
 
 #endif

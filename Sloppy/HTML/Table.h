@@ -28,6 +28,15 @@ namespace Sloppy
       bool setCell(int r, int c, const string& plainText, bool createRowIfNotExisting=false);
       bool setCell(int r, int c, StyledElement* elem, bool createRowIfNotExisting=false);   // TAKES OWNERSHIP!!
 
+      template<typename ElemType, typename... Args>
+      ElemType* createCustomElemInCell(int r, int c, Args&&... args)
+      {
+        StyledElement* cell = getCell(r, c, true);
+        if (cell == nullptr) return nullptr;
+
+        return cell->createCustomContentChild<ElemType>(forward<Args>(args)...);
+      }
+
     protected:
       const int colCount;
       StyledElement* body;

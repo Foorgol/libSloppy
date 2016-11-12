@@ -37,9 +37,28 @@ namespace Sloppy
 
   // check whether an element is in a vector
   template<typename ElemType>
-  bool isInVector(vector<ElemType>& vec, const ElemType& el)
+  bool isInVector(const vector<ElemType>& vec, const ElemType& el)
   {
     return (find(vec.begin(), vec.end(), el) != vec.end());
+  }
+
+  // erase all occurences of a value from a vector
+  // and return the number of removed elements
+  template<class T>
+  int eraseAllOccurencesFromVector(vector<T>& vec, const T& val)
+  {
+    int oldSize = vec.size();
+    vec.erase(std::remove(vec.begin(), vec.end(), val), vec.end());
+    int newSize = vec.size();
+    return oldSize - newSize;
+  }
+
+  // trim a string and make sure
+  // it's not empty or too long
+  inline bool trimAndCheckString(string& s, int maxLen = -1)
+  {
+    boost::trim(s);
+    return (maxLen > 0) ? (!(s.empty() || (s.length() > maxLen))) : (!(s.empty()));
   }
 }
 

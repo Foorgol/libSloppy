@@ -5,6 +5,8 @@
 #include <vector>
 #include <algorithm>
 
+#include <boost/algorithm/string.hpp>
+
 using namespace std;
 
 namespace Sloppy

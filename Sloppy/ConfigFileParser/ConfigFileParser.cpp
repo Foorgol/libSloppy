@@ -192,6 +192,46 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
+    int Parser::getValueAsInt(const string& secName, const string& keyName, int defaultVal, bool* isOk) const
+    {
+      bool ok;
+      string s = getValue(secName, keyName, &ok);
+      if (!ok)
+      {
+        assignIfNotNull<bool>(isOk, false);
+        return defaultVal;
+      }
+
+      boost::trim(s);
+      if (s.empty())
+      {
+        assignIfNotNull<bool>(isOk, false);
+        return defaultVal;
+      }
+
+      int val = defaultVal;
+      try
+      {
+        val = stoi(s);
+        assignIfNotNull<bool>(isOk, true);
+      }
+      catch (...)
+      {
+        assignIfNotNull<bool>(isOk, false);
+      }
+
+      return val;
+    }
+
+    //----------------------------------------------------------------------------
+
+    int Parser::getValueAsInt(const string& keyName, int defaultVal, bool* isOk) const
+    {
+      return getValueAsInt(defaultSectionName, keyName, defaultVal, isOk);
+    }
+
+    //----------------------------------------------------------------------------
+
     Parser::Parser()
     {
       content.emplace(defaultSectionName, SectionData());

@@ -32,6 +32,16 @@ TEST(ConfigParser, Basics)
   ASSERT_EQ("", cp->getValue("Var3"));
   ASSERT_EQ("ab cd/ef\\g", cp->getValue("var 2"));
   ASSERT_EQ("=4=5", cp->getValue("3"));
+
+  // test conversion to int
+  bool ok = false;
+  ASSERT_EQ(42, cp->getValueAsInt("var1", -1, &ok));
+  ASSERT_TRUE(ok);
+  ASSERT_EQ(-1, cp->getValueAsInt("var3", -1, &ok));  // conversion of a 'x'
+  ASSERT_FALSE(ok);
+  ok = true;
+  ASSERT_EQ(-1, cp->getValueAsInt("Var3", -1, &ok));  // conversion of an empty string
+  ASSERT_FALSE(ok);
 }
 
 //----------------------------------------------------------------------------

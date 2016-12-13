@@ -20,7 +20,7 @@ namespace Sloppy
     public:
       explicit Template(istream& inData);
       explicit Template(const string& inData);
-      unique_ptr<Template> fromFile(const string& fName);
+      static unique_ptr<Template> fromFile(const string& fName);
       void getSubstitutedData(string& outString, const SubstDic& dic=SubstDic{}, const string& keyPrefix="", const string& keyPostfix="") const;
       void applyPermanentSubstitution(const SubstDic& dic, const string& keyPrefix="", const string& keyPostfix="");
       void doForEachLoop(string& outString, SubstDicList dl, const string& keyPrefix="", const string& keyPostfix="", const string& delim="") const;

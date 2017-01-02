@@ -56,7 +56,7 @@ namespace Sloppy
       }
 
     protected:
-      const int colCount;
+      const size_t colCount;
       StyledElement* body;
       vector<StyledElement*> headerElems;
       vector<vector<StyledElement*>> cells;

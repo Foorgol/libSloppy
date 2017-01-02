@@ -75,7 +75,7 @@ namespace Sloppy
 
   // trim a string and make sure
   // it's not empty or too long
-  inline bool trimAndCheckString(string& s, int maxLen = -1)
+  inline bool trimAndCheckString(string& s, size_t maxLen = 0)
   {
     boost::trim(s);
     return (maxLen > 0) ? (!(s.empty() || (s.length() > maxLen))) : (!(s.empty()));

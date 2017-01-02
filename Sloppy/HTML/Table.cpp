@@ -51,7 +51,7 @@ namespace Sloppy
 
         // add empty columns
         vector<StyledElement*> newColumnCells;
-        for (int c = 0; c < colCount; ++c)
+        for (size_t c = 0; c < colCount; ++c)
         {
           StyledElement* td = tr->createContentChild("td");
           newColumnCells.push_back(td);

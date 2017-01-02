@@ -22,8 +22,6 @@
 #include <string>
 #include <vector>
 
-#include <boost/algorithm/string.hpp>
-
 #include "../libSloppy.h"
 #include "MailAndMIME.h"
 
@@ -43,15 +41,9 @@ namespace Sloppy
     public:
       explicit HeaderField(const string& fName, const string& fBody);
 
-      inline bool operator ==(const string& fName) const
-      {
-        return (fieldName == boost::to_lower_copy(fName));
-      }
+      bool operator ==(const string& fName) const;
 
-      inline bool operator !=(const string& fName) const
-      {
-        return (fieldName != boost::to_lower_copy(fName));
-      }
+      bool operator !=(const string& fName) const;
 
       inline string getRawBody() const
       {

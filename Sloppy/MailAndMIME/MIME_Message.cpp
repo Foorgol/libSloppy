@@ -18,6 +18,8 @@
 
 #include <regex>
 
+#include <boost/algorithm/string.hpp>
+
 #include "MIME_Message.h"
 
 namespace Sloppy

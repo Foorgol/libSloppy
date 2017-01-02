@@ -120,5 +120,51 @@ namespace Sloppy
     return regex_match(e, reEmail);
   }
 
+  //----------------------------------------------------------------------------
+
+  bool trimAndCheckString(string& s, size_t maxLen)
+  {
+    boost::trim(s);
+    return (maxLen > 0) ? (!(s.empty() || (s.length() > maxLen))) : (!(s.empty()));
+  }
+
+  //----------------------------------------------------------------------------
+
+  bool replaceStringSection(string& data, size_t startIdxToDelete, size_t endIdxToDelete, const string& replacement)
+  {
+    if (endIdxToDelete < startIdxToDelete) return false;
+
+    if ((startIdxToDelete > (data.size() - 1)) || (endIdxToDelete > (data.size() - 1))) return false;
+
+    string part1;
+    if (startIdxToDelete > 0)
+    {
+      part1 = data.substr(0, startIdxToDelete);
+    }
+
+    string part2;
+    if (endIdxToDelete < (data.size() - 1))
+    {
+      part2 = data.substr(endIdxToDelete + 1);
+    }
+
+    data = part1 + replacement + part2;
+
+    return true;
+  }
+
+  //----------------------------------------------------------------------------
+
+  string getStringSlice(const string& s, size_t idxStart, size_t idxEnd)
+  {
+    if (idxEnd < idxStart) return "";
+
+    return s.substr(idxStart, idxEnd - idxStart + 1);
+  }
+
+  //----------------------------------------------------------------------------
+
+
+  //----------------------------------------------------------------------------
 
 }

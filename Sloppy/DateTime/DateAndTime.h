@@ -25,10 +25,6 @@
 #include <cstring>
 #include <tuple>
 
-#include <boost/date_time/local_time/local_time.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
-#include <boost/date_time/gregorian/gregorian.hpp>
-
 using namespace std;
 
 
@@ -40,6 +36,8 @@ namespace boost
 {
   namespace gregorian
   {
+    class date;
+
     inline tuple<int, int, int> to_tuple(const date& d)
     {
       return make_tuple(d.year(), d.month(), d.day());

@@ -160,6 +160,20 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
+    bool HeaderField::operator ==(const string& fName) const
+    {
+      return (fieldName == boost::to_lower_copy(fName));
+    }
+
+    //----------------------------------------------------------------------------
+
+    bool HeaderField::operator !=(const string& fName) const
+    {
+      return (fieldName != boost::to_lower_copy(fName));
+    }
+
+    //----------------------------------------------------------------------------
+
     string HeaderField::removeCommentsFromBody(const string& rawBody)
     {
       // a little helper function that determines whether a character

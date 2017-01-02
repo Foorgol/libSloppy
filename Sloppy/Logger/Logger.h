@@ -22,8 +22,6 @@
 #include <string>
 
 #include <boost/log/utility/setup/console.hpp>
-#include <boost/log/utility/setup/file.hpp>
-#include <boost/log/utility/setup/common_attributes.hpp>
 #include <boost/log/sources/severity_logger.hpp>
 
 using namespace std;

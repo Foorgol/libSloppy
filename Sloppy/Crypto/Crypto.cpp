@@ -18,6 +18,7 @@
 
 #include <cstring>
 #include <vector>
+#include <chrono>
 
 #include "Crypto.h"
 
@@ -25,12 +26,11 @@ namespace Sloppy
 {
   namespace Crypto
   {
+    //mt19937_64 rng = mt19937_64{chrono::system_clock::now().time_since_epoch().count()};
 
-    string getRandomAlphanumString(int len, bool initializeSrand)
+    string getRandomAlphanumString(int len)
     {
       if (len < 1) return "";
-
-      if (initializeSrand) srand(time(0));
 
       string result;
 
@@ -40,7 +40,7 @@ namespace Sloppy
           "abcdefghijklmnopqrstuvwxyz";
 
       for (int i = 0; i < len; ++i) {
-        result += alphanum[rand() % (sizeof(alphanum) - 1)];
+        result += alphanum[rng() % (sizeof(alphanum) - 1)];
       }
 
       return result;

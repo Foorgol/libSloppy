@@ -21,6 +21,8 @@
 
 #include <string>
 #include <tuple>
+#include <random>
+#include <chrono>
 
 using namespace std;
 
@@ -28,9 +30,10 @@ namespace Sloppy
 {
   namespace Crypto
   {
-    inline void initSrand() { srand(time(0)); }
+    // a random engine that can be used by various crypto functions
+    mt19937_64 rng = mt19937_64{chrono::system_clock::now().time_since_epoch().count()};
 
-    string getRandomAlphanumString(int len, bool initializeSrand = false);
+    string getRandomAlphanumString(int len);
 
     pair<string, string> hashPassword(const string& pw, int saltLen, int numCycles);
 

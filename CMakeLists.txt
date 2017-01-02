@@ -54,9 +54,16 @@ set_target_properties(${PROJECT_NAME} PROPERTIES VERSION ${LIB_VERSION_STRING}
 #
 # CMake's default destination path is /usr/local which is just fine
 #
-install(TARGETS ${PROJECT_NAME}
-        LIBRARY DESTINATION lib
-       )
+IF (WIN32)
+  install(TARGETS ${PROJECT_NAME}
+          RUNTIME DESTINATION lib
+         )
+ELSE()
+    install(TARGETS ${PROJECT_NAME}
+            LIBRARY DESTINATION lib
+           )
+ENDIF()
+
 install(DIRECTORY Sloppy DESTINATION include
     FILES_MATCHING PATTERN "*.h"
     )

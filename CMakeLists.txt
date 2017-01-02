@@ -55,6 +55,7 @@ set_target_properties(${PROJECT_NAME} PROPERTIES VERSION ${LIB_VERSION_STRING}
 # CMake's default destination path is /usr/local which is just fine
 #
 IF (WIN32)
+  set(CMAKE_INSTALL_PREFIX D:/PortablePrograms/msys64/usr/local )
   install(TARGETS ${PROJECT_NAME}
           RUNTIME DESTINATION lib
          )

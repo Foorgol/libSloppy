@@ -84,6 +84,7 @@ set(LIB_SOURCES_TST
     tests/tstTemplateProcessor.cpp
     tests/tstEmailPattern.cpp
     tests/tstHTML.cpp
+    tests/tstCrypto.cpp
 )
 
 find_package(GTest)

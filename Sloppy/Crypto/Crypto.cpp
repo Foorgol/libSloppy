@@ -26,7 +26,7 @@ namespace Sloppy
 {
   namespace Crypto
   {
-    //mt19937_64 rng = mt19937_64{chrono::system_clock::now().time_since_epoch().count()};
+    mt19937_64 rng = mt19937_64{chrono::system_clock::now().time_since_epoch().count()};
 
     string getRandomAlphanumString(int len)
     {

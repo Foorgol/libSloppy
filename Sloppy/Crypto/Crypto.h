@@ -31,7 +31,7 @@ namespace Sloppy
   namespace Crypto
   {
     // a random engine that can be used by various crypto functions
-    mt19937_64 rng = mt19937_64{chrono::system_clock::now().time_since_epoch().count()};
+    extern mt19937_64 rng;
 
     string getRandomAlphanumString(int len);
 

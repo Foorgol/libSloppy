@@ -78,6 +78,8 @@ namespace Sloppy
     public:
       CommonTimestamp(int year, int month, int day, int hour, int min, int sec);
       CommonTimestamp(boost::posix_time::ptime rawTime);
+      virtual ~CommonTimestamp(){}
+
       virtual time_t getRawTime() const;
 
       string getISODate() const;

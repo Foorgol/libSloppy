@@ -57,7 +57,7 @@ namespace Sloppy
 
     string MIME_Message::getPart(int i) const
     {
-      return (i >= parts.size()) ? string{} : parts[i].getContent();
+      return (i >= static_cast<int>(parts.size())) ? string{} : parts[i].getContent();
     }
 
     //----------------------------------------------------------------------------
@@ -127,7 +127,7 @@ namespace Sloppy
     //----------------------------------------------------------------------------
 
     ContentTypeHeader::ContentTypeHeader(const string& hdrBody)
-      :body{hdrBody}
+      :body{hdrBody}, type{ContentType::Unknown}
     {
       // parse the content type
       StringList parts;
@@ -136,7 +136,6 @@ namespace Sloppy
       {
         throw MalformedHeader();
       }
-      type = ContentType::Unknown;
       string mainType = boost::to_lower_copy(parts[0]);
       string subType = boost::to_lower_copy(parts[1]);
       boost::trim(mainType);

@@ -38,6 +38,9 @@ set(LIB_SOURCES
 
 add_library(${PROJECT_NAME} SHARED ${LIB_SOURCES})
 target_link_libraries(${PROJECT_NAME} ${LIBS})
+target_compile_options(${PROJECT_NAME} PRIVATE "-Wall")
+target_compile_options(${PROJECT_NAME} PRIVATE "-Wextra")
+#target_compile_options(${PROJECT_NAME} PRIVATE "-Weffc++")
 set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 14)
 set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD_REQUIRED ON)
 

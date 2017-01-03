@@ -26,7 +26,7 @@ namespace Sloppy
 {
   namespace Crypto
   {
-    mt19937_64 rng = mt19937_64{chrono::system_clock::now().time_since_epoch().count()};
+    mt19937_64 rng = mt19937_64{static_cast<unsigned long>(chrono::system_clock::now().time_since_epoch().count())};
 
     string getRandomAlphanumString(int len)
     {
@@ -285,7 +285,7 @@ namespace Sloppy
 
       char buf[2*SHA256::DIGEST_SIZE+1];
       buf[2*SHA256::DIGEST_SIZE] = 0;
-      for (int i = 0; i < SHA256::DIGEST_SIZE; i++)
+      for (unsigned int i = 0; i < SHA256::DIGEST_SIZE; i++)
         sprintf(buf+i*2, "%02x", digest[i]);
       return string(buf);
     }

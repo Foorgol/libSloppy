@@ -43,6 +43,7 @@ namespace Sloppy
   namespace DateTime
   {
     CommonTimestamp::CommonTimestamp(int year, int month, int day, int hour, int min, int sec)
+      :raw{}
     {
       using namespace boost;
 
@@ -236,7 +237,7 @@ namespace Sloppy
     //----------------------------------------------------------------------------
 
     LocalTimestamp::LocalTimestamp(int year, int month, int day, int hour, int min, int sec, boost::local_time::time_zone_ptr tzp)
-      : CommonTimestamp(year, month, day, hour, min, sec)
+      : CommonTimestamp(year, month, day, hour, min, sec), utc{}
     {
       using namespace boost::gregorian;
       using namespace boost::posix_time;
@@ -285,7 +286,8 @@ namespace Sloppy
     //----------------------------------------------------------------------------
 
     LocalTimestamp::LocalTimestamp(time_t rawTimeInUTC, boost::local_time::time_zone_ptr tzp)
-      :CommonTimestamp(2000, 01, 01, 12, 0, 0)  // dummy values, will be overwritten anyway
+      :CommonTimestamp(2000, 01, 01, 12, 0, 0),  // dummy values, will be overwritten anyway
+       utc{}
     {
       using namespace boost;
 

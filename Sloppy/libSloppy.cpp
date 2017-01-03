@@ -70,7 +70,10 @@ namespace Sloppy
 
   int replaceString_All(string& src, const string& key, const string& value)
   {
-    while (replaceString_First(src, key, value));
+    int cnt = 0;
+    while (replaceString_First(src, key, value)) ++cnt;
+
+    return cnt;
   }
 
   //----------------------------------------------------------------------------

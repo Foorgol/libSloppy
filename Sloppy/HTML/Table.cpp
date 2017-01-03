@@ -67,9 +67,9 @@ namespace Sloppy
     StyledElement* Table::getCell(int r, int c, bool createRowIfNotExisting)
     {
       if ((r < 0) || (c < 0)) return nullptr;
-      if (c >= colCount) return nullptr;
+      if (static_cast<size_t>(c) >= colCount) return nullptr;
 
-      if (r >= cells.size())
+      if (static_cast<size_t>(r) >= cells.size())
       {
         if (!createRowIfNotExisting) return nullptr;
 
@@ -87,7 +87,7 @@ namespace Sloppy
 
     StyledElement* Table::getHeader(int c) const
     {
-      if ((c < 0) || (c >= colCount)) return nullptr;
+      if ((c < 0) || (static_cast<size_t>(c) >= colCount)) return nullptr;
 
       return headerElems[c];
     }

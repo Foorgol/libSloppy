@@ -22,6 +22,8 @@
 #include <memory>
 #include <string>
 
+#include "../libSloppy.h"
+
 using namespace std;
 
 namespace Sloppy
@@ -85,7 +87,7 @@ namespace Sloppy
       RW
     };
 
-    class SodiumSecureMemory
+    class SodiumSecureMemory : public ManagedMemory
     {
     public:
       SodiumSecureMemory(size_t _len, SodiumSecureMemType t);
@@ -96,14 +98,10 @@ namespace Sloppy
 
       // move semantics
       SodiumSecureMemory(SodiumSecureMemory&& other); // move constructor
-      SodiumSecureMemory& operator=(SodiumSecureMemory&& other); // move assignment
+      virtual SodiumSecureMemory& operator=(SodiumSecureMemory&& other); // move assignment
 
-      ~SodiumSecureMemory();
+      virtual ~SodiumSecureMemory();
 
-      void* get() const { return rawPtr; }
-      unsigned char * get_uc() const { return (unsigned char *)(rawPtr); }
-
-      size_t getSize() const { return len; }
       SodiumSecureMemType getType() const { return type; }
       SodiumSecureMemAccess getProtection() const { return curProtection; }
       bool canRead() const { return ((curProtection == SodiumSecureMemAccess::RO) || (curProtection == SodiumSecureMemAccess::RW)); }
@@ -116,13 +114,11 @@ namespace Sloppy
       static SodiumSecureMemory asCopy(SodiumSecureMemory& src);
 
     protected:
-      void* rawPtr;
-      size_t len;
       SodiumSecureMemType type;
       SodiumLib* lib;
       SodiumSecureMemAccess curProtection;
 
-      void releaseMemory();
+      void releaseMemory() override;
     };
 
     //----------------------------------------------------------------------------

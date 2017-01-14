@@ -94,6 +94,7 @@ set(LIB_SOURCES_TST
     tests/tstHTML.cpp
     tests/tstCrypto.cpp
     tests/tstSodium.cpp
+    tests/tstManagedMemory.cpp
 )
 
 find_package(GTest)

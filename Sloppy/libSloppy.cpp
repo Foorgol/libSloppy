@@ -166,6 +166,73 @@ namespace Sloppy
   }
 
   //----------------------------------------------------------------------------
+  //----------------------------------------------------------------------------
+  //----------------------------------------------------------------------------
+
+  ManagedMemory::ManagedMemory(size_t _len)
+      :rawPtr{nullptr}, len{_len}
+  {
+    if (len == 0)
+    {
+      throw invalid_argument("Cannot allocate zero bytes of memory!");
+    }
+  }
+
+  //----------------------------------------------------------------------------
+  //----------------------------------------------------------------------------
+  //----------------------------------------------------------------------------
+
+  ManagedBuffer::ManagedBuffer(size_t _len)
+    :ManagedMemory{_len}
+  {
+    rawPtr = malloc(_len);
+
+    // was the allocation successful?
+    if (rawPtr == nullptr)
+    {
+      throw runtime_error{"out of heap"};
+    }
+  }
+
+  //----------------------------------------------------------------------------
+
+  ManagedBuffer::~ManagedBuffer()
+  {
+    releaseMemory();
+  }
+
+  //----------------------------------------------------------------------------
+
+  ManagedBuffer::ManagedBuffer(ManagedBuffer&& other)
+  {
+    *this = std::move(other);
+  }
+
+  //----------------------------------------------------------------------------
+
+  ManagedBuffer& ManagedBuffer::operator=(ManagedBuffer&& other)
+  {
+    releaseMemory();
+
+    rawPtr = other.rawPtr;
+    len = other.len;
+
+    other.rawPtr = nullptr;
+    other.len = 0;
+
+    return *this;
+  }
+
+  //----------------------------------------------------------------------------
+
+  void ManagedBuffer::releaseMemory()
+  {
+    if (rawPtr != nullptr) free(rawPtr);
+    len = 0;
+  }
+
+  //----------------------------------------------------------------------------
+
 
 
   //----------------------------------------------------------------------------

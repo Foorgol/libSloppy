@@ -69,8 +69,27 @@ TEST(Sodium, SecureMem)
   ASSERT_FALSE(mem1.setAccess(SodiumSecureMemAccess::RW));
   ASSERT_FALSE(mem1.setAccess(SodiumSecureMemAccess::NoAccess));
 
-  // make sure that the copy assignment compiles
-  mem1 = std::move(mem);
+  // fill mem1 with values
+  char* ptr = (char *)mem1.get();
+  for (size_t idx = 0; idx < 10; ++idx)
+  {
+    ptr[idx] = 'A' + idx;
+  }
+
+  // make sure that the move assignment compiles
+  mem = std::move(mem1);
+
+  // check that moving was successfull
+  ASSERT_EQ(0, mem1.getSize());
+  ASSERT_EQ(nullptr, mem1.get());
+  ASSERT_EQ(10, mem.getSize());
+  ASSERT_TRUE(mem.get() != nullptr);
+  ptr = (char *)mem.get();
+  for (size_t idx = 0; idx < 10; ++idx)
+  {
+    ASSERT_EQ('A' + idx, ptr[idx]);
+  }
+
 }
 
 //----------------------------------------------------------------------------

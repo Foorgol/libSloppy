@@ -80,6 +80,53 @@ namespace Sloppy
 
   // get a slice of a string delimited by two indices
   string getStringSlice(const string& s, size_t idxStart, size_t idxEnd);
+
+  //----------------------------------------------------------------------------
+
+  class ManagedMemory
+  {
+  public:
+    ManagedMemory()
+      :rawPtr{nullptr}, len{0}{}
+    ManagedMemory(size_t _len);
+
+    virtual ~ManagedMemory() {}
+
+    void* get() const { return rawPtr; }
+    unsigned char * get_uc() const { return (unsigned char *)(rawPtr); }
+
+    size_t getSize() const { return len; }
+
+    bool isValid() { return ((len > 0) && (rawPtr != nullptr)); }
+
+  protected:
+    void* rawPtr;
+    size_t len;
+
+    virtual void releaseMemory() = 0;
+  };
+
+  //----------------------------------------------------------------------------
+
+  class ManagedBuffer : public ManagedMemory
+  {
+  public:
+    ManagedBuffer(size_t _len);
+    virtual ~ManagedBuffer();
+
+    // disable copy functions
+    ManagedBuffer(const ManagedBuffer&) = delete; // no copy constructor
+    ManagedBuffer& operator=(const ManagedBuffer&) = delete; // no copy assignment
+
+    // move semantics
+    ManagedBuffer(ManagedBuffer&& other); // move constructor
+    virtual ManagedBuffer& operator=(ManagedBuffer&& other); // move assignment
+
+
+  protected:
+    virtual void releaseMemory() override;
+  };
+
 }
 
 #endif

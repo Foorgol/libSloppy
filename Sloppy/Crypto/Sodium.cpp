@@ -33,14 +33,9 @@ namespace Sloppy
     //----------------------------------------------------------------------------
 
     SodiumSecureMemory::SodiumSecureMemory(size_t _len, SodiumSecureMemType t)
-      :rawPtr{nullptr}, len{_len}, type{t}, lib{SodiumLib::getInstance()},
+      :ManagedMemory{_len}, type{t}, lib{SodiumLib::getInstance()},
         curProtection{SodiumSecureMemAccess::RW}
     {
-      if (len == 0)
-      {
-        throw invalid_argument("Cannot allocate zero byte of memory!");
-      }
-
       if (lib == nullptr)
       {
         throw SodiumNotAvailableException{};
@@ -77,25 +72,21 @@ namespace Sloppy
     //----------------------------------------------------------------------------
 
     SodiumSecureMemory::SodiumSecureMemory(SodiumSecureMemory&& other)
-      :rawPtr{other.rawPtr}, len{other.len}, type{other.type}, lib{other.lib},
-        curProtection{other.curProtection}
     {
-      other.rawPtr = nullptr;
-      other.len = 0;
-      other.lib = nullptr;
+      *this = std::move(other);
     }
 
     //----------------------------------------------------------------------------
 
     SodiumSecureMemory& SodiumSecureMemory::operator=(SodiumSecureMemory&& other)
     {
-      // release my current ressources
+      // free my current ressources
       releaseMemory();
 
       // take over other's ressources
       rawPtr = other.rawPtr;
-      type = other.type;
       len = other.len;
+      type = other.type;
       lib = other.lib;
       curProtection = other.curProtection;
 
@@ -103,6 +94,8 @@ namespace Sloppy
       other.rawPtr = nullptr;
       other.len = 0;
       other.lib = nullptr;
+
+      return *this;
     }
 
     //----------------------------------------------------------------------------
@@ -191,7 +184,11 @@ namespace Sloppy
 
     void SodiumSecureMemory::releaseMemory()
     {
-      if (rawPtr == nullptr) return;
+      if (rawPtr == nullptr)
+      {
+        len = 0;
+        return;
+      }
 
       if (type == SodiumSecureMemType::Normal)
       {
@@ -218,7 +215,12 @@ namespace Sloppy
       {
         abort();  // something went wrong with memory management
       }
+
+      len = 0;
     }
+
+    //----------------------------------------------------------------------------
+
 
     //----------------------------------------------------------------------------
 
@@ -394,5 +396,7 @@ namespace Sloppy
     {
       return sodium.mprotect_readwrite(ptr);
     }
+
+
   }
 }

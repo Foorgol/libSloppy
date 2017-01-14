@@ -12,6 +12,9 @@ include_directories(${Boost_INCLUDE_DIRS})
 set(LIBS ${LIBS} ${Boost_LIBRARIES})
 add_definitions(-DBOOST_LOG_DYN_LINK=1)  # linking fails if this is not set
 
+# add the dynamic object loader lib
+set(LIBS ${LIBS} dl)
+
 # detect if we are on windows, because for windows
 # we have to use special code for timegm()
 IF (WIN32)
@@ -30,6 +33,7 @@ set(LIB_SOURCES
     Sloppy/TemplateProcessor/Template.cpp
     Sloppy/TemplateProcessor/TemplateCollection.cpp
     Sloppy/Crypto/Crypto.cpp
+    Sloppy/Crypto/Sodium.cpp
     Sloppy/HTML/StyledElement.cpp
     Sloppy/HTML/BasicElements.cpp
     Sloppy/HTML/Table.cpp
@@ -89,6 +93,7 @@ set(LIB_SOURCES_TST
     tests/tstEmailPattern.cpp
     tests/tstHTML.cpp
     tests/tstCrypto.cpp
+    tests/tstSodium.cpp
 )
 
 find_package(GTest)

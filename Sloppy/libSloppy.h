@@ -93,6 +93,7 @@ namespace Sloppy
     virtual ~ManagedMemory() {}
 
     void* get() const { return rawPtr; }
+    char * get_c() const { return (char *)(rawPtr); }
     unsigned char * get_uc() const { return (unsigned char *)(rawPtr); }
 
     size_t getSize() const { return len; }

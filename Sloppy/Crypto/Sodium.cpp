@@ -262,6 +262,8 @@ namespace Sloppy
       // initialize the lib pointers
       *(void **)(&(sodium.init)) = dlsym(libHandle, "sodium_init");
       *(void **)(&(sodium.bin2hex)) = dlsym(libHandle, "sodium_bin2hex");
+      *(void **)(&(sodium.memcmp)) = dlsym(libHandle, "sodium_memcmp");
+      *(void **)(&(sodium.isZero)) = dlsym(libHandle, "sodium_is_zero");
       *(void **)(&(sodium.memzero)) = dlsym(libHandle, "sodium_memzero");
       *(void **)(&(sodium.mlock)) = dlsym(libHandle, "sodium_mlock");
       *(void **)(&(sodium.munlock)) = dlsym(libHandle, "sodium_munlock");
@@ -271,11 +273,16 @@ namespace Sloppy
       *(void **)(&(sodium.mprotect_noaccess)) = dlsym(libHandle, "sodium_mprotect_noaccess");
       *(void **)(&(sodium.mprotect_readonly)) = dlsym(libHandle, "sodium_mprotect_readonly");
       *(void **)(&(sodium.mprotect_readwrite)) = dlsym(libHandle, "sodium_mprotect_readwrite");
+      *(void **)(&(sodium.randombytes_random)) = dlsym(libHandle, "randombytes_random");
+      *(void **)(&(sodium.randombytes_uniform)) = dlsym(libHandle, "randombytes_uniform");
+      *(void **)(&(sodium.randombytes_buf)) = dlsym(libHandle, "randombytes_buf");
       //*(void **)(&(sodium.)) = dlsym(libHandle, "sodium_");
 
       // make sure we've successfully loaded all symbols
       if ((sodium.init == nullptr) ||
           (sodium.bin2hex == nullptr) ||
+          (sodium.memcmp == nullptr) ||
+          (sodium.isZero == nullptr) ||
           (sodium.memzero == nullptr) ||
           (sodium.mlock == nullptr) ||
           (sodium.munlock == nullptr) ||
@@ -284,7 +291,10 @@ namespace Sloppy
           (sodium.free == nullptr) ||
           (sodium.mprotect_noaccess == nullptr) ||
           (sodium.mprotect_readonly == nullptr) ||
-          (sodium.mprotect_readonly == nullptr)
+          (sodium.mprotect_readwrite == nullptr) ||
+          (sodium.randombytes_random == nullptr) ||
+          (sodium.randombytes_uniform == nullptr) ||
+          (sodium.randombytes_buf == nullptr)
           //(sodium. == nullptr) ||
           )
       {
@@ -324,6 +334,15 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
+    bool SodiumLib::memcmp(const ManagedMemory& b1, const ManagedMemory& b2) const
+    {
+      if (b1.getSize() != b2.getSize()) return false;
+
+      return (sodium.memcmp(b1.get(), b2.get(), b1.getSize()) == 0);
+    }
+
+    //----------------------------------------------------------------------------
+
     string SodiumLib::bin2hex(const string& binData) const
     {
       char result[binData.size() * 2 + 1];
@@ -332,6 +351,25 @@ namespace Sloppy
       sodium.bin2hex(result, sizeof result, (unsigned char*)(binData.c_str()), binData.size());
 
       return string{result};
+    }
+
+    //----------------------------------------------------------------------------
+
+    string SodiumLib::bin2hex(const ManagedBuffer& binData) const
+    {
+      char result[binData.getSize() * 2 + 1];
+
+      // prepare a result string with 2 x hexDataLength + 1 bytes
+      sodium.bin2hex(result, sizeof result, binData.get_uc(), binData.getSize());
+
+      return string{result};
+    }
+
+    //----------------------------------------------------------------------------
+
+    bool SodiumLib::isZero(const ManagedMemory& buf) const
+    {
+      return (sodium.isZero(buf.get_uc(), buf.getSize()) == 1);
     }
 
     //----------------------------------------------------------------------------
@@ -395,6 +433,27 @@ namespace Sloppy
     int SodiumLib::mprotect_readwrite(void* ptr)
     {
       return sodium.mprotect_readwrite(ptr);
+    }
+
+    //----------------------------------------------------------------------------
+
+    uint32_t SodiumLib::randombytes_random() const
+    {
+      return sodium.randombytes_random();
+    }
+
+    //----------------------------------------------------------------------------
+
+    uint32_t SodiumLib::randombytes_uniform(const uint32_t upper_bound) const
+    {
+      return sodium.randombytes_uniform(upper_bound);
+    }
+
+    //----------------------------------------------------------------------------
+
+    void SodiumLib::randombytes_buf(const ManagedMemory& buf) const
+    {
+      sodium.randombytes_buf(buf.get(), buf.getSize());
     }
 
 

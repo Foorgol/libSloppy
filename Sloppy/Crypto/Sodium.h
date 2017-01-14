@@ -130,8 +130,10 @@ namespace Sloppy
       // intialization
       int (*init)(void);
 
-      // conversion
+      // helpers
+      int (*memcmp)(const void * const b1_, const void * const b2_, size_t len);
       char* (*bin2hex)(char * const hex, const size_t hex_maxlen, const unsigned char * const bin, const size_t bin_len);
+      int (*isZero)(const unsigned char *n, const size_t nlen);
 
       // memory management
       void (*memzero)(void * const pnt, const size_t len);
@@ -143,6 +145,11 @@ namespace Sloppy
       int (*mprotect_noaccess)(void*);
       int (*mprotect_readonly)(void*);
       int (*mprotect_readwrite)(void*);
+
+      // random data
+      uint32_t (*randombytes_random)(void);
+      uint32_t (*randombytes_uniform)(const uint32_t upper_bound);
+      void (*randombytes_buf)(void * const buf, const size_t size);
     };
 
     //----------------------------------------------------------------------------
@@ -157,8 +164,11 @@ namespace Sloppy
       static SodiumLib* getInstance();
       ~SodiumLib();
 
-      // conversion
+      // helpers
+      bool memcmp(const ManagedMemory& b1, const ManagedMemory& b2) const;
       string bin2hex(const string& binData) const;
+      string bin2hex(const ManagedBuffer& binData) const;
+      bool isZero(const ManagedMemory& buf) const;
 
       // memory management
       void memzero(void * const pnt, const size_t len);
@@ -170,6 +180,11 @@ namespace Sloppy
       int mprotect_noaccess(void* ptr);
       int mprotect_readonly(void* ptr);
       int mprotect_readwrite(void* ptr);
+
+      // random data
+      uint32_t randombytes_random() const;
+      uint32_t randombytes_uniform(const uint32_t upper_bound) const;
+      void randombytes_buf(const ManagedMemory& buf) const;
 
     protected:
       SodiumLib(void* _libHandle);

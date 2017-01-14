@@ -19,9 +19,10 @@
 #include <iostream>
 
 #include <gtest/gtest.h>
-
+#include "../Sloppy/libSloppy.h"
 #include "../Sloppy/Crypto/Sodium.h"
 
+using namespace Sloppy;
 using namespace Sloppy::Crypto;
 
 TEST(Sodium, SodiumInit)
@@ -41,6 +42,12 @@ TEST(Sodium, Bin2Hex)
 
   ASSERT_EQ("414243", sodium->bin2hex("ABC"));
   ASSERT_EQ("", sodium->bin2hex(""));
+
+  Sloppy::ManagedBuffer buf{4};
+  string tmp{"ABCD"};
+  memcpy(buf.get(), tmp.c_str(), 4);
+  ASSERT_EQ("41424344", sodium->bin2hex(buf));
+
 }
 
 //----------------------------------------------------------------------------
@@ -130,5 +137,60 @@ TEST(Sodium, SecureMemCopy)
   for (size_t idx = 0; idx < 20; ++idx)
   {
     ASSERT_EQ('A' + idx, ptr[idx]);
+  }
+}
+
+//----------------------------------------------------------------------------
+
+TEST(Sodium, MemCmp)
+{
+  SodiumLib* sodium = SodiumLib::getInstance();
+  ASSERT_TRUE(sodium != nullptr);
+
+  // allocate and fill memory
+  SodiumSecureMemory mem1{20, SodiumSecureMemType::Guarded};
+  char* ptr = (char *)mem1.get();
+  for (size_t idx = 0; idx < mem1.getSize(); ++idx)
+  {
+    ptr[idx] = 'A' + idx;
+  }
+
+  ManagedBuffer mem2{mem1.getSize()};
+  ptr = (char *)mem2.get();
+  for (size_t idx = 0; idx < mem1.getSize(); ++idx)
+  {
+    ptr[idx] = 'A' + idx;
+  }
+
+  ASSERT_TRUE(sodium->memcmp(mem1, mem2));
+  ptr[0] = 42;
+  ASSERT_FALSE(sodium->memcmp(mem1, mem2));
+}
+
+//----------------------------------------------------------------------------
+
+TEST(Sodium, Random)
+{
+  SodiumLib* sodium = SodiumLib::getInstance();
+  ASSERT_TRUE(sodium != nullptr);
+
+  // allocate and fill memory
+  ManagedBuffer buf{20};
+  char* ptr = (char *)buf.get();
+  for (size_t idx = 0; idx < buf.getSize(); ++idx)
+  {
+    ptr[idx] = 0;
+  }
+  ASSERT_TRUE(sodium->isZero(buf));
+
+  // fill with random data
+  sodium->randombytes_buf(buf);
+  ASSERT_FALSE(sodium->isZero(buf));
+
+  // check the random generator with upper bound
+  uint32_t max = 1000;
+  for (int cnt = 0; cnt < 10000 ; ++cnt)
+  {
+    ASSERT_TRUE(sodium->randombytes_uniform(max) < max);
   }
 }

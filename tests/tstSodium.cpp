@@ -18,6 +18,8 @@
 
 #include <iostream>
 
+#include <sodium.h>
+
 #include <gtest/gtest.h>
 #include "../Sloppy/libSloppy.h"
 #include "../Sloppy/Crypto/Sodium.h"
@@ -194,3 +196,78 @@ TEST(Sodium, Random)
     ASSERT_TRUE(sodium->randombytes_uniform(max) < max);
   }
 }
+
+//----------------------------------------------------------------------------
+
+TEST(Sodium, SymmetricLowLeel)
+{
+  SodiumLib* sodium = SodiumLib::getInstance();
+  ASSERT_TRUE(sodium != nullptr);
+
+  // generate a random message
+  static constexpr size_t msgSize = 500;
+  ManagedBuffer msg{msgSize};
+  sodium->randombytes_buf(msg);
+
+  // generate random nonce and key
+  ManagedBuffer nonce{crypto_secretbox_NONCEBYTES};
+  sodium->randombytes_buf(nonce);
+  SodiumSecureMemory key{crypto_secretbox_KEYBYTES, SodiumSecureMemType::Normal};
+  sodium->randombytes_buf(key);
+
+  // encrypt
+  ManagedBuffer cipher = sodium->crypto_secretbox_easy(msg, nonce, key);
+  ASSERT_TRUE(cipher.isValid());
+  ASSERT_EQ(msgSize + crypto_secretbox_MACBYTES, cipher.getSize());
+
+  // decrypt
+  SodiumSecureMemory msg2 = sodium->crypto_secretbox_open_easy(cipher, nonce, key);
+  ASSERT_TRUE(msg2.isValid());
+  ASSERT_EQ(msgSize, msg2.getSize());
+  ASSERT_TRUE(sodium->memcmp(msg, msg2));
+
+  // tamper with the cipher text and try again to decrypt
+  auto trueCipher = ManagedBuffer::asCopy(cipher);
+  char* ptr = cipher.get_c();
+  ptr[12] += 1;
+  msg2 = sodium->crypto_secretbox_open_easy(cipher, nonce, key);
+  ASSERT_FALSE(msg2.isValid());
+  ASSERT_EQ(0, msg2.getSize());
+  ASSERT_FALSE(sodium->memcmp(msg, msg2));
+
+  // tamper with the key and try again to decrypt
+  SodiumSecureMemory trueKey = SodiumSecureMemory::asCopy(key);
+  ptr = key.get_c();
+  ptr[12] += 1;
+  msg2 = sodium->crypto_secretbox_open_easy(trueCipher, nonce, key);
+  ASSERT_FALSE(msg2.isValid());
+  ASSERT_EQ(0, msg2.getSize());
+  ASSERT_FALSE(sodium->memcmp(msg, msg2));
+
+  // tamper with the nonce and try again to decrypt
+  auto trueNonce = ManagedBuffer::asCopy(nonce);
+  ptr = nonce.get_c();
+  ptr[12] += 1;
+  msg2 = sodium->crypto_secretbox_open_easy(trueCipher, nonce, trueKey);
+  ASSERT_FALSE(msg2.isValid());
+  ASSERT_EQ(0, msg2.getSize());
+  ASSERT_FALSE(sodium->memcmp(msg, msg2));
+
+  //
+  // briefly test the detached functions
+  //
+
+  ManagedBuffer mac;
+  auto tmp = sodium->crypto_secretbox_detached(msg, trueNonce, trueKey);
+  cipher = std::move(tmp.first);
+  mac = std::move(tmp.second);
+  ASSERT_TRUE(cipher.isValid());
+  ASSERT_TRUE(mac.isValid());
+  ASSERT_EQ(msg.getSize(), cipher.getSize());
+
+  msg2 = sodium->crypto_secretbox_open_detached(cipher, mac, trueNonce, trueKey);
+  ASSERT_TRUE(msg2.isValid());
+  ASSERT_EQ(msgSize, msg2.getSize());
+  ASSERT_TRUE(sodium->memcmp(msg, msg2));
+}
+

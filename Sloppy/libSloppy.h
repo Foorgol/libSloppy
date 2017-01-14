@@ -98,7 +98,7 @@ namespace Sloppy
 
     size_t getSize() const { return len; }
 
-    bool isValid() { return ((len > 0) && (rawPtr != nullptr)); }
+    bool isValid() const { return ((len > 0) && (rawPtr != nullptr)); }
 
   protected:
     void* rawPtr;
@@ -112,6 +112,7 @@ namespace Sloppy
   class ManagedBuffer : public ManagedMemory
   {
   public:
+    ManagedBuffer() : ManagedMemory{}{}
     ManagedBuffer(size_t _len);
     virtual ~ManagedBuffer();
 
@@ -122,6 +123,9 @@ namespace Sloppy
     // move semantics
     ManagedBuffer(ManagedBuffer&& other); // move constructor
     virtual ManagedBuffer& operator=(ManagedBuffer&& other); // move assignment
+
+    // create a copy
+    static ManagedBuffer asCopy(const ManagedBuffer& src);
 
 
   protected:

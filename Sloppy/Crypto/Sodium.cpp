@@ -21,6 +21,8 @@
 #include <malloc.h>
 #include <cstring>
 
+#include <sodium.h>
+
 #include "Sodium.h"
 
 namespace Sloppy
@@ -163,17 +165,20 @@ namespace Sloppy
       memcpy(cpy.get(), src.get(), src.getSize());
 
       // re-lock the source
-      bool isOkay = src.setAccess(oldProtection);
-      if (!isOkay)
+      if (src.getType() == SodiumSecureMemType::Guarded)
       {
-        throw SodiumMemoryManagementException{"re-locking the source in asCopy() for an existing SodiumSecureMemory"};
-      }
+        bool isOkay = src.setAccess(oldProtection);
+        if (!isOkay)
+        {
+          throw SodiumMemoryManagementException{"re-locking the source in asCopy() for an existing SodiumSecureMemory"};
+        }
 
-      // apply the same protection to the copy
-      isOkay = cpy.setAccess(oldProtection);
-      if (!isOkay)
-      {
-        throw SodiumMemoryManagementException{"protecting the copy in asCopy() for an existing SodiumSecureMemory"};
+        // apply the same protection to the copy
+        isOkay = cpy.setAccess(oldProtection);
+        if (!isOkay)
+        {
+          throw SodiumMemoryManagementException{"protecting the copy in asCopy() for an existing SodiumSecureMemory"};
+        }
       }
 
       // return using move semantics
@@ -276,6 +281,10 @@ namespace Sloppy
       *(void **)(&(sodium.randombytes_random)) = dlsym(libHandle, "randombytes_random");
       *(void **)(&(sodium.randombytes_uniform)) = dlsym(libHandle, "randombytes_uniform");
       *(void **)(&(sodium.randombytes_buf)) = dlsym(libHandle, "randombytes_buf");
+      *(void **)(&(sodium.crypto_secretbox_easy)) = dlsym(libHandle, "crypto_secretbox_easy");
+      *(void **)(&(sodium.crypto_secretbox_open_easy)) = dlsym(libHandle, "crypto_secretbox_open_easy");
+      *(void **)(&(sodium.crypto_secretbox_detached)) = dlsym(libHandle, "crypto_secretbox_detached");
+      *(void **)(&(sodium.crypto_secretbox_open_detached)) = dlsym(libHandle, "crypto_secretbox_open_detached");
       //*(void **)(&(sodium.)) = dlsym(libHandle, "sodium_");
 
       // make sure we've successfully loaded all symbols
@@ -294,7 +303,11 @@ namespace Sloppy
           (sodium.mprotect_readwrite == nullptr) ||
           (sodium.randombytes_random == nullptr) ||
           (sodium.randombytes_uniform == nullptr) ||
-          (sodium.randombytes_buf == nullptr)
+          (sodium.randombytes_buf == nullptr) ||
+          (sodium.crypto_secretbox_easy == nullptr) ||
+          (sodium.crypto_secretbox_open_easy == nullptr) ||
+          (sodium.crypto_secretbox_detached == nullptr) ||
+          (sodium.crypto_secretbox_open_detached == nullptr)
           //(sodium. == nullptr) ||
           )
       {
@@ -454,6 +467,100 @@ namespace Sloppy
     void SodiumLib::randombytes_buf(const ManagedMemory& buf) const
     {
       sodium.randombytes_buf(buf.get(), buf.getSize());
+    }
+
+    //----------------------------------------------------------------------------
+
+    ManagedBuffer SodiumLib::crypto_secretbox_easy(const ManagedMemory& msg, const ManagedMemory& nonce, const SodiumSecureMemory& key)
+    {
+      // the message should be valid
+      if (!(msg.isValid()))  return ManagedBuffer{};
+
+      // make sure that nonce and key have the correct length
+      if (nonce.getSize() != crypto_secretbox_NONCEBYTES) return ManagedBuffer{};
+      if (key.getSize() != crypto_secretbox_KEYBYTES)  return ManagedBuffer{};
+
+      // allocate space for the result
+      ManagedBuffer cipher{crypto_secretbox_MACBYTES + msg.getSize()};
+
+      // do the actual encryption
+      sodium.crypto_secretbox_easy(cipher.get_uc(), msg.get_uc(), msg.getSize(), nonce.get_uc(), key.get_uc());
+
+      // return the result
+      return cipher;
+    }
+
+    //----------------------------------------------------------------------------
+
+    SodiumSecureMemory SodiumLib::crypto_secretbox_open_easy(const ManagedMemory& cipher, const ManagedMemory& nonce, const ManagedMemory& key, SodiumSecureMemType clearTextProtection)
+    {
+      // the cipher should be valid
+      if (!(cipher.isValid()))  return SodiumSecureMemory{};
+
+      // we need at least one message byte, so just the MAC is
+      // not sufficient
+      if (cipher.getSize() <= crypto_secretbox_MACBYTES) return SodiumSecureMemory{};
+
+      // make sure that nonce and key have the correct length
+      if (nonce.getSize() != crypto_secretbox_NONCEBYTES) return SodiumSecureMemory{};
+      if (key.getSize() != crypto_secretbox_KEYBYTES)  return SodiumSecureMemory{};
+
+      // allocate space for the result
+      SodiumSecureMemory msg{cipher.getSize() - crypto_secretbox_MACBYTES, clearTextProtection};
+
+      // decrypt
+      int isOkay = sodium.crypto_secretbox_open_easy(msg.get_uc(), cipher.get_uc(), cipher.getSize(), nonce.get_uc(), key.get_uc());
+
+      // return the clear text or an invalid buffer
+      return (isOkay == 0) ? std::move(msg) : SodiumSecureMemory{};
+    }
+
+    //----------------------------------------------------------------------------
+
+    pair<ManagedBuffer, ManagedBuffer> SodiumLib::crypto_secretbox_detached(const ManagedMemory& msg, const ManagedMemory& nonce, const SodiumSecureMemory& key)
+    {
+      pair<ManagedBuffer, ManagedBuffer> errorResult = make_pair(ManagedBuffer{}, ManagedBuffer{});
+
+      // the message should be valid
+      if (!(msg.isValid()))  return errorResult;
+
+      // make sure that nonce and key have the correct length
+      if (nonce.getSize() != crypto_secretbox_NONCEBYTES) return errorResult;
+      if (key.getSize() != crypto_secretbox_KEYBYTES)  return errorResult;
+
+      // allocate space for the result
+      ManagedBuffer cipher{msg.getSize()};
+      ManagedBuffer mac{crypto_secretbox_MACBYTES};
+
+      // do the actual encryption
+      sodium.crypto_secretbox_detached(cipher.get_uc(), mac.get_uc(), msg.get_uc(), msg.getSize(), nonce.get_uc(), key.get_uc());
+
+      // return the result
+      return make_pair(std::move(cipher), std::move(mac));
+    }
+
+    //----------------------------------------------------------------------------
+
+    SodiumSecureMemory SodiumLib::crypto_secretbox_open_detached(const ManagedMemory& cipher, const ManagedMemory& mac, const ManagedMemory& nonce, const ManagedMemory& key, SodiumSecureMemType clearTextProtection)
+    {
+      // the cipher should be valid
+      if (!(cipher.isValid()))  return SodiumSecureMemory{};
+
+      // the MAC size should fit
+      if (mac.getSize() != crypto_secretbox_MACBYTES) return SodiumSecureMemory{};
+
+      // make sure that nonce and key have the correct length
+      if (nonce.getSize() != crypto_secretbox_NONCEBYTES) return SodiumSecureMemory{};
+      if (key.getSize() != crypto_secretbox_KEYBYTES)  return SodiumSecureMemory{};
+
+      // allocate space for the result
+      SodiumSecureMemory msg{cipher.getSize(), clearTextProtection};
+
+      // decrypt
+      int isOkay = sodium.crypto_secretbox_open_detached(msg.get_uc(), cipher.get_uc(), mac.get_uc(), cipher.getSize(), nonce.get_uc(), key.get_uc());
+
+      // return the clear text or an invalid buffer
+      return (isOkay == 0) ? std::move(msg) : SodiumSecureMemory{};
     }
 
 

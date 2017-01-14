@@ -21,6 +21,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 
 #include "../libSloppy.h"
 
@@ -90,6 +91,9 @@ namespace Sloppy
     class SodiumSecureMemory : public ManagedMemory
     {
     public:
+      SodiumSecureMemory()
+        :ManagedMemory{}, type{SodiumSecureMemType::Normal},
+          lib{nullptr}, curProtection{SodiumSecureMemAccess::NoAccess} {}
       SodiumSecureMemory(size_t _len, SodiumSecureMemType t);
 
       // disable copy functions
@@ -123,6 +127,26 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
+    enum class SodiumKeyType
+    {
+      Secret,
+      Public
+    };
+
+    template<SodiumKeyType kt, size_t keySize>
+    class SodiumKey : public SodiumSecureMemory
+    {
+    public:
+      SodiumKey()
+        : SodiumSecureMemory{keySize, (kt == SodiumKeyType::Secret) ? SodiumSecureMemType::Guarded : SodiumSecureMemType::Normal},
+          keyType{kt}
+      {}
+    protected:
+      SodiumKeyType keyType;
+    };
+
+    //----------------------------------------------------------------------------
+
     // a table of function pointers to the
     // sodium lib
     struct SodiumPtr
@@ -150,6 +174,19 @@ namespace Sloppy
       uint32_t (*randombytes_random)(void);
       uint32_t (*randombytes_uniform)(const uint32_t upper_bound);
       void (*randombytes_buf)(void * const buf, const size_t size);
+
+      // symmetric encryption
+      int (*crypto_secretbox_easy)(unsigned char *c, const unsigned char *m,
+                                unsigned long long mlen, const unsigned char *n,
+                                const unsigned char *k);
+      int (*crypto_secretbox_open_easy)(unsigned char *m, const unsigned char *c,
+                                     unsigned long long clen, const unsigned char *n,
+                                     const unsigned char *k);
+      int (*crypto_secretbox_detached)(unsigned char *c, unsigned char *mac, const unsigned char *m,
+                                    unsigned long long mlen, const unsigned char *n, const unsigned char *k);
+      int (*crypto_secretbox_open_detached)(unsigned char *m, const unsigned char *c,
+                                         const unsigned char *mac, unsigned long long clen,
+                                         const unsigned char *n, const unsigned char *k);
     };
 
     //----------------------------------------------------------------------------
@@ -185,6 +222,14 @@ namespace Sloppy
       uint32_t randombytes_random() const;
       uint32_t randombytes_uniform(const uint32_t upper_bound) const;
       void randombytes_buf(const ManagedMemory& buf) const;
+
+      // symmetric encryption
+      ManagedBuffer crypto_secretbox_easy(const ManagedMemory& msg, const ManagedMemory& nonce, const SodiumSecureMemory& key);
+      SodiumSecureMemory crypto_secretbox_open_easy(const ManagedMemory& cipher, const ManagedMemory& nonce, const ManagedMemory& key,
+                                                    SodiumSecureMemType clearTextProtection = SodiumSecureMemType::Locked);
+      pair<ManagedBuffer, ManagedBuffer> crypto_secretbox_detached(const ManagedMemory& msg, const ManagedMemory& nonce, const SodiumSecureMemory& key);
+      SodiumSecureMemory crypto_secretbox_open_detached(const ManagedMemory& cipher, const ManagedMemory& mac, const ManagedMemory& nonce, const ManagedMemory& key,
+                                                        SodiumSecureMemType clearTextProtection = SodiumSecureMemType::Locked);
 
     protected:
       SodiumLib(void* _libHandle);

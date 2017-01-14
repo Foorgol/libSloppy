@@ -225,6 +225,18 @@ namespace Sloppy
 
   //----------------------------------------------------------------------------
 
+  ManagedBuffer ManagedBuffer::asCopy(const ManagedBuffer& src)
+  {
+    if (!(src.isValid())) return ManagedBuffer{};
+
+    ManagedBuffer cpy{src.getSize()};
+    memcpy(cpy.get(), src.get(), src.getSize());
+
+    return std::move(cpy);
+  }
+
+  //----------------------------------------------------------------------------
+
   void ManagedBuffer::releaseMemory()
   {
     if (rawPtr != nullptr) free(rawPtr);

@@ -256,6 +256,12 @@ namespace Sloppy
       int (*crypto_secretbox_open_detached)(unsigned char *m, const unsigned char *c,
                                          const unsigned char *mac, unsigned long long clen,
                                          const unsigned char *n, const unsigned char *k);
+
+      // authentication
+      int (*crypto_auth)(unsigned char *out, const unsigned char *in,
+                      unsigned long long inlen, const unsigned char *k);
+      int (*crypto_auth_verify)(const unsigned char *h, const unsigned char *in,
+                             unsigned long long inlen, const unsigned char *k);
     };
 
     //----------------------------------------------------------------------------
@@ -315,6 +321,14 @@ namespace Sloppy
       string crypto_secretbox_open_easy(const string& cipher, const SecretBoxNonceType& nonce, const SecretBoxKeyType& key);
       pair<string, string> crypto_secretbox_detached(const string& msg, const SecretBoxNonceType& nonce, const SecretBoxKeyType& key);
       string crypto_secretbox_open_detached(const string& cipher, const string& mac, const SecretBoxNonceType& nonce, const SecretBoxKeyType& key);
+
+      // message authentication
+      using AuthKeyType = SodiumKey<SodiumKeyType::Secret, crypto_auth_KEYBYTES>;
+      using AuthTagType = SodiumKey<SodiumKeyType::Public, crypto_auth_BYTES>;
+      AuthTagType crypto_auth(const ManagedMemory& msg, const AuthKeyType& key);
+      bool crypto_auth_verify(const ManagedMemory& msg, const AuthTagType& tag, const AuthKeyType& key);
+      string crypto_auth(const string& msg, const string& key);
+      bool crypto_auth_verify(const string& msg, const string& tag, const string& key);
 
     protected:
       SodiumLib(void* _libHandle);

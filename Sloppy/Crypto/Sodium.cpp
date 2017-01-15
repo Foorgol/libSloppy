@@ -292,6 +292,8 @@ namespace Sloppy
       *(void **)(&(sodium.crypto_secretbox_open_easy)) = dlsym(libHandle, "crypto_secretbox_open_easy");
       *(void **)(&(sodium.crypto_secretbox_detached)) = dlsym(libHandle, "crypto_secretbox_detached");
       *(void **)(&(sodium.crypto_secretbox_open_detached)) = dlsym(libHandle, "crypto_secretbox_open_detached");
+      *(void **)(&(sodium.crypto_auth)) = dlsym(libHandle, "crypto_auth");
+      *(void **)(&(sodium.crypto_auth_verify)) = dlsym(libHandle, "crypto_auth_verify");
       //*(void **)(&(sodium.)) = dlsym(libHandle, "sodium_");
 
       // make sure we've successfully loaded all symbols
@@ -316,7 +318,9 @@ namespace Sloppy
           (sodium.crypto_secretbox_easy == nullptr) ||
           (sodium.crypto_secretbox_open_easy == nullptr) ||
           (sodium.crypto_secretbox_detached == nullptr) ||
-          (sodium.crypto_secretbox_open_detached == nullptr)
+          (sodium.crypto_secretbox_open_detached == nullptr) ||
+          (sodium.crypto_auth == nullptr) ||
+          (sodium.crypto_auth_verify == nullptr)
           //(sodium. == nullptr) ||
           )
       {
@@ -770,6 +774,52 @@ namespace Sloppy
       // return the clear text or an invalid buffer
       return (isOkay == 0) ? msg  : string{};
     }
+
+    //----------------------------------------------------------------------------
+
+    SodiumLib::AuthTagType SodiumLib::crypto_auth(const ManagedMemory& msg, const SodiumLib::AuthKeyType& key)
+    {
+      AuthTagType result;
+      sodium.crypto_auth(result.get_uc(), msg.get_uc(), msg.getSize(), key.get_uc());
+
+      return result;
+    }
+
+    //----------------------------------------------------------------------------
+
+    bool SodiumLib::crypto_auth_verify(const ManagedMemory& msg, const SodiumLib::AuthTagType& tag, const SodiumLib::AuthKeyType& key)
+    {
+      return (sodium.crypto_auth_verify(tag.get_uc(), msg.get_uc(), msg.getSize(), key.get_uc()) == 0);
+    }
+
+    //----------------------------------------------------------------------------
+
+    string SodiumLib::crypto_auth(const string& msg, const string& key)
+    {
+      // check input data validiy
+      if (msg.empty()) return string{};
+      if (key.size() != crypto_auth_KEYBYTES) return string{};
+
+      // allocate space for the result
+      string tag;
+      tag.resize(crypto_auth_BYTES);
+
+      // hash
+      sodium.crypto_auth((unsigned char*)tag.c_str(), (const unsigned char*) msg.c_str(), msg.size(), (const unsigned char*)key.c_str());
+
+      return tag;
+    }
+
+    //----------------------------------------------------------------------------
+
+    bool SodiumLib::crypto_auth_verify(const string& msg, const string& tag, const string& key)
+    {
+      int rc = sodium.crypto_auth_verify((const unsigned char*)tag.c_str(), (const unsigned char*)msg.c_str(), msg.size(),
+                                         (const unsigned char*)key.c_str());
+
+      return (rc == 0);
+    }
+
 
     //----------------------------------------------------------------------------
     //----------------------------------------------------------------------------

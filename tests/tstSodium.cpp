@@ -432,3 +432,78 @@ TEST(Sodium, SecretBoxClass_NonceInc)
   ASSERT_FALSE(s2.empty());
   ASSERT_EQ(msg, s2);
 }
+
+//----------------------------------------------------------------------------
+
+TEST(Sodium, Auth)
+{
+  SodiumLib* sodium = SodiumLib::getInstance();
+  ASSERT_TRUE(sodium != nullptr);
+
+  // generate a random message
+  static constexpr size_t msgSize = 500;
+  ManagedBuffer msg{msgSize};
+  sodium->randombytes_buf(msg);
+  string sMsg = msg.copyToString();
+
+  // generate a random key
+  SodiumLib::AuthKeyType key;
+  sodium->randombytes_buf(key);
+  string sKey = key.copyToString();
+
+  // calc an auth tag, buffer-based
+  SodiumLib::AuthTagType tag = sodium->crypto_auth(msg, key);
+  ASSERT_TRUE(tag.isValid());
+
+  // check the tag, buffer-based
+  ASSERT_TRUE(sodium->crypto_auth_verify(msg, tag, key));
+
+  // tamper with the message and see if the check fails
+  char* ptr = msg.get_c();
+  ptr[5] += 1;
+  ASSERT_FALSE(sodium->crypto_auth_verify(msg, tag, key));
+  ptr[5] -= 1;
+  ASSERT_TRUE(sodium->crypto_auth_verify(msg, tag, key));
+
+  // tamper with the tag and see if the check fails
+  ptr = tag.get_c();
+  ptr[5] += 1;
+  ASSERT_FALSE(sodium->crypto_auth_verify(msg, tag, key));
+  ptr[5] -= 1;
+  ASSERT_TRUE(sodium->crypto_auth_verify(msg, tag, key));
+
+  // tamper with the key and see if the check fails
+  ptr = key.get_c();
+  ptr[5] += 1;
+  ASSERT_FALSE(sodium->crypto_auth_verify(msg, tag, key));
+  ptr[5] -= 1;
+  ASSERT_TRUE(sodium->crypto_auth_verify(msg, tag, key));
+
+  // calc an auth tag, string-based
+  string sTag = sodium->crypto_auth(sMsg, sKey);
+  ASSERT_FALSE(sTag.empty());
+
+  // check the tag, string-based
+  ASSERT_TRUE(sodium->crypto_auth_verify(sMsg, sTag, sKey));
+
+  // tamper with the message and see if the check fails
+  ptr = (char *)sMsg.c_str();
+  ptr[5] += 1;
+  ASSERT_FALSE(sodium->crypto_auth_verify(sMsg, sTag, sKey));
+  ptr[5] -= 1;
+  ASSERT_TRUE(sodium->crypto_auth_verify(sMsg, sTag, sKey));
+
+  // tamper with the tag and see if the check fails
+  ptr = (char *)sTag.c_str();
+  ptr[5] += 1;
+  ASSERT_FALSE(sodium->crypto_auth_verify(sMsg, sTag, sKey));
+  ptr[5] -= 1;
+  ASSERT_TRUE(sodium->crypto_auth_verify(sMsg, sTag, sKey));
+
+  // tamper with the key and see if the check fails
+  ptr = (char *)sKey.c_str();
+  ptr[5] += 1;
+  ASSERT_FALSE(sodium->crypto_auth_verify(sMsg, sTag, sKey));
+  ptr[5] -= 1;
+  ASSERT_TRUE(sodium->crypto_auth_verify(sMsg, sTag, sKey));
+}

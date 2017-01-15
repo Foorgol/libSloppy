@@ -332,7 +332,6 @@ TEST(Sodium, SymmetricLowLevel_String)
   ASSERT_EQ(msg, msg2);
 }
 
-
 //----------------------------------------------------------------------------
 
 TEST(Sodium, SecretBoxClass)
@@ -373,6 +372,62 @@ TEST(Sodium, SecretBoxClass)
   ASSERT_FALSE(m.empty());
 
   // decrypt detached, as strings
+  string s2 = box.decryptDetached(c, m);
+  ASSERT_FALSE(s2.empty());
+  ASSERT_EQ(msg, s2);
+}
+
+//----------------------------------------------------------------------------
+
+TEST(Sodium, SecretBoxClass_NonceInc)
+{
+  SodiumLib* sodium = SodiumLib::getInstance();
+  ASSERT_TRUE(sodium != nullptr);
+
+  // generate a random message
+  static constexpr size_t msgSize = 500;
+  ManagedBuffer _msg{msgSize};
+  sodium->randombytes_buf(_msg);
+  string msg = _msg.copyToString();
+
+  // generate random nonce and key
+  SodiumSecretBox::NonceType nonce;
+  sodium->randombytes_buf(nonce);
+  SodiumSecretBox::KeyType key;
+  sodium->randombytes_buf(key);
+
+  // create the SecretBox
+  SodiumSecretBox box{key, nonce, true};
+
+  // encrypt
+  ManagedBuffer cipher = box.encryptCombined(_msg);
+  ASSERT_TRUE(cipher.isValid());
+  ASSERT_EQ(msgSize + crypto_secretbox_MACBYTES, cipher.getSize());
+
+  // encrypt again
+  ManagedBuffer cipher2 = box.encryptCombined(_msg);
+  ASSERT_TRUE(cipher2.isValid());
+
+  // both ciphers should differ because the nonce changed
+  ASSERT_EQ(cipher.getSize(), cipher2.getSize());
+  ASSERT_FALSE(sodium->memcmp(cipher, cipher2));
+  ASSERT_EQ(2, box.getNonceIncrementCount());
+
+  // decrypt
+  box.setNonce(box.getLastNonce());  // set the right nonce for decryption
+  SodiumSecureMemory msg2 = box.decryptCombined(cipher2);
+  ASSERT_TRUE(msg2.isValid());
+  ASSERT_TRUE(sodium->memcmp(_msg, msg2));
+
+  // encrypt detached, as strings
+  string c;
+  string m;
+  tie(c, m) = box.encryptDetached(msg);
+  ASSERT_FALSE(c.empty());
+  ASSERT_FALSE(m.empty());
+
+  // decrypt detached, as strings
+  box.setNonce(box.getLastNonce());  // set the right nonce for decryption
   string s2 = box.decryptDetached(c, m);
   ASSERT_FALSE(s2.empty());
   ASSERT_EQ(msg, s2);

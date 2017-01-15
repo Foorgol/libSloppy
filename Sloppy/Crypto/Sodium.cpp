@@ -274,6 +274,8 @@ namespace Sloppy
       *(void **)(&(sodium.bin2hex)) = dlsym(libHandle, "sodium_bin2hex");
       *(void **)(&(sodium.memcmp)) = dlsym(libHandle, "sodium_memcmp");
       *(void **)(&(sodium.isZero)) = dlsym(libHandle, "sodium_is_zero");
+      *(void **)(&(sodium.increment)) = dlsym(libHandle, "sodium_increment");
+      *(void **)(&(sodium.add)) = dlsym(libHandle, "sodium_add");
       *(void **)(&(sodium.memzero)) = dlsym(libHandle, "sodium_memzero");
       *(void **)(&(sodium.mlock)) = dlsym(libHandle, "sodium_mlock");
       *(void **)(&(sodium.munlock)) = dlsym(libHandle, "sodium_munlock");
@@ -297,6 +299,8 @@ namespace Sloppy
           (sodium.bin2hex == nullptr) ||
           (sodium.memcmp == nullptr) ||
           (sodium.isZero == nullptr) ||
+          (sodium.increment == nullptr) ||
+          (sodium.add == nullptr) ||
           (sodium.memzero == nullptr) ||
           (sodium.mlock == nullptr) ||
           (sodium.munlock == nullptr) ||
@@ -388,6 +392,25 @@ namespace Sloppy
     bool SodiumLib::isZero(const ManagedMemory& buf) const
     {
       return (sodium.isZero(buf.get_uc(), buf.getSize()) == 1);
+    }
+
+    //----------------------------------------------------------------------------
+
+    void SodiumLib::increment(const ManagedMemory& buf)
+    {
+      sodium.increment(buf.get_uc(), buf.getSize());
+    }
+
+    //----------------------------------------------------------------------------
+
+    void SodiumLib::add(const ManagedMemory& a, const ManagedMemory& b)
+    {
+      if (a.getSize() != b.getSize())
+      {
+        throw SodiumInvalidKeysize{"the size of two large numbers for adding did not match"};
+      }
+
+      sodium.add(a.get_uc(), b.get_uc(), b.getSize());
     }
 
     //----------------------------------------------------------------------------
@@ -752,8 +775,8 @@ namespace Sloppy
     //----------------------------------------------------------------------------
     //----------------------------------------------------------------------------
 
-    SodiumSecretBox::SodiumSecretBox(const SodiumSecretBox::KeyType& _key, const SodiumSecretBox::NonceType& _nonce)
-      :lib{SodiumLib::getInstance()}
+    SodiumSecretBox::SodiumSecretBox(const SodiumSecretBox::KeyType& _key, const SodiumSecretBox::NonceType& _nonce, bool autoIncNonce)
+      :nonceIncrementCount{0}, autoIncrementNonce{autoIncNonce}, lib{SodiumLib::getInstance()}
     {
       if (lib == nullptr)
       {
@@ -761,7 +784,9 @@ namespace Sloppy
       }
 
       key = _key.copy();
-      nonce = _nonce.copy();
+      initialNonce = _nonce.copy();
+      nextNonce = _nonce.copy();
+      lastNonce = _nonce.copy();
 
       if (!(key.setAccess(SodiumSecureMemAccess::NoAccess)))
       {
@@ -774,8 +799,10 @@ namespace Sloppy
     ManagedBuffer SodiumSecretBox::encryptCombined(const ManagedMemory& msg)
     {
       setKeyLockState(false);
-      auto result = lib->crypto_secretbox_easy(msg, nonce, key);
+      auto result = lib->crypto_secretbox_easy(msg, nextNonce, key);
       setKeyLockState(true);
+
+      if (autoIncrementNonce) incrementNonce();
 
       return result;
     }
@@ -785,8 +812,10 @@ namespace Sloppy
     pair<ManagedBuffer, ManagedBuffer> SodiumSecretBox::encryptDetached(const ManagedMemory& msg)
     {
       setKeyLockState(false);
-      auto result = lib->crypto_secretbox_detached(msg, nonce, key);
+      auto result = lib->crypto_secretbox_detached(msg, nextNonce, key);
       setKeyLockState(true);
+
+      if (autoIncrementNonce) incrementNonce();
 
       return result;
     }
@@ -796,8 +825,10 @@ namespace Sloppy
     string SodiumSecretBox::encryptCombined(const string& msg)
     {
       setKeyLockState(false);
-      string result = lib->crypto_secretbox_easy(msg, nonce, key);
+      string result = lib->crypto_secretbox_easy(msg, nextNonce, key);
       setKeyLockState(true);
+
+      if (autoIncrementNonce) incrementNonce();
 
       return result;
     }
@@ -807,8 +838,10 @@ namespace Sloppy
     pair<string, string> SodiumSecretBox::encryptDetached(const string& msg)
     {
       setKeyLockState(false);
-      auto result = lib->crypto_secretbox_detached(msg, nonce, key);
+      auto result = lib->crypto_secretbox_detached(msg, nextNonce, key);
       setKeyLockState(true);
+
+      if (autoIncrementNonce) incrementNonce();
 
       return make_pair(result.first, result.second);
     }
@@ -818,8 +851,10 @@ namespace Sloppy
     SodiumSecureMemory SodiumSecretBox::decryptCombined(const ManagedMemory& cipher, SodiumSecureMemType clearTextProtection)
     {
       setKeyLockState(false);
-      SodiumSecureMemory result = lib->crypto_secretbox_open_easy(cipher, nonce, key, clearTextProtection);
+      SodiumSecureMemory result = lib->crypto_secretbox_open_easy(cipher, nextNonce, key, clearTextProtection);
       setKeyLockState(true);
+
+      if (autoIncrementNonce) incrementNonce();
 
       return result;
     }
@@ -829,8 +864,10 @@ namespace Sloppy
     SodiumSecureMemory SodiumSecretBox::decryptDetached(const ManagedMemory& cipher, const ManagedMemory& mac, SodiumSecureMemType clearTextProtection)
     {
       setKeyLockState(false);
-      SodiumSecureMemory result = lib->crypto_secretbox_open_detached(cipher, mac, nonce, key, clearTextProtection);
+      SodiumSecureMemory result = lib->crypto_secretbox_open_detached(cipher, mac, nextNonce, key, clearTextProtection);
       setKeyLockState(true);
+
+      if (autoIncrementNonce) incrementNonce();
 
       return result;
     }
@@ -840,8 +877,10 @@ namespace Sloppy
     string SodiumSecretBox::decryptCombined(const string& cipher)
     {
       setKeyLockState(false);
-      string msg = lib->crypto_secretbox_open_easy(cipher, nonce, key);
+      string msg = lib->crypto_secretbox_open_easy(cipher, nextNonce, key);
       setKeyLockState(true);
+
+      if (autoIncrementNonce) incrementNonce();
 
       return msg;
     }
@@ -851,8 +890,10 @@ namespace Sloppy
     string SodiumSecretBox::decryptDetached(const string& cipher, const string& mac)
     {
       setKeyLockState(false);
-      string result = lib->crypto_secretbox_open_detached(cipher, mac, nonce, key);
+      string result = lib->crypto_secretbox_open_detached(cipher, mac, nextNonce, key);
       setKeyLockState(true);
+
+      if (autoIncrementNonce) incrementNonce();
 
       return result;
     }
@@ -867,6 +908,34 @@ namespace Sloppy
       {
         throw SodiumMemoryManagementException{"SecretBox, could not guard / unlock secret key"};
       }
+    }
+
+    //----------------------------------------------------------------------------
+
+    void SodiumSecretBox::incrementNonce()
+    {
+      if (nonceIncrementCount > 0) lib->increment(lastNonce);
+
+      lib->increment(nextNonce);
+
+      ++nonceIncrementCount;
+    }
+
+    //----------------------------------------------------------------------------
+
+    void SodiumSecretBox::resetNonce()
+    {
+      nextNonce = initialNonce.copy();
+      lastNonce = initialNonce.copy();
+      nonceIncrementCount = 0;
+    }
+
+    //----------------------------------------------------------------------------
+
+    void SodiumSecretBox::setNonce(const SodiumSecretBox::NonceType& n)
+    {
+      initialNonce = n.copy();
+      resetNonce();
     }
 
     //----------------------------------------------------------------------------

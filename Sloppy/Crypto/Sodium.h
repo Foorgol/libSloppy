@@ -203,9 +203,13 @@ namespace Sloppy
         return cpy;
       }
 
+      SodiumKey<kt, keySize> copy() const
+      {
+        return asCopy(*this);
+      }
+
     protected:
       SodiumKeyType keyType;
-
     };
 
     //----------------------------------------------------------------------------
@@ -221,6 +225,8 @@ namespace Sloppy
       int (*memcmp)(const void * const b1_, const void * const b2_, size_t len);
       char* (*bin2hex)(char * const hex, const size_t hex_maxlen, const unsigned char * const bin, const size_t bin_len);
       int (*isZero)(const unsigned char *n, const size_t nlen);
+      void (*increment)(unsigned char *n, const size_t nlen);
+      void (*add)(unsigned char *a, const unsigned char *b, const size_t len);
 
       // memory management
       void (*memzero)(void * const pnt, const size_t len);
@@ -269,6 +275,8 @@ namespace Sloppy
       string bin2hex(const string& binData) const;
       string bin2hex(const ManagedBuffer& binData) const;
       bool isZero(const ManagedMemory& buf) const;
+      void increment(const ManagedMemory& buf);
+      void add(const ManagedMemory& a, const ManagedMemory& b);
 
       // memory management
       void memzero(void * const pnt, const size_t len);
@@ -322,7 +330,7 @@ namespace Sloppy
       using KeyType = SodiumKey<SodiumKeyType::Secret, crypto_secretbox_KEYBYTES>;
       using NonceType = SodiumKey<SodiumKeyType::Public, crypto_secretbox_NONCEBYTES>;
 
-      SodiumSecretBox(const KeyType& _key, const NonceType& _nonce);
+      SodiumSecretBox(const KeyType& _key, const NonceType& _nonce, bool autoIncNonce = false);
 
       // encryption
       ManagedBuffer encryptCombined(const ManagedMemory& msg);
@@ -336,12 +344,24 @@ namespace Sloppy
       string decryptCombined(const string& cipher);
       string decryptDetached(const string& cipher, const string& mac);
 
+      // nonce handling
+      void incrementNonce();
+      NonceType getLastNonce() const { return NonceType::asCopy(lastNonce); }
+      size_t getNonceIncrementCount() const { return nonceIncrementCount; }
+      void resetNonce();
+      void setNonce(const NonceType& n);
+
     protected:
       void setKeyLockState(bool setGuard);
 
+
     private:
       KeyType key;
-      NonceType nonce;
+      NonceType initialNonce;
+      NonceType lastNonce;
+      NonceType nextNonce;
+      size_t nonceIncrementCount;
+      bool autoIncrementNonce;
       SodiumLib* lib;
     };
 

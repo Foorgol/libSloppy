@@ -53,3 +53,17 @@ TEST(ManagedMem, InitAndMove)
     ASSERT_EQ('A' + idx, ptr[idx]);
   }
 }
+
+//----------------------------------------------------------------------------
+
+TEST(ManagedMem, FromToString)
+{
+  string src{"Thanks for all the fish"};
+  ManagedBuffer buf{src};
+
+  ASSERT_EQ(src.size(), buf.getSize());
+  ASSERT_TRUE(src.c_str() != buf.get_c());
+
+  string s = buf.copyToString();
+  ASSERT_EQ(s, src);
+}

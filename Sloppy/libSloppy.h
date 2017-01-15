@@ -96,9 +96,14 @@ namespace Sloppy
     char * get_c() const { return (char *)(rawPtr); }
     unsigned char * get_uc() const { return (unsigned char *)(rawPtr); }
 
+    uint8_t byteAt(size_t idx) const;
+    char charAt(size_t idx) const;
+
     size_t getSize() const { return len; }
 
     bool isValid() const { return ((len > 0) && (rawPtr != nullptr)); }
+
+    string copyToString() const;
 
   protected:
     void* rawPtr;
@@ -113,7 +118,8 @@ namespace Sloppy
   {
   public:
     ManagedBuffer() : ManagedMemory{}{}
-    ManagedBuffer(size_t _len);
+    explicit ManagedBuffer(size_t _len);
+    explicit ManagedBuffer(const string& src);
     virtual ~ManagedBuffer();
 
     // disable copy functions

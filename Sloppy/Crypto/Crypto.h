@@ -24,6 +24,8 @@
 #include <random>
 #include <chrono>
 
+#include "../libSloppy.h"
+
 using namespace std;
 
 namespace Sloppy
@@ -41,8 +43,21 @@ namespace Sloppy
 
     bool checkPassword(const string& clearPw, const string& hashedPw, const string& salt, int numCycles);
 
+    bool toBase64(unsigned char* src, size_t srcLen, unsigned char* dst, size_t maxDstLen);
     string toBase64(const string& rawData);
+    string toBase64(const ManagedMemory& rawData);
+    bool toBase64(const ManagedMemory& src, const ManagedMemory& dst);
+
+    bool fromBase64(unsigned char* src, size_t srcLen, unsigned char* dst, size_t maxDstLen);
     string fromBase64(const string& b64Data);
+    bool fromBase64(const ManagedMemory& src, const ManagedMemory& dst);
+
+    size_t calc_base64_encSize(size_t rawSize);
+
+    size_t calc_base64_rawSize(size_t encSize, size_t paddingChars);
+    size_t calc_base64_rawSize(unsigned char* src, size_t srcLen);
+    size_t calc_base64_rawSize(const string& b64Data);
+    size_t calc_base64_rawSize(const ManagedMemory& encData);
 
     /*
      * !!! Everything we need for SHA256 starts here !!!

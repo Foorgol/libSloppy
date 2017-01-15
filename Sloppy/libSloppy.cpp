@@ -179,6 +179,41 @@ namespace Sloppy
   }
 
   //----------------------------------------------------------------------------
+
+  uint8_t ManagedMemory::byteAt(size_t idx) const
+  {
+    if (idx >= len)
+    {
+      throw range_error{"invalid index in ManagedMemory access function!"};
+    }
+
+    uint8_t* base = (uint8_t *)rawPtr;
+    return base[idx];
+  }
+
+  //----------------------------------------------------------------------------
+
+  char ManagedMemory::charAt(size_t idx) const
+  {
+    if (idx >= len)
+    {
+      throw range_error{"invalid index in ManagedMemory access function!"};
+    }
+
+    char* base = (char *)rawPtr;
+    return base[idx];
+  }
+
+  //----------------------------------------------------------------------------
+
+  string ManagedMemory::copyToString() const
+  {
+    if (!(isValid())) return string{};
+
+    return string{static_cast<char*>(rawPtr), static_cast<char*>(rawPtr) + len};
+  }
+
+  //----------------------------------------------------------------------------
   //----------------------------------------------------------------------------
   //----------------------------------------------------------------------------
 
@@ -192,6 +227,14 @@ namespace Sloppy
     {
       throw runtime_error{"out of heap"};
     }
+  }
+
+  //----------------------------------------------------------------------------
+
+  ManagedBuffer::ManagedBuffer(const string& src)
+    :ManagedBuffer{src.size()}
+  {
+    memcpy(rawPtr, src.c_str(), len);
   }
 
   //----------------------------------------------------------------------------

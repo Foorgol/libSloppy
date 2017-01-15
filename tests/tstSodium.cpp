@@ -117,9 +117,13 @@ TEST(Sodium, SecureMemCopy)
   }
 
   // protect the memory
-  mem.setAccess(SodiumSecureMemAccess::NoAccess);
+  ASSERT_TRUE(mem.setAccess(SodiumSecureMemAccess::NoAccess));
 
-  // get a copy
+  // try to get a copy
+  ASSERT_THROW(SodiumSecureMemory::asCopy(mem), SodiumKeyLocked);
+
+  // unlock and actually create the copy
+  ASSERT_TRUE(mem.setAccess(SodiumSecureMemAccess::RO));
   SodiumSecureMemory cpy = SodiumSecureMemory::asCopy(mem);
 
   // make sure the memory areas are different
@@ -131,15 +135,24 @@ TEST(Sodium, SecureMemCopy)
 
   // make sure protection has been restored
   ASSERT_EQ(mem.getProtection(), cpy.getProtection());
-  ASSERT_EQ(SodiumSecureMemAccess::NoAccess, mem.getProtection());
+  ASSERT_EQ(SodiumSecureMemAccess::RO, mem.getProtection());
 
   // check memory contents
-  ASSERT_TRUE(cpy.setAccess(SodiumSecureMemAccess::RO));
   ptr = (char *)cpy.get();
   for (size_t idx = 0; idx < 20; ++idx)
   {
     ASSERT_EQ('A' + idx, ptr[idx]);
   }
+
+  // test conversion from/to string
+  mem = SodiumSecureMemory{20000, SodiumSecureMemType::Normal};
+  sodium->randombytes_buf(mem);
+  string s = mem.copyToString();
+  ASSERT_EQ(s.size(), mem.getSize());
+  ASSERT_TRUE(s.c_str() != mem.get_c());
+  SodiumSecureMemory mem2{s, SodiumSecureMemType::Normal};
+  ASSERT_TRUE(sodium->memcmp(mem, mem2));
+  ASSERT_TRUE(mem.get() != mem2.get());
 }
 
 //----------------------------------------------------------------------------
@@ -199,7 +212,7 @@ TEST(Sodium, Random)
 
 //----------------------------------------------------------------------------
 
-TEST(Sodium, SymmetricLowLeel)
+TEST(Sodium, SymmetricLowLevel)
 {
   SodiumLib* sodium = SodiumLib::getInstance();
   ASSERT_TRUE(sodium != nullptr);
@@ -210,9 +223,9 @@ TEST(Sodium, SymmetricLowLeel)
   sodium->randombytes_buf(msg);
 
   // generate random nonce and key
-  ManagedBuffer nonce{crypto_secretbox_NONCEBYTES};
+  SodiumLib::SecretBoxNonceType nonce;
   sodium->randombytes_buf(nonce);
-  SodiumSecureMemory key{crypto_secretbox_KEYBYTES, SodiumSecureMemType::Normal};
+  SodiumLib::SecretBoxKeyType key;
   sodium->randombytes_buf(key);
 
   // encrypt
@@ -236,7 +249,7 @@ TEST(Sodium, SymmetricLowLeel)
   ASSERT_FALSE(sodium->memcmp(msg, msg2));
 
   // tamper with the key and try again to decrypt
-  SodiumSecureMemory trueKey = SodiumSecureMemory::asCopy(key);
+  auto trueKey = SodiumLib::SecretBoxKeyType::asCopy(key);
   ptr = key.get_c();
   ptr[12] += 1;
   msg2 = sodium->crypto_secretbox_open_easy(trueCipher, nonce, key);
@@ -245,7 +258,7 @@ TEST(Sodium, SymmetricLowLeel)
   ASSERT_FALSE(sodium->memcmp(msg, msg2));
 
   // tamper with the nonce and try again to decrypt
-  auto trueNonce = ManagedBuffer::asCopy(nonce);
+  auto trueNonce = SodiumLib::SecretBoxNonceType::asCopy(nonce);
   ptr = nonce.get_c();
   ptr[12] += 1;
   msg2 = sodium->crypto_secretbox_open_easy(trueCipher, nonce, trueKey);
@@ -271,3 +284,96 @@ TEST(Sodium, SymmetricLowLeel)
   ASSERT_TRUE(sodium->memcmp(msg, msg2));
 }
 
+//----------------------------------------------------------------------------
+
+TEST(Sodium, SymmetricLowLevel_String)
+{
+  SodiumLib* sodium = SodiumLib::getInstance();
+  ASSERT_TRUE(sodium != nullptr);
+
+  // generate a random message
+  static constexpr size_t msgSize = 500;
+  ManagedBuffer _msg{msgSize};
+  sodium->randombytes_buf(_msg);
+  string msg = _msg.copyToString();
+
+  // generate random nonce and key
+  ManagedBuffer _nonce{crypto_secretbox_NONCEBYTES};
+  sodium->randombytes_buf(_nonce);
+  string nonce = _nonce.copyToString();
+  SodiumSecureMemory _key{crypto_secretbox_KEYBYTES, SodiumSecureMemType::Normal};
+  sodium->randombytes_buf(_key);
+  string key = _key.copyToString();
+
+  // encrypt
+  string cipher = sodium->crypto_secretbox_easy(msg, nonce, key);
+  ASSERT_FALSE(cipher.empty());
+  ASSERT_EQ(msgSize + crypto_secretbox_MACBYTES, cipher.size());
+
+  // decrypt
+  string msg2 = sodium->crypto_secretbox_open_easy(cipher, nonce, key);
+  ASSERT_FALSE(msg2.empty());
+  ASSERT_EQ(msgSize, msg2.size());
+  ASSERT_EQ(msg, msg2);
+
+  //
+  // briefly test the detached functions
+  //
+
+  string mac;
+  tie(cipher, mac) = sodium->crypto_secretbox_detached(msg, nonce, key);
+  ASSERT_FALSE(cipher.empty());
+  ASSERT_FALSE(mac.empty());
+  ASSERT_EQ(msg.size(), cipher.size());
+
+  msg2 = sodium->crypto_secretbox_open_detached(cipher, mac, nonce, key);
+  ASSERT_FALSE(msg2.empty());
+  ASSERT_EQ(msgSize, msg2.size());
+  ASSERT_EQ(msg, msg2);
+}
+
+
+//----------------------------------------------------------------------------
+
+TEST(Sodium, SecretBoxClass)
+{
+  SodiumLib* sodium = SodiumLib::getInstance();
+  ASSERT_TRUE(sodium != nullptr);
+
+  // generate a random message
+  static constexpr size_t msgSize = 500;
+  ManagedBuffer _msg{msgSize};
+  sodium->randombytes_buf(_msg);
+  string msg = _msg.copyToString();
+
+  // generate random nonce and key
+  SodiumSecretBox::NonceType nonce;
+  sodium->randombytes_buf(nonce);
+  SodiumSecretBox::KeyType key;
+  sodium->randombytes_buf(key);
+
+  // create the SecretBox
+  SodiumSecretBox box{key, nonce};
+
+  // encrypt
+  ManagedBuffer cipher = box.encryptCombined(_msg);
+  ASSERT_TRUE(cipher.isValid());
+  ASSERT_EQ(msgSize + crypto_secretbox_MACBYTES, cipher.getSize());
+
+  // decrypt
+  SodiumSecureMemory msg2 = box.decryptCombined(cipher);
+  ASSERT_TRUE(msg2.isValid());
+  ASSERT_TRUE(sodium->memcmp(_msg, msg2));
+
+  // encrypt detached, as strings
+  string c;
+  string m;
+  tie(c, m) = box.encryptDetached(msg);
+  ASSERT_FALSE(c.empty());
+  ASSERT_FALSE(m.empty());
+
+  // decrypt detached, as strings
+  string s2 = box.decryptDetached(c, m);
+  ASSERT_FALSE(s2.empty());
+  ASSERT_EQ(msg, s2);
+}

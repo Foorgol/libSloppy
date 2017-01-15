@@ -23,6 +23,8 @@
 #include <string>
 #include <utility>
 
+#include <sodium.h>
+
 #include "../libSloppy.h"
 
 using namespace std;
@@ -72,6 +74,20 @@ namespace Sloppy
         :SodiumBasicException{"could not change the state of protected and/or locked memory", context} {}
     };
 
+    class SodiumKeyLocked : public SodiumBasicException
+    {
+    public:
+      SodiumKeyLocked(const string& context = string{})
+        :SodiumBasicException{"a secret key could not be accessed because it was locked / guarded", context} {}
+    };
+
+    class SodiumInvalidKeysize : public SodiumBasicException
+    {
+    public:
+      SodiumInvalidKeysize(const string& context = string{})
+        :SodiumBasicException{"a key does not have the required length", context} {}
+    };
+
     //----------------------------------------------------------------------------
 
     enum class SodiumSecureMemType
@@ -95,6 +111,7 @@ namespace Sloppy
         :ManagedMemory{}, type{SodiumSecureMemType::Normal},
           lib{nullptr}, curProtection{SodiumSecureMemAccess::NoAccess} {}
       SodiumSecureMemory(size_t _len, SodiumSecureMemType t);
+      SodiumSecureMemory(const string& src, SodiumSecureMemType t);
 
       // disable copy functions
       SodiumSecureMemory(const SodiumSecureMemory&) = delete; // no copy constructor
@@ -115,7 +132,8 @@ namespace Sloppy
       bool setAccess(SodiumSecureMemAccess a);
 
       // create a copy of an already allocated memory region
-      static SodiumSecureMemory asCopy(SodiumSecureMemory& src);
+      static SodiumSecureMemory asCopy(const SodiumSecureMemory& src);
+      SodiumSecureMemory copy() const;
 
     protected:
       SodiumSecureMemType type;
@@ -141,8 +159,53 @@ namespace Sloppy
         : SodiumSecureMemory{keySize, (kt == SodiumKeyType::Secret) ? SodiumSecureMemType::Guarded : SodiumSecureMemType::Normal},
           keyType{kt}
       {}
+
+      // move constructor and move assignment
+      SodiumKey<kt, keySize>(SodiumKey<kt, keySize>&& other) { *this = std::move(other); }
+      virtual SodiumKey<kt, keySize>& operator =(SodiumKey<kt, keySize>&& other)
+      {
+          SodiumSecureMemory::operator =(std::move(other));
+          keyType = other.keyType;
+          return *this;
+      }
+      virtual SodiumKey<kt, keySize>& operator =(SodiumSecureMemory&& other)
+      {
+        if (other.getSize() != keySize)
+        {
+          throw SodiumInvalidKeysize{"move assignment of SodiumKey"};
+        }
+        SodiumSecureMemory::operator =(std::move(other));
+        keyType = kt;
+        return *this;
+      }
+
+      static SodiumKey<kt, keySize> asCopy(const SodiumKey<kt, keySize>& src)
+      {
+        if (!(src.canRead()))
+        {
+          throw SodiumKeyLocked{"creating a key copy"};
+        }
+
+        SodiumKey<kt, keySize> cpy;
+        SodiumSecureMemAccess srcProtection = src.getProtection();
+        if (kt == SodiumKeyType::Secret)
+        {
+          cpy.setAccess(SodiumSecureMemAccess::RW);
+        }
+
+        memcpy(cpy.rawPtr, src.rawPtr, src.len);
+
+        if (kt == SodiumKeyType::Secret)
+        {
+          cpy.setAccess(srcProtection);
+        }
+
+        return cpy;
+      }
+
     protected:
       SodiumKeyType keyType;
+
     };
 
     //----------------------------------------------------------------------------
@@ -223,19 +286,63 @@ namespace Sloppy
       uint32_t randombytes_uniform(const uint32_t upper_bound) const;
       void randombytes_buf(const ManagedMemory& buf) const;
 
-      // symmetric encryption
-      ManagedBuffer crypto_secretbox_easy(const ManagedMemory& msg, const ManagedMemory& nonce, const SodiumSecureMemory& key);
-      SodiumSecureMemory crypto_secretbox_open_easy(const ManagedMemory& cipher, const ManagedMemory& nonce, const ManagedMemory& key,
+      // symmetric encryption based on ManagedMemory
+      using SecretBoxKeyType = SodiumKey<SodiumKeyType::Secret, crypto_secretbox_KEYBYTES>;
+      using SecretBoxNonceType = SodiumKey<SodiumKeyType::Public, crypto_secretbox_NONCEBYTES>;
+      ManagedBuffer crypto_secretbox_easy(const ManagedMemory& msg, const SecretBoxNonceType& nonce, const SecretBoxKeyType& key);
+      SodiumSecureMemory crypto_secretbox_open_easy(const ManagedMemory& cipher, const SecretBoxNonceType& nonce, const SecretBoxKeyType& key,
                                                     SodiumSecureMemType clearTextProtection = SodiumSecureMemType::Locked);
-      pair<ManagedBuffer, ManagedBuffer> crypto_secretbox_detached(const ManagedMemory& msg, const ManagedMemory& nonce, const SodiumSecureMemory& key);
-      SodiumSecureMemory crypto_secretbox_open_detached(const ManagedMemory& cipher, const ManagedMemory& mac, const ManagedMemory& nonce, const ManagedMemory& key,
+      pair<ManagedBuffer, ManagedBuffer> crypto_secretbox_detached(const ManagedMemory& msg, const SecretBoxNonceType& nonce, const SecretBoxKeyType& key);
+      SodiumSecureMemory crypto_secretbox_open_detached(const ManagedMemory& cipher, const ManagedMemory& mac, const SecretBoxNonceType& nonce, const SecretBoxKeyType& key,
                                                         SodiumSecureMemType clearTextProtection = SodiumSecureMemType::Locked);
+
+      // symmetric encryption based on strings
+      string crypto_secretbox_easy(const string& msg, const string& nonce, const string& key);
+      string crypto_secretbox_open_easy(const string& cipher, const string& nonce, const string& key);
+      pair<string, string> crypto_secretbox_detached(const string& msg, const string& nonce, const string& key);
+      string crypto_secretbox_open_detached(const string& cipher, const string& mac, const string& nonce, const string& key);
+
+      // symmetric encryption, mixed version (messages as strings, keys and nonces as ManagedMemory)
+      string crypto_secretbox_easy(const string& msg, const SecretBoxNonceType& nonce, const SecretBoxKeyType& key);
+      string crypto_secretbox_open_easy(const string& cipher, const SecretBoxNonceType& nonce, const SecretBoxKeyType& key);
+      pair<string, string> crypto_secretbox_detached(const string& msg, const SecretBoxNonceType& nonce, const SecretBoxKeyType& key);
+      string crypto_secretbox_open_detached(const string& cipher, const string& mac, const SecretBoxNonceType& nonce, const SecretBoxKeyType& key);
 
     protected:
       SodiumLib(void* _libHandle);
       static unique_ptr<SodiumLib> inst;
       void *libHandle;
       SodiumPtr sodium;
+    };
+
+    // a wrapper class for easy symmetric encryption / decryption
+    class SodiumSecretBox
+    {
+    public:
+      using KeyType = SodiumKey<SodiumKeyType::Secret, crypto_secretbox_KEYBYTES>;
+      using NonceType = SodiumKey<SodiumKeyType::Public, crypto_secretbox_NONCEBYTES>;
+
+      SodiumSecretBox(const KeyType& _key, const NonceType& _nonce);
+
+      // encryption
+      ManagedBuffer encryptCombined(const ManagedMemory& msg);
+      pair<ManagedBuffer, ManagedBuffer> encryptDetached(const ManagedMemory& msg);
+      string encryptCombined(const string& msg);
+      pair<string, string> encryptDetached(const string& msg);
+
+      // decryption
+      SodiumSecureMemory decryptCombined(const ManagedMemory& cipher, SodiumSecureMemType clearTextProtection = SodiumSecureMemType::Locked);
+      SodiumSecureMemory decryptDetached(const ManagedMemory& cipher, const ManagedMemory& mac, SodiumSecureMemType clearTextProtection = SodiumSecureMemType::Locked);
+      string decryptCombined(const string& cipher);
+      string decryptDetached(const string& cipher, const string& mac);
+
+    protected:
+      void setKeyLockState(bool setGuard);
+
+    private:
+      KeyType key;
+      NonceType nonce;
+      SodiumLib* lib;
     };
 
   }

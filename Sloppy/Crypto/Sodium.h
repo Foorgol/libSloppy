@@ -135,6 +135,9 @@ namespace Sloppy
       static SodiumSecureMemory asCopy(const SodiumSecureMemory& src);
       SodiumSecureMemory copy() const;
 
+      // size change
+      virtual void shrink(size_t newSize) override;
+
     protected:
       SodiumSecureMemType type;
       SodiumLib* lib;
@@ -262,6 +265,29 @@ namespace Sloppy
                       unsigned long long inlen, const unsigned char *k);
       int (*crypto_auth_verify)(const unsigned char *h, const unsigned char *in,
                              unsigned long long inlen, const unsigned char *k);
+
+      // authenticated encryption with additional data
+      int (*crypto_aead_chacha20poly1305_encrypt)(unsigned char *c, unsigned long long *clen,
+                                                  const unsigned char *m, unsigned long long mlen,
+                                                  const unsigned char *ad, unsigned long long adlen,
+                                                  const unsigned char *nsec, const unsigned char *npub,
+                                                  const unsigned char *k);
+      int (*crypto_aead_chacha20poly1305_decrypt)(unsigned char *m, unsigned long long *mlen,
+                                                  unsigned char *nsec,
+                                                  const unsigned char *c, unsigned long long clen,
+                                                  const unsigned char *ad, unsigned long long adlen,
+                                                  const unsigned char *npub, const unsigned char *k);
+      int (*crypto_aead_chacha20poly1305_encrypt_detached)(unsigned char *c, unsigned char *mac,
+                                                           unsigned long long *maclen_p,
+                                                           const unsigned char *m, unsigned long long mlen,
+                                                           const unsigned char *ad, unsigned long long adlen,
+                                                           const unsigned char *nsec, const unsigned char *npub,
+                                                           const unsigned char *k);
+      int (*crypto_aead_chacha20poly1305_decrypt_detached)(unsigned char *m, unsigned char *nsec,
+                                                           const unsigned char *c, unsigned long long clen,
+                                                           const unsigned char *mac,
+                                                           const unsigned char *ad, unsigned long long adlen,
+                                                           const unsigned char *npub, const unsigned char *k);
     };
 
     //----------------------------------------------------------------------------
@@ -329,6 +355,16 @@ namespace Sloppy
       bool crypto_auth_verify(const ManagedMemory& msg, const AuthTagType& tag, const AuthKeyType& key);
       string crypto_auth(const string& msg, const string& key);
       bool crypto_auth_verify(const string& msg, const string& tag, const string& key);
+
+      // authenticated encryption with additional data
+      using AEAD_ChaCha20Poly1305_KeyType = SodiumKey<SodiumKeyType::Secret, crypto_aead_chacha20poly1305_KEYBYTES>;
+      using AEAD_ChaCha20Poly1305_NonceType = SodiumKey<SodiumKeyType::Public, crypto_aead_chacha20poly1305_NPUBBYTES>;
+      using AEAD_ChaCha20Poly1305_TagType = SodiumKey<SodiumKeyType::Public, crypto_aead_chacha20poly1305_ABYTES>;
+      ManagedBuffer crypto_aead_chacha20poly1305_encrypt(const ManagedMemory& msg, const AEAD_ChaCha20Poly1305_NonceType& nonce,
+                                                         const AEAD_ChaCha20Poly1305_KeyType& key, const ManagedBuffer& ad = ManagedBuffer{});
+      SodiumSecureMemory crypto_aead_chacha20poly1305_decrypt(const ManagedMemory& cipher, const AEAD_ChaCha20Poly1305_NonceType& nonce,
+                                                              const AEAD_ChaCha20Poly1305_KeyType& key, const ManagedBuffer& ad = ManagedBuffer{},
+                                                              SodiumSecureMemType clearTextProtection = SodiumSecureMemType::Locked);
 
     protected:
       SodiumLib(void* _libHandle);

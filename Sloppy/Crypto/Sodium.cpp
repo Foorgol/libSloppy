@@ -158,6 +158,29 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
+    void SodiumSecureMemory::shrink(size_t newSize)
+    {
+      // range check for the new size
+      if ((newSize == 0) || (newSize >= len)) return;
+
+      if (!(canRead()))
+      {
+        throw SodiumKeyLocked{"shrinking memory"};
+      }
+
+      // allocate new memory
+      SodiumSecureMemory newMem{newSize, type};
+
+      // copy the data over
+      memcpy(newMem.rawPtr, rawPtr, newSize);
+
+      // release the old memory and do the other
+      // stuff by re-using the move operator
+      *this = std::move(newMem);
+    }
+
+    //----------------------------------------------------------------------------
+
     SodiumSecureMemory SodiumSecureMemory::asCopy(const SodiumSecureMemory& src)
     {
       if (!(src.canRead()))
@@ -294,6 +317,10 @@ namespace Sloppy
       *(void **)(&(sodium.crypto_secretbox_open_detached)) = dlsym(libHandle, "crypto_secretbox_open_detached");
       *(void **)(&(sodium.crypto_auth)) = dlsym(libHandle, "crypto_auth");
       *(void **)(&(sodium.crypto_auth_verify)) = dlsym(libHandle, "crypto_auth_verify");
+      *(void **)(&(sodium.crypto_aead_chacha20poly1305_encrypt)) = dlsym(libHandle, "crypto_aead_chacha20poly1305_encrypt");
+      *(void **)(&(sodium.crypto_aead_chacha20poly1305_decrypt)) = dlsym(libHandle, "crypto_aead_chacha20poly1305_decrypt");
+      *(void **)(&(sodium.crypto_aead_chacha20poly1305_encrypt_detached)) = dlsym(libHandle, "crypto_aead_chacha20poly1305_encrypt_detached");
+      *(void **)(&(sodium.crypto_aead_chacha20poly1305_decrypt_detached)) = dlsym(libHandle, "crypto_aead_chacha20poly1305_decrypt_detached");
       //*(void **)(&(sodium.)) = dlsym(libHandle, "sodium_");
 
       // make sure we've successfully loaded all symbols
@@ -320,8 +347,12 @@ namespace Sloppy
           (sodium.crypto_secretbox_detached == nullptr) ||
           (sodium.crypto_secretbox_open_detached == nullptr) ||
           (sodium.crypto_auth == nullptr) ||
-          (sodium.crypto_auth_verify == nullptr)
-          //(sodium. == nullptr) ||
+          (sodium.crypto_auth_verify == nullptr) ||
+          (sodium.crypto_aead_chacha20poly1305_encrypt == nullptr) ||
+          (sodium.crypto_aead_chacha20poly1305_decrypt == nullptr) ||
+          (sodium.crypto_aead_chacha20poly1305_encrypt_detached == nullptr) ||
+          (sodium.crypto_aead_chacha20poly1305_decrypt_detached == nullptr)
+          //(sodium.crypto_aead_chacha20poly1305 == nullptr) ||
           )
       {
         dlclose(libHandle);
@@ -506,7 +537,9 @@ namespace Sloppy
     ManagedBuffer SodiumLib::crypto_secretbox_easy(const ManagedMemory& msg, const SecretBoxNonceType& nonce, const SecretBoxKeyType& key)
     {
       // the message should be valid
-      if (!(msg.isValid()))  return ManagedBuffer{};
+      if (!(msg.isValid())) return ManagedBuffer{};
+      if (!(nonce.isValid())) return ManagedBuffer{};
+      if (!(key.isValid())) return ManagedBuffer{};
 
       // allocate space for the result
       ManagedBuffer cipher{crypto_secretbox_MACBYTES + msg.getSize()};
@@ -523,7 +556,9 @@ namespace Sloppy
     SodiumSecureMemory SodiumLib::crypto_secretbox_open_easy(const ManagedMemory& cipher, const SecretBoxNonceType& nonce, const SecretBoxKeyType& key, SodiumSecureMemType clearTextProtection)
     {
       // the cipher should be valid
-      if (!(cipher.isValid()))  return SodiumSecureMemory{};
+      if (!(cipher.isValid())) return SodiumSecureMemory{};
+      if (!(nonce.isValid())) return SodiumSecureMemory{};
+      if (!(key.isValid())) return SodiumSecureMemory{};
 
       // we need at least one message byte, so just the MAC is
       // not sufficient
@@ -546,7 +581,9 @@ namespace Sloppy
       pair<ManagedBuffer, ManagedBuffer> errorResult = make_pair(ManagedBuffer{}, ManagedBuffer{});
 
       // the message should be valid
-      if (!(msg.isValid()))  return errorResult;
+      if (!(msg.isValid())) return errorResult;
+      if (!(nonce.isValid())) return errorResult;
+      if (!(key.isValid())) return errorResult;
 
       // allocate space for the result
       ManagedBuffer cipher{msg.getSize()};
@@ -564,7 +601,10 @@ namespace Sloppy
     SodiumSecureMemory SodiumLib::crypto_secretbox_open_detached(const ManagedMemory& cipher, const ManagedMemory& mac, const SecretBoxNonceType& nonce, const SecretBoxKeyType& key, SodiumSecureMemType clearTextProtection)
     {
       // the cipher should be valid
-      if (!(cipher.isValid()))  return SodiumSecureMemory{};
+      if (!(cipher.isValid())) return SodiumSecureMemory{};
+      if (!(mac.isValid())) return SodiumSecureMemory{};
+      if (!(nonce.isValid())) return SodiumSecureMemory{};
+      if (!(key.isValid())) return SodiumSecureMemory{};
 
       // the MAC size should fit
       if (mac.getSize() != crypto_secretbox_MACBYTES) return SodiumSecureMemory{};
@@ -692,6 +732,8 @@ namespace Sloppy
     string SodiumLib::crypto_secretbox_easy(const string& msg, const SecretBoxNonceType& nonce, const SecretBoxKeyType& key)
     {
       if (msg.empty()) return string{};
+      if (!(nonce.isValid())) return string{};
+      if (!(key.isValid())) return string{};
 
       // allocate space for the result
       string cipher;
@@ -710,6 +752,9 @@ namespace Sloppy
 
     string SodiumLib::crypto_secretbox_open_easy(const string& cipher, const SecretBoxNonceType& nonce, const SecretBoxKeyType& key)
     {
+      if (!(nonce.isValid())) return string{};
+      if (!(key.isValid())) return string{};
+
       // we need at least one message byte, so just the MAC is
       // not sufficient
       if (cipher.size() <= crypto_secretbox_MACBYTES) return string{};
@@ -735,6 +780,8 @@ namespace Sloppy
 
       // the message should be valid
       if (msg.empty())  return errorResult;
+      if (!(nonce.isValid())) return errorResult;
+      if (!(key.isValid())) return errorResult;
 
       // allocate space for the result
       string cipher;
@@ -755,6 +802,9 @@ namespace Sloppy
 
     string SodiumLib::crypto_secretbox_open_detached(const string& cipher, const string& mac, const SecretBoxNonceType& nonce, const SecretBoxKeyType& key)
     {
+      if (!(nonce.isValid())) return string{};
+      if (!(key.isValid())) return string{};
+
       // the cipher should be valid
       if (cipher.empty())  return string{};
 
@@ -779,6 +829,9 @@ namespace Sloppy
 
     SodiumLib::AuthTagType SodiumLib::crypto_auth(const ManagedMemory& msg, const SodiumLib::AuthKeyType& key)
     {
+      if (!(msg.isValid())) return AuthTagType{};
+      if (!(key.isValid())) return AuthTagType{};
+
       AuthTagType result;
       sodium.crypto_auth(result.get_uc(), msg.get_uc(), msg.getSize(), key.get_uc());
 
@@ -789,6 +842,10 @@ namespace Sloppy
 
     bool SodiumLib::crypto_auth_verify(const ManagedMemory& msg, const SodiumLib::AuthTagType& tag, const SodiumLib::AuthKeyType& key)
     {
+      if (!(msg.isValid())) return false;
+      if (!(tag.isValid())) return false;
+      if (!(key.isValid())) return false;
+
       return (sodium.crypto_auth_verify(tag.get_uc(), msg.get_uc(), msg.getSize(), key.get_uc()) == 0);
     }
 
@@ -814,10 +871,97 @@ namespace Sloppy
 
     bool SodiumLib::crypto_auth_verify(const string& msg, const string& tag, const string& key)
     {
+      if (msg.empty()) return false;
+      if (tag.size() != crypto_auth_BYTES) return false;
+      if (key.size() != crypto_auth_KEYBYTES) return false;
+
       int rc = sodium.crypto_auth_verify((const unsigned char*)tag.c_str(), (const unsigned char*)msg.c_str(), msg.size(),
                                          (const unsigned char*)key.c_str());
 
       return (rc == 0);
+    }
+
+    //----------------------------------------------------------------------------
+
+    ManagedBuffer SodiumLib::crypto_aead_chacha20poly1305_encrypt(const ManagedMemory& msg,
+                                                                  const SodiumLib::AEAD_ChaCha20Poly1305_NonceType& nonce, const SodiumLib::AEAD_ChaCha20Poly1305_KeyType& key,
+                                                                  const ManagedBuffer& ad)
+    {
+      if (!(msg.isValid())) return ManagedBuffer{};
+      if (!(nonce.isValid())) return ManagedBuffer{};
+      if (!(key.isValid())) return ManagedBuffer{};
+
+      // alocate space for the result
+      size_t maxCipherLen = msg.getSize() + crypto_aead_chacha20poly1305_ABYTES;
+      ManagedBuffer cipher{maxCipherLen};
+
+      // do we use additional data?
+      unsigned char *adPtr = nullptr;
+      size_t adLen = 0;
+      if (ad.isValid())
+      {
+        adPtr = ad.get_uc();
+        adLen = ad.getSize();
+      }
+
+      // call the encryption function
+      unsigned long long actualCipherLen = 0;
+      sodium.crypto_aead_chacha20poly1305_encrypt(cipher.get_uc(), &actualCipherLen,
+                                                  msg.get_uc(), msg.getSize(),
+                                                  adPtr, adLen,
+                                                  nullptr,
+                                                  nonce.get_uc(), key.get_uc());
+
+      // do we need to shrink the result?
+      if (actualCipherLen < maxCipherLen)
+      {
+        cipher.shrink(actualCipherLen);
+      }
+
+      return cipher;
+    }
+
+    //----------------------------------------------------------------------------
+
+    SodiumSecureMemory SodiumLib::crypto_aead_chacha20poly1305_decrypt(const ManagedMemory& cipher, const SodiumLib::AEAD_ChaCha20Poly1305_NonceType& nonce,
+                                                                       const SodiumLib::AEAD_ChaCha20Poly1305_KeyType& key, const ManagedBuffer& ad,
+                                                                       SodiumSecureMemType clearTextProtection)
+    {
+      if (!(cipher.isValid())) return SodiumSecureMemory{};
+      if (!(nonce.isValid())) return SodiumSecureMemory{};
+      if (!(key.isValid())) return SodiumSecureMemory{};
+
+      // we need to have at least one byte of message data besides the tag
+      if (cipher.getSize() <= crypto_aead_chacha20poly1305_ABYTES) return SodiumSecureMemory{};
+
+      // calc the maximum message size
+      size_t maxMsgLen = cipher.getSize() - crypto_aead_chacha20poly1305_ABYTES;
+      SodiumSecureMemory msg{maxMsgLen, clearTextProtection};
+
+      // do we use additional data?
+      unsigned char *adPtr = nullptr;
+      size_t adLen = 0;
+      if (ad.isValid())
+      {
+        adPtr = ad.get_uc();
+        adLen = ad.getSize();
+      }
+
+      // call the decryption function
+      unsigned long long actualMsgLen = 0;
+      sodium.crypto_aead_chacha20poly1305_decrypt(msg.get_uc(), &actualMsgLen,
+                                                  nullptr,
+                                                  cipher.get_uc(), cipher.getSize(),
+                                                  adPtr, adLen,
+                                                  nonce.get_uc(), key.get_uc());
+
+      // do we need to shrink the result?
+      if (actualMsgLen < maxMsgLen)
+      {
+        msg.shrink(actualMsgLen);
+      }
+
+      return msg;
     }
 
 

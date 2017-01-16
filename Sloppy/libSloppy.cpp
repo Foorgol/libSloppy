@@ -280,6 +280,29 @@ namespace Sloppy
 
   //----------------------------------------------------------------------------
 
+  void ManagedBuffer::shrink(size_t newSize)
+  {
+    // range check for the new size
+    if ((newSize == 0) || (newSize >= len)) return;
+
+    // allocate mem for the new size
+    void* newMem = malloc(newSize);
+    if (newMem == nullptr)
+    {
+      throw runtime_error{"out of heap"};
+    }
+
+    // copy the data over
+    memcpy(newMem, rawPtr, newSize);
+
+    // release the old memory and store the new one
+    releaseMemory();
+    rawPtr = newMem;
+    len = newSize;
+  }
+
+  //----------------------------------------------------------------------------
+
   void ManagedBuffer::releaseMemory()
   {
     if (rawPtr != nullptr) free(rawPtr);

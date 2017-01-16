@@ -105,6 +105,8 @@ namespace Sloppy
 
     string copyToString() const;
 
+    virtual void shrink(size_t newSize) = 0;
+
   protected:
     void* rawPtr;
     size_t len;
@@ -133,6 +135,8 @@ namespace Sloppy
     // create a copy
     static ManagedBuffer asCopy(const ManagedBuffer& src);
 
+    // size change
+    virtual void shrink(size_t newSize) override;
 
   protected:
     virtual void releaseMemory() override;

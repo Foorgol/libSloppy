@@ -321,6 +321,11 @@ namespace Sloppy
       *(void **)(&(sodium.crypto_aead_chacha20poly1305_decrypt)) = dlsym(libHandle, "crypto_aead_chacha20poly1305_decrypt");
       *(void **)(&(sodium.crypto_aead_chacha20poly1305_encrypt_detached)) = dlsym(libHandle, "crypto_aead_chacha20poly1305_encrypt_detached");
       *(void **)(&(sodium.crypto_aead_chacha20poly1305_decrypt_detached)) = dlsym(libHandle, "crypto_aead_chacha20poly1305_decrypt_detached");
+      *(void **)(&(sodium.crypto_aead_aes256gcm_is_available)) = dlsym(libHandle, "crypto_aead_aes256gcm_is_available");
+      *(void **)(&(sodium.crypto_aead_aes256gcm_encrypt)) = dlsym(libHandle, "crypto_aead_aes256gcm_encrypt");
+      *(void **)(&(sodium.crypto_aead_aes256gcm_decrypt)) = dlsym(libHandle, "crypto_aead_aes256gcm_decrypt");
+      *(void **)(&(sodium.crypto_aead_aes256gcm_encrypt_detached)) = dlsym(libHandle, "crypto_aead_aes256gcm_encrypt_detached");
+      *(void **)(&(sodium.crypto_aead_aes256gcm_decrypt_detached)) = dlsym(libHandle, "crypto_aead_aes256gcm_decrypt_detached");
       //*(void **)(&(sodium.)) = dlsym(libHandle, "sodium_");
 
       // make sure we've successfully loaded all symbols
@@ -351,7 +356,12 @@ namespace Sloppy
           (sodium.crypto_aead_chacha20poly1305_encrypt == nullptr) ||
           (sodium.crypto_aead_chacha20poly1305_decrypt == nullptr) ||
           (sodium.crypto_aead_chacha20poly1305_encrypt_detached == nullptr) ||
-          (sodium.crypto_aead_chacha20poly1305_decrypt_detached == nullptr)
+          (sodium.crypto_aead_chacha20poly1305_decrypt_detached == nullptr) ||
+          (sodium.crypto_aead_aes256gcm_is_available == nullptr) ||
+          (sodium.crypto_aead_aes256gcm_encrypt == nullptr) ||
+          (sodium.crypto_aead_aes256gcm_decrypt == nullptr) ||
+          (sodium.crypto_aead_aes256gcm_encrypt_detached == nullptr) ||
+          (sodium.crypto_aead_aes256gcm_decrypt_detached == nullptr)
           //(sodium.crypto_aead_chacha20poly1305 == nullptr) ||
           )
       {
@@ -883,16 +893,18 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    ManagedBuffer SodiumLib::crypto_aead_chacha20poly1305_encrypt(const ManagedMemory& msg,
-                                                                  const SodiumLib::AEAD_ChaCha20Poly1305_NonceType& nonce, const SodiumLib::AEAD_ChaCha20Poly1305_KeyType& key,
-                                                                  const ManagedBuffer& ad)
+    ManagedBuffer SodiumLib::crypto_aead_encrypt(int (*funcPtr)(unsigned char*, unsigned long long*, const unsigned char*, unsigned long long, const unsigned char*,
+                                                                unsigned long long, const unsigned char*, const unsigned char*, const unsigned char*), size_t tagSize,
+                                                 const ManagedMemory& msg, const ManagedMemory& nonce, const ManagedMemory& key, const ManagedBuffer& ad)
     {
+      if (funcPtr == nullptr) return ManagedBuffer{};
+
       if (!(msg.isValid())) return ManagedBuffer{};
       if (!(nonce.isValid())) return ManagedBuffer{};
       if (!(key.isValid())) return ManagedBuffer{};
 
       // alocate space for the result
-      size_t maxCipherLen = msg.getSize() + crypto_aead_chacha20poly1305_ABYTES;
+      size_t maxCipherLen = msg.getSize() + tagSize;
       ManagedBuffer cipher{maxCipherLen};
 
       // do we use additional data?
@@ -906,11 +918,8 @@ namespace Sloppy
 
       // call the encryption function
       unsigned long long actualCipherLen = 0;
-      sodium.crypto_aead_chacha20poly1305_encrypt(cipher.get_uc(), &actualCipherLen,
-                                                  msg.get_uc(), msg.getSize(),
-                                                  adPtr, adLen,
-                                                  nullptr,
-                                                  nonce.get_uc(), key.get_uc());
+      funcPtr(cipher.get_uc(), &actualCipherLen, msg.get_uc(), msg.getSize(),
+              adPtr, adLen, nullptr, nonce.get_uc(), key.get_uc());
 
       // do we need to shrink the result?
       if (actualCipherLen < maxCipherLen)
@@ -923,19 +932,17 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    SodiumSecureMemory SodiumLib::crypto_aead_chacha20poly1305_decrypt(const ManagedMemory& cipher, const SodiumLib::AEAD_ChaCha20Poly1305_NonceType& nonce,
-                                                                       const SodiumLib::AEAD_ChaCha20Poly1305_KeyType& key, const ManagedBuffer& ad,
-                                                                       SodiumSecureMemType clearTextProtection)
+    SodiumSecureMemory SodiumLib::crypto_aead_decrypt(int (*funcPtr)(unsigned char*, unsigned long long*, unsigned char*, const unsigned char*, unsigned long long, const unsigned char*, unsigned long long, const unsigned char*, const unsigned char*), size_t tagSize, const ManagedMemory& cipher, const ManagedMemory& nonce, const ManagedMemory& key, const ManagedBuffer& ad, SodiumSecureMemType clearTextProtection)
     {
       if (!(cipher.isValid())) return SodiumSecureMemory{};
       if (!(nonce.isValid())) return SodiumSecureMemory{};
       if (!(key.isValid())) return SodiumSecureMemory{};
 
       // we need to have at least one byte of message data besides the tag
-      if (cipher.getSize() <= crypto_aead_chacha20poly1305_ABYTES) return SodiumSecureMemory{};
+      if (cipher.getSize() <= tagSize) return SodiumSecureMemory{};
 
       // calc the maximum message size
-      size_t maxMsgLen = cipher.getSize() - crypto_aead_chacha20poly1305_ABYTES;
+      size_t maxMsgLen = cipher.getSize() - tagSize;
       SodiumSecureMemory msg{maxMsgLen, clearTextProtection};
 
       // do we use additional data?
@@ -949,11 +956,10 @@ namespace Sloppy
 
       // call the decryption function
       unsigned long long actualMsgLen = 0;
-      sodium.crypto_aead_chacha20poly1305_decrypt(msg.get_uc(), &actualMsgLen,
-                                                  nullptr,
-                                                  cipher.get_uc(), cipher.getSize(),
-                                                  adPtr, adLen,
-                                                  nonce.get_uc(), key.get_uc());
+      int rc = funcPtr(msg.get_uc(), &actualMsgLen, nullptr, cipher.get_uc(), cipher.getSize(),
+                                                  adPtr, adLen, nonce.get_uc(), key.get_uc());
+
+      if (rc != 0) return SodiumSecureMemory{};  // verification failed
 
       // do we need to shrink the result?
       if (actualMsgLen < maxMsgLen)
@@ -962,6 +968,277 @@ namespace Sloppy
       }
 
       return msg;
+    }
+
+    //----------------------------------------------------------------------------
+
+    string SodiumLib::crypto_aead_encrypt(int (*funcPtr)(unsigned char*, unsigned long long*, const unsigned char*, unsigned long long, const unsigned char*, unsigned long long, const unsigned char*, const unsigned char*, const unsigned char*), size_t nonceSize, size_t keySize, size_t tagSize, const string& msg, const string& nonce, const string& key, const string& ad)
+    {
+      // check parameter validity
+      if (msg.empty()) return string{};
+      if (nonce.size() != nonceSize) return string{};
+      if (key.size() != keySize) return string{};
+
+      // alocate space for the result
+      size_t maxCipherLen = msg.size() + tagSize;
+      string cipher;
+      cipher.resize(maxCipherLen);
+
+      // do we use additional data?
+      unsigned char *adPtr = nullptr;
+      size_t adLen = 0;
+      if (!(ad.empty()))
+      {
+        adPtr = (unsigned char*)ad.c_str();
+        adLen = ad.size();
+      }
+
+      // call the encryption function
+      unsigned long long actualCipherLen = 0;
+      funcPtr((unsigned char*)cipher.c_str(), &actualCipherLen, (unsigned char*)msg.c_str(), msg.size(),
+              adPtr, adLen, nullptr, (unsigned char*)nonce.c_str(), (unsigned char*)key.c_str());
+
+      // do we need to shrink the result?
+      if (actualCipherLen < maxCipherLen)
+      {
+        cipher = cipher.substr(0, actualCipherLen);
+      }
+
+      return cipher;
+    }
+
+    //----------------------------------------------------------------------------
+
+    string SodiumLib::crypto_aead_decrypt(int (*funcPtr)(unsigned char*, unsigned long long*, unsigned char*, const unsigned char*,
+                                                         unsigned long long, const unsigned char*, unsigned long long, const unsigned char*, const unsigned char*),
+                                          size_t nonceSize, size_t keySize, size_t tagSize, const string& cipher,
+                                          const string& nonce, const string& key, const string& ad)
+    {
+      // check parameter validity
+      if (cipher.size() <= tagSize) return string{};  // require at least one message byte
+      if (nonce.size() != nonceSize) return string{};
+      if (key.size() != keySize) return string{};
+
+      // calc the maximum message size
+      size_t maxMsgLen = cipher.size() - tagSize;
+      string msg;
+      msg.resize(maxMsgLen);
+
+      // do we use additional data?
+      unsigned char *adPtr = nullptr;
+      size_t adLen = 0;
+      if (!(ad.empty()))
+      {
+        adPtr = (unsigned char*)ad.c_str();
+        adLen = ad.size();
+      }
+
+      // call the decryption function
+      unsigned long long actualMsgLen = 0;
+      int rc = funcPtr((unsigned char*)msg.c_str(), &actualMsgLen, nullptr,
+                       (unsigned char*)cipher.c_str(), cipher.size(), adPtr, adLen,
+                       (unsigned char*)nonce.c_str(), (unsigned char*)key.c_str());
+
+      if (rc != 0) return string{};  // verification failed
+
+      // do we need to shrink the result?
+      if (actualMsgLen < maxMsgLen)
+      {
+        msg = msg.substr(0, actualMsgLen);
+      }
+
+      return msg;
+    }
+
+    //----------------------------------------------------------------------------
+
+    string SodiumLib::crypto_aead_encrypt(int (*funcPtr)(unsigned char*, unsigned long long*, const unsigned char*, unsigned long long, const unsigned char*, unsigned long long, const unsigned char*, const unsigned char*, const unsigned char*), size_t tagSize, const string& msg, const ManagedMemory& nonce, const ManagedMemory& key, const string& ad)
+    {
+      // check parameter validity
+      if (msg.empty()) return string{};
+      if (!(nonce.isValid())) return string{};
+      if (!(key.isValid())) return string{};
+
+      // alocate space for the result
+      size_t maxCipherLen = msg.size() + tagSize;
+      string cipher;
+      cipher.resize(maxCipherLen);
+
+      // do we use additional data?
+      unsigned char *adPtr = nullptr;
+      size_t adLen = 0;
+      if (!(ad.empty()))
+      {
+        adPtr = (unsigned char*)ad.c_str();
+        adLen = ad.size();
+      }
+
+      // call the encryption function
+      unsigned long long actualCipherLen = 0;
+      funcPtr((unsigned char*)cipher.c_str(), &actualCipherLen,
+              (unsigned char*)msg.c_str(), msg.size(), adPtr, adLen,
+              nullptr, nonce.get_uc(), key.get_uc());
+
+      // do we need to shrink the result?
+      if (actualCipherLen < maxCipherLen)
+      {
+        cipher = cipher.substr(0, actualCipherLen);
+      }
+
+      return cipher;
+    }
+
+    //----------------------------------------------------------------------------
+
+    string SodiumLib::crypto_aead_decrypt(int (*funcPtr)(unsigned char*, unsigned long long*, unsigned char*, const unsigned char*, unsigned long long, const unsigned char*, unsigned long long, const unsigned char*, const unsigned char*), size_t tagSize, const string& cipher, const ManagedMemory& nonce, const ManagedMemory& key, const string& ad)
+    {
+      // check parameter validity
+      if (cipher.size() <= tagSize) return string{};  // require at least one message byte
+      if (!(nonce.isValid())) return string{};
+      if (!(key.isValid())) return string{};
+
+      // calc the maximum message size
+      size_t maxMsgLen = cipher.size() - tagSize;
+      string msg;
+      msg.resize(maxMsgLen);
+
+      // do we use additional data?
+      unsigned char *adPtr = nullptr;
+      size_t adLen = 0;
+      if (!(ad.empty()))
+      {
+        adPtr = (unsigned char*)ad.c_str();
+        adLen = ad.size();
+      }
+
+      // call the decryption function
+      unsigned long long actualMsgLen = 0;
+      int rc = funcPtr((unsigned char*)msg.c_str(), &actualMsgLen,
+                       nullptr, (unsigned char*)cipher.c_str(), cipher.size(),
+                       adPtr, adLen, nonce.get_uc(), key.get_uc());
+
+      if (rc != 0) return string{};  // verification failed
+
+      // do we need to shrink the result?
+      if (actualMsgLen < maxMsgLen)
+      {
+        msg = msg.substr(0, actualMsgLen);
+      }
+
+      return msg;
+    }
+
+    //----------------------------------------------------------------------------
+
+    ManagedBuffer SodiumLib::crypto_aead_chacha20poly1305_encrypt(const ManagedMemory& msg,
+                                                                  const SodiumLib::AEAD_ChaCha20Poly1305_NonceType& nonce, const SodiumLib::AEAD_ChaCha20Poly1305_KeyType& key,
+                                                                  const ManagedBuffer& ad)
+    {
+      return crypto_aead_encrypt(sodium.crypto_aead_chacha20poly1305_encrypt, crypto_aead_chacha20poly1305_ABYTES, msg, nonce, key, ad);
+    }
+
+    //----------------------------------------------------------------------------
+
+    SodiumSecureMemory SodiumLib::crypto_aead_chacha20poly1305_decrypt(const ManagedMemory& cipher, const SodiumLib::AEAD_ChaCha20Poly1305_NonceType& nonce,
+                                                                       const SodiumLib::AEAD_ChaCha20Poly1305_KeyType& key, const ManagedBuffer& ad,
+                                                                       SodiumSecureMemType clearTextProtection)
+    {
+      return crypto_aead_decrypt(sodium.crypto_aead_chacha20poly1305_decrypt, crypto_aead_chacha20poly1305_ABYTES, cipher, nonce, key, ad, clearTextProtection);
+    }
+
+    //----------------------------------------------------------------------------
+
+    bool SodiumLib::is_AES256GCM_avail()
+    {
+      return (sodium.crypto_aead_aes256gcm_is_available() == 1);
+    }
+
+    //----------------------------------------------------------------------------
+
+    string SodiumLib::crypto_aead_chacha20poly1305_encrypt(const string& msg, const string& nonce, const string& key, const string& ad)
+    {
+      return crypto_aead_encrypt(sodium.crypto_aead_chacha20poly1305_encrypt, crypto_aead_chacha20poly1305_NPUBBYTES, crypto_aead_chacha20poly1305_KEYBYTES,
+                                 crypto_aead_chacha20poly1305_KEYBYTES, msg, nonce, key, ad);
+    }
+
+    //----------------------------------------------------------------------------
+
+    string SodiumLib::crypto_aead_chacha20poly1305_decrypt(const string& cipher, const string& nonce, const string& key, const string& ad)
+    {
+      return crypto_aead_decrypt(sodium.crypto_aead_chacha20poly1305_decrypt, crypto_aead_chacha20poly1305_NPUBBYTES,
+                                 crypto_aead_chacha20poly1305_KEYBYTES, crypto_aead_chacha20poly1305_ABYTES, cipher,
+                                 nonce, key, ad);
+    }
+
+    //----------------------------------------------------------------------------
+
+    string SodiumLib::crypto_aead_chacha20poly1305_encrypt(const string& msg, const SodiumLib::AEAD_ChaCha20Poly1305_NonceType& nonce, const SodiumLib::AEAD_ChaCha20Poly1305_KeyType& key, const string& ad)
+    {
+      return crypto_aead_encrypt(sodium.crypto_aead_chacha20poly1305_encrypt, crypto_aead_chacha20poly1305_ABYTES, msg, nonce, key, ad);
+    }
+
+    //----------------------------------------------------------------------------
+
+    string SodiumLib::crypto_aead_chacha20poly1305_decrypt(const string& cipher, const SodiumLib::AEAD_ChaCha20Poly1305_NonceType& nonce, const SodiumLib::AEAD_ChaCha20Poly1305_KeyType& key, const string& ad)
+    {
+      return crypto_aead_decrypt(sodium.crypto_aead_chacha20poly1305_decrypt, crypto_aead_chacha20poly1305_ABYTES,
+                                 cipher, nonce, key, ad);
+    }
+
+    //----------------------------------------------------------------------------
+
+    ManagedBuffer SodiumLib::crypto_aead_aes256gcm_encrypt(const ManagedMemory& msg, const SodiumLib::AEAD_AES256GCM_NonceType& nonce, const SodiumLib::AEAD_AES256GCM_KeyType& key, const ManagedBuffer& ad)
+    {
+      if (sodium.crypto_aead_aes256gcm_is_available() != 1) return ManagedBuffer{};
+
+      return crypto_aead_encrypt(sodium.crypto_aead_aes256gcm_encrypt, crypto_aead_aes256gcm_ABYTES, msg, nonce, key, ad);
+    }
+
+    //----------------------------------------------------------------------------
+
+    SodiumSecureMemory SodiumLib::crypto_aead_aes256gcm_decrypt(const ManagedMemory& cipher, const SodiumLib::AEAD_AES256GCM_NonceType& nonce, const SodiumLib::AEAD_AES256GCM_KeyType& key, const ManagedBuffer& ad, SodiumSecureMemType clearTextProtection)
+    {
+      if (sodium.crypto_aead_aes256gcm_is_available() != 1) return SodiumSecureMemory{};
+
+      return crypto_aead_decrypt(sodium.crypto_aead_aes256gcm_decrypt, crypto_aead_aes256gcm_ABYTES, cipher, nonce, key, ad, clearTextProtection);
+    }
+
+    //----------------------------------------------------------------------------
+
+    string SodiumLib::crypto_aead_aes256gcm_encrypt(const string& msg, const string& nonce, const string& key, const string& ad)
+    {
+      if (sodium.crypto_aead_aes256gcm_is_available() != 1) return string{};
+
+      return crypto_aead_encrypt(sodium.crypto_aead_aes256gcm_encrypt, crypto_aead_aes256gcm_NPUBBYTES, crypto_aead_aes256gcm_KEYBYTES,
+                                 crypto_aead_aes256gcm_ABYTES, msg, nonce, key, ad);
+    }
+
+    //----------------------------------------------------------------------------
+
+    string SodiumLib::crypto_aead_aes256gcm_decrypt(const string& cipher, const string& nonce, const string& key, const string& ad)
+    {
+      if (sodium.crypto_aead_aes256gcm_is_available() != 1) return string{};
+
+      return crypto_aead_decrypt(sodium.crypto_aead_aes256gcm_decrypt, crypto_aead_aes256gcm_NPUBBYTES, crypto_aead_aes256gcm_KEYBYTES,
+                                 crypto_aead_aes256gcm_ABYTES, cipher, nonce, key, ad);
+    }
+
+    //----------------------------------------------------------------------------
+
+    string SodiumLib::crypto_aead_aes256gcm_encrypt(const string& msg, const SodiumLib::AEAD_AES256GCM_NonceType& nonce, const SodiumLib::AEAD_AES256GCM_KeyType& key, const string& ad)
+    {
+      if (sodium.crypto_aead_aes256gcm_is_available() != 1) return string{};
+
+      return crypto_aead_encrypt(sodium.crypto_aead_aes256gcm_encrypt, crypto_aead_aes256gcm_ABYTES, msg, nonce, key, ad);
+    }
+
+    //----------------------------------------------------------------------------
+
+    string SodiumLib::crypto_aead_aes256gcm_decrypt(const string& cipher, const SodiumLib::AEAD_AES256GCM_NonceType& nonce, const SodiumLib::AEAD_AES256GCM_KeyType& key, const string& ad)
+    {
+      if (sodium.crypto_aead_aes256gcm_is_available() != 1) return string{};
+
+      return crypto_aead_decrypt(sodium.crypto_aead_aes256gcm_decrypt, crypto_aead_aes256gcm_ABYTES, cipher, nonce, key, ad);
     }
 
 

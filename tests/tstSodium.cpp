@@ -507,3 +507,242 @@ TEST(Sodium, Auth)
   ptr[5] -= 1;
   ASSERT_TRUE(sodium->crypto_auth_verify(sMsg, sTag, sKey));
 }
+
+
+//----------------------------------------------------------------------------
+
+TEST(Sodium, AEAD_ChaCha20)
+{
+  SodiumLib* sodium = SodiumLib::getInstance();
+  ASSERT_TRUE(sodium != nullptr);
+
+  // generate a random message
+  static constexpr size_t msgSize = 500;
+  ManagedBuffer msg{msgSize};
+  sodium->randombytes_buf(msg);
+  string sMsg = msg.copyToString();
+
+  // generate a random key
+  SodiumLib::AEAD_ChaCha20Poly1305_KeyType key;
+  sodium->randombytes_buf(key);
+  string sKey = key.copyToString();
+
+  // generate a random nonce
+  SodiumLib::AEAD_ChaCha20Poly1305_NonceType nonce;
+  sodium->randombytes_buf(nonce);
+  string sNonce = nonce.copyToString();
+
+  // generate random extra data
+  static constexpr size_t adSize = 500;
+  ManagedBuffer ad{adSize};
+  sodium->randombytes_buf(ad);
+  string sAd = ad.copyToString();
+
+  // encrypt
+  auto cipher = sodium->crypto_aead_chacha20poly1305_encrypt(msg, nonce, key, ad);
+  ASSERT_TRUE(cipher.isValid());
+  ASSERT_TRUE(cipher.getSize() >= (msg.getSize() + crypto_aead_chacha20poly1305_ABYTES));
+
+  // decrypt
+  auto msg2 = sodium->crypto_aead_chacha20poly1305_decrypt(cipher, nonce, key, ad, SodiumSecureMemType::Normal);
+  ASSERT_TRUE(msg2.isValid());
+  ASSERT_EQ(msg.getSize(), msg2.getSize());
+  ASSERT_TRUE(sodium->memcmp(msg, msg2));
+
+  // tamper with the additional data, nonce and key
+  for (char* ptr : {ad.get_c(), nonce.get_c(), key.get_c()})
+  {
+    ptr[5] += 1;
+    msg2 = sodium->crypto_aead_chacha20poly1305_decrypt(cipher, nonce, key, ad, SodiumSecureMemType::Normal);
+    ASSERT_FALSE(msg2.isValid());
+    ptr[5] -= 1;
+    msg2 = sodium->crypto_aead_chacha20poly1305_decrypt(cipher, nonce, key, ad, SodiumSecureMemType::Normal);
+    ASSERT_TRUE(msg2.isValid());
+    ASSERT_EQ(msg.getSize(), msg2.getSize());
+    ASSERT_TRUE(sodium->memcmp(msg, msg2));
+  }
+
+  // decrypt without additional data although AD was provided
+  // during encryption
+  msg2 = sodium->crypto_aead_chacha20poly1305_decrypt(cipher, nonce, key);
+  ASSERT_FALSE(msg2.isValid());
+
+  // encrypt / decrypt without additional data
+  cipher = sodium->crypto_aead_chacha20poly1305_encrypt(msg, nonce, key);
+  ASSERT_TRUE(cipher.isValid());
+  ASSERT_TRUE(cipher.getSize() >= (msg.getSize() + crypto_aead_chacha20poly1305_ABYTES));
+  msg2 = sodium->crypto_aead_chacha20poly1305_decrypt(cipher, nonce, key);
+  ASSERT_TRUE(msg2.isValid());
+  ASSERT_EQ(msg.getSize(), msg2.getSize());
+  ASSERT_TRUE(sodium->memcmp(msg, msg2));
+
+  // tamper with nonce and key
+  for (char* ptr : {nonce.get_c(), key.get_c()})
+  {
+    ptr[5] += 1;
+    msg2 = sodium->crypto_aead_chacha20poly1305_decrypt(cipher, nonce, key);
+    ASSERT_FALSE(msg2.isValid());
+    ptr[5] -= 1;
+    msg2 = sodium->crypto_aead_chacha20poly1305_decrypt(cipher, nonce, key);
+    ASSERT_TRUE(msg2.isValid());
+    ASSERT_EQ(msg.getSize(), msg2.getSize());
+    ASSERT_TRUE(sodium->memcmp(msg, msg2));
+  }
+
+  // decrypt with additional data although AD was provided
+  // during encryption
+  msg2 = sodium->crypto_aead_chacha20poly1305_decrypt(cipher, nonce, key, ad);
+  ASSERT_FALSE(msg2.isValid());
+
+  //
+  // test the string-based functions
+  //
+
+  // encrypt
+  auto sCipher = sodium->crypto_aead_chacha20poly1305_encrypt(sMsg, sNonce, sKey, sAd);
+  ASSERT_FALSE(sCipher.empty());
+  ASSERT_TRUE(sCipher.size() >= (sMsg.size() + crypto_aead_chacha20poly1305_ABYTES));
+
+  // decrypt
+  auto sMsg2 = sodium->crypto_aead_chacha20poly1305_decrypt(sCipher, sNonce, sKey, sAd);
+  ASSERT_FALSE(sMsg2.empty());
+  ASSERT_EQ(sMsg.size(), sMsg2.size());
+  ASSERT_EQ(sMsg, sMsg2);
+
+  // tamper with the additional data, sNonce and sKey
+  for (char* ptr : {(char *)sAd.c_str(), (char *)sNonce.c_str(), (char *)sKey.c_str()})
+  {
+    ptr[5] += 1;
+    sMsg2 = sodium->crypto_aead_chacha20poly1305_decrypt(sCipher, sNonce, sKey, sAd);
+    ASSERT_TRUE(sMsg2.empty());
+    ptr[5] -= 1;
+    sMsg2 = sodium->crypto_aead_chacha20poly1305_decrypt(sCipher, sNonce, sKey, sAd);
+    ASSERT_FALSE(sMsg2.empty());
+    ASSERT_EQ(sMsg.size(), sMsg2.size());
+    ASSERT_EQ(sMsg, sMsg2);
+  }
+
+  // decrypt without additional data although AD was provided
+  // during encryption
+  sMsg2 = sodium->crypto_aead_chacha20poly1305_decrypt(sCipher, sNonce, sKey);
+  ASSERT_TRUE(sMsg2.empty());
+
+  // encrypt / decrypt without additional data
+  sCipher = sodium->crypto_aead_chacha20poly1305_encrypt(sMsg, sNonce, sKey);
+  ASSERT_FALSE(sCipher.empty());
+  ASSERT_TRUE(sCipher.size() >= (sMsg.size() + crypto_aead_chacha20poly1305_ABYTES));
+  sMsg2 = sodium->crypto_aead_chacha20poly1305_decrypt(sCipher, sNonce, sKey);
+  ASSERT_FALSE(sMsg2.empty());
+  ASSERT_EQ(sMsg.size(), sMsg2.size());
+  ASSERT_EQ(sMsg, sMsg2);
+
+  // tamper with sNonce and sKey
+  for (char* ptr : {(char *)sNonce.c_str(), (char *)sKey.c_str()})
+  {
+    ptr[5] += 1;
+    sMsg2 = sodium->crypto_aead_chacha20poly1305_decrypt(sCipher, sNonce, sKey);
+    ASSERT_TRUE(sMsg2.empty());
+    ptr[5] -= 1;
+    sMsg2 = sodium->crypto_aead_chacha20poly1305_decrypt(sCipher, sNonce, sKey);
+    ASSERT_FALSE(sMsg2.empty());
+    ASSERT_EQ(sMsg.size(), sMsg2.size());
+    ASSERT_EQ(sMsg, sMsg2);
+  }
+
+  // decrypt with additional data although AD was provided
+  // during encryption
+  sMsg2 = sodium->crypto_aead_chacha20poly1305_decrypt(sCipher, sNonce, sKey, sAd);
+  ASSERT_TRUE(sMsg2.empty());
+}
+
+TEST(Sodium, AEAD_AES256GCM)
+{
+  SodiumLib* sodium = SodiumLib::getInstance();
+  ASSERT_TRUE(sodium != nullptr);
+
+  // generate a random message
+  static constexpr size_t msgSize = 500;
+  ManagedBuffer msg{msgSize};
+  sodium->randombytes_buf(msg);
+  string sMsg = msg.copyToString();
+
+  // generate a random key
+  SodiumLib::AEAD_AES256GCM_KeyType key;
+  sodium->randombytes_buf(key);
+  string sKey = key.copyToString();
+
+  // generate a random nonce
+  SodiumLib::AEAD_AES256GCM_NonceType nonce;
+  sodium->randombytes_buf(nonce);
+  string sNonce = nonce.copyToString();
+
+  // generate random extra data
+  static constexpr size_t adSize = 500;
+  ManagedBuffer ad{adSize};
+  sodium->randombytes_buf(ad);
+  string sAd = ad.copyToString();
+
+  // encrypt
+  auto cipher = sodium->crypto_aead_aes256gcm_encrypt(msg, nonce, key, ad);
+  ASSERT_TRUE(cipher.isValid());
+  ASSERT_TRUE(cipher.getSize() >= (msg.getSize() + crypto_aead_aes256gcm_ABYTES));
+
+  // decrypt
+  auto msg2 = sodium->crypto_aead_aes256gcm_decrypt(cipher, nonce, key, ad, SodiumSecureMemType::Normal);
+  ASSERT_TRUE(msg2.isValid());
+  ASSERT_EQ(msg.getSize(), msg2.getSize());
+  ASSERT_TRUE(sodium->memcmp(msg, msg2));
+
+  // decrypt without additional data although AD was provided
+  // during encryption
+  msg2 = sodium->crypto_aead_aes256gcm_decrypt(cipher, nonce, key);
+  ASSERT_FALSE(msg2.isValid());
+
+  // encrypt / decrypt without additional data
+  cipher = sodium->crypto_aead_aes256gcm_encrypt(msg, nonce, key);
+  ASSERT_TRUE(cipher.isValid());
+  ASSERT_TRUE(cipher.getSize() >= (msg.getSize() + crypto_aead_aes256gcm_ABYTES));
+  msg2 = sodium->crypto_aead_aes256gcm_decrypt(cipher, nonce, key);
+  ASSERT_TRUE(msg2.isValid());
+  ASSERT_EQ(msg.getSize(), msg2.getSize());
+  ASSERT_TRUE(sodium->memcmp(msg, msg2));
+
+  // decrypt with additional data although AD was provided
+  // during encryption
+  msg2 = sodium->crypto_aead_aes256gcm_decrypt(cipher, nonce, key, ad);
+  ASSERT_FALSE(msg2.isValid());
+
+  //
+  // test the string-based functions
+  //
+
+  // encrypt
+  auto sCipher = sodium->crypto_aead_aes256gcm_encrypt(sMsg, sNonce, sKey, sAd);
+  ASSERT_FALSE(sCipher.empty());
+  ASSERT_TRUE(sCipher.size() >= (sMsg.size() + crypto_aead_aes256gcm_ABYTES));
+
+  // decrypt
+  auto sMsg2 = sodium->crypto_aead_aes256gcm_decrypt(sCipher, sNonce, sKey, sAd);
+  ASSERT_FALSE(sMsg2.empty());
+  ASSERT_EQ(sMsg.size(), sMsg2.size());
+  ASSERT_EQ(sMsg, sMsg2);
+
+  // decrypt without additional data although AD was provided
+  // during encryption
+  sMsg2 = sodium->crypto_aead_aes256gcm_decrypt(sCipher, sNonce, sKey);
+  ASSERT_TRUE(sMsg2.empty());
+
+  // encrypt / decrypt without additional data
+  sCipher = sodium->crypto_aead_aes256gcm_encrypt(sMsg, sNonce, sKey);
+  ASSERT_FALSE(sCipher.empty());
+  ASSERT_TRUE(sCipher.size() >= (sMsg.size() + crypto_aead_aes256gcm_ABYTES));
+  sMsg2 = sodium->crypto_aead_aes256gcm_decrypt(sCipher, sNonce, sKey);
+  ASSERT_FALSE(sMsg2.empty());
+  ASSERT_EQ(sMsg.size(), sMsg2.size());
+  ASSERT_EQ(sMsg, sMsg2);
+
+  // decrypt with additional data although AD was provided
+  // during encryption
+  sMsg2 = sodium->crypto_aead_aes256gcm_decrypt(sCipher, sNonce, sKey, sAd);
+  ASSERT_TRUE(sMsg2.empty());
+}

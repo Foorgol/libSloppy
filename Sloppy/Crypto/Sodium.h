@@ -266,7 +266,7 @@ namespace Sloppy
       int (*crypto_auth_verify)(const unsigned char *h, const unsigned char *in,
                              unsigned long long inlen, const unsigned char *k);
 
-      // authenticated encryption with additional data
+      // authenticated encryption with additional data, ChaCha20 with Poly1305
       int (*crypto_aead_chacha20poly1305_encrypt)(unsigned char *c, unsigned long long *clen,
                                                   const unsigned char *m, unsigned long long mlen,
                                                   const unsigned char *ad, unsigned long long adlen,
@@ -288,6 +288,32 @@ namespace Sloppy
                                                            const unsigned char *mac,
                                                            const unsigned char *ad, unsigned long long adlen,
                                                            const unsigned char *npub, const unsigned char *k);
+
+      // authenticated encryption with additional data, AES-256 in GCM mode
+      int (*crypto_aead_aes256gcm_is_available)(void);
+      int (*crypto_aead_aes256gcm_encrypt)(unsigned char *c, unsigned long long *clen,
+                                           const unsigned char *m, unsigned long long mlen,
+                                           const unsigned char *ad, unsigned long long adlen,
+                                           const unsigned char *nsec, const unsigned char *npub,
+                                           const unsigned char *k);
+      int (*crypto_aead_aes256gcm_decrypt)(unsigned char *m, unsigned long long *mlen_p,
+                                           unsigned char *nsec,
+                                           const unsigned char *c, unsigned long long clen,
+                                           const unsigned char *ad, unsigned long long adlen,
+                                           const unsigned char *npub, const unsigned char *k);
+      int (*crypto_aead_aes256gcm_encrypt_detached)(unsigned char *c,
+                                                    unsigned char *mac, unsigned long long *maclen_p,
+                                                    const unsigned char *m, unsigned long long mlen,
+                                                    const unsigned char *ad, unsigned long long adlen,
+                                                    const unsigned char *nsec, const unsigned char *npub,
+                                                    const unsigned char *k);
+      int (*crypto_aead_aes256gcm_decrypt_detached)(unsigned char *m,
+                                                    unsigned char *nsec,
+                                                    const unsigned char *c, unsigned long long clen,
+                                                    const unsigned char *mac,
+                                                    const unsigned char *ad, unsigned long long adlen,
+                                                    const unsigned char *npub, const unsigned char *k);
+
     };
 
     //----------------------------------------------------------------------------
@@ -356,7 +382,7 @@ namespace Sloppy
       string crypto_auth(const string& msg, const string& key);
       bool crypto_auth_verify(const string& msg, const string& tag, const string& key);
 
-      // authenticated encryption with additional data
+      // authenticated encryption with additional data, buffer based
       using AEAD_ChaCha20Poly1305_KeyType = SodiumKey<SodiumKeyType::Secret, crypto_aead_chacha20poly1305_KEYBYTES>;
       using AEAD_ChaCha20Poly1305_NonceType = SodiumKey<SodiumKeyType::Public, crypto_aead_chacha20poly1305_NPUBBYTES>;
       using AEAD_ChaCha20Poly1305_TagType = SodiumKey<SodiumKeyType::Public, crypto_aead_chacha20poly1305_ABYTES>;
@@ -366,11 +392,84 @@ namespace Sloppy
                                                               const AEAD_ChaCha20Poly1305_KeyType& key, const ManagedBuffer& ad = ManagedBuffer{},
                                                               SodiumSecureMemType clearTextProtection = SodiumSecureMemType::Locked);
 
+      // authenticated encryption with additional data, string-based
+      string crypto_aead_chacha20poly1305_encrypt(const string& msg, const string& nonce, const string& key, const string& ad = string{});
+      string crypto_aead_chacha20poly1305_decrypt(const string& cipher, const string& nonce, const string& key, const string& ad = string{});
+
+      // authenticated encryption with additional data, mixed form
+      string crypto_aead_chacha20poly1305_encrypt(const string& msg, const AEAD_ChaCha20Poly1305_NonceType& nonce, const AEAD_ChaCha20Poly1305_KeyType& key,
+                                                  const string& ad = string{});
+      string crypto_aead_chacha20poly1305_decrypt(const string& cipher, const AEAD_ChaCha20Poly1305_NonceType& nonce, const AEAD_ChaCha20Poly1305_KeyType& key,
+                                                  const string& ad = string{});
+
+      // authenticated encryption with additional data, AES-256 GCM, buffer based
+      using AEAD_AES256GCM_KeyType = SodiumKey<SodiumKeyType::Secret, crypto_aead_aes256gcm_KEYBYTES>;
+      using AEAD_AES256GCM_NonceType = SodiumKey<SodiumKeyType::Public, crypto_aead_aes256gcm_NPUBBYTES>;
+      using AEAD_AES256GCM_TagType = SodiumKey<SodiumKeyType::Public, crypto_aead_aes256gcm_ABYTES>;
+      bool is_AES256GCM_avail();
+      ManagedBuffer crypto_aead_aes256gcm_encrypt(const ManagedMemory& msg, const AEAD_AES256GCM_NonceType& nonce,
+                                                         const AEAD_AES256GCM_KeyType& key, const ManagedBuffer& ad = ManagedBuffer{});
+      SodiumSecureMemory crypto_aead_aes256gcm_decrypt(const ManagedMemory& cipher, const AEAD_AES256GCM_NonceType& nonce,
+                                                              const AEAD_AES256GCM_KeyType& key, const ManagedBuffer& ad = ManagedBuffer{},
+                                                              SodiumSecureMemType clearTextProtection = SodiumSecureMemType::Locked);
+
+      // authenticated encryption with additional data, AES-256 GCM, string-based
+      string crypto_aead_aes256gcm_encrypt(const string& msg, const string& nonce, const string& key, const string& ad = string{});
+      string crypto_aead_aes256gcm_decrypt(const string& cipher, const string& nonce, const string& key, const string& ad = string{});
+
+      // authenticated encryption with additional data, AES-256 GCM, mixed form
+      string crypto_aead_aes256gcm_encrypt(const string& msg, const AEAD_AES256GCM_NonceType& nonce, const AEAD_AES256GCM_KeyType& key,
+                                                  const string& ad = string{});
+      string crypto_aead_aes256gcm_decrypt(const string& cipher, const AEAD_AES256GCM_NonceType& nonce, const AEAD_AES256GCM_KeyType& key,
+                                                  const string& ad = string{});
+
     protected:
       SodiumLib(void* _libHandle);
       static unique_ptr<SodiumLib> inst;
       void *libHandle;
       SodiumPtr sodium;
+
+      // generic handler for AEAD encryption, buffer-based
+      ManagedBuffer crypto_aead_encrypt(int (*funcPtr)(unsigned char *, unsigned long long *, const unsigned char *,
+                                                       unsigned long long, const unsigned char *, unsigned long long,
+                                                       const unsigned char *, const unsigned char *,const unsigned char *),
+                                        size_t tagSize, const ManagedMemory& msg, const ManagedMemory& nonce,
+                                        const ManagedMemory& key, const ManagedBuffer& ad = ManagedBuffer{});
+
+      // generic handler for AEAD decryption, buffer-based
+      SodiumSecureMemory crypto_aead_decrypt(int (*funcPtr)(unsigned char *, unsigned long long *, unsigned char *,
+                                                            const unsigned char *, unsigned long long, const unsigned char *,
+                                                            unsigned long long, const unsigned char *, const unsigned char *),
+                                             size_t tagSize, const ManagedMemory& cipher, const ManagedMemory& nonce,
+                                                              const ManagedMemory& key, const ManagedBuffer& ad = ManagedBuffer{},
+                                                              SodiumSecureMemType clearTextProtection = SodiumSecureMemType::Locked);
+      // generic handler for AEAD encryption, string-based
+      string crypto_aead_encrypt(int (*funcPtr)(unsigned char *, unsigned long long *, const unsigned char *,
+                                                       unsigned long long, const unsigned char *, unsigned long long,
+                                                       const unsigned char *, const unsigned char *,const unsigned char *),
+                                        size_t nonceSize, size_t keySize, size_t tagSize, const string& msg, const string& nonce,
+                                        const string& key, const string& ad = string{});
+
+      // generic handler for AEAD decryption, string-based
+      string crypto_aead_decrypt(int (*funcPtr)(unsigned char *, unsigned long long *, unsigned char *,
+                                                            const unsigned char *, unsigned long long, const unsigned char *,
+                                                            unsigned long long, const unsigned char *, const unsigned char *),
+                                             size_t nonceSize, size_t keySize, size_t tagSize, const string& cipher,
+                                             const string& nonce, const string& key, const string& ad = string{});
+
+      // generic handler for AEAD encryption, mixed form
+      string crypto_aead_encrypt(int (*funcPtr)(unsigned char *, unsigned long long *, const unsigned char *,
+                                                       unsigned long long, const unsigned char *, unsigned long long,
+                                                       const unsigned char *, const unsigned char *,const unsigned char *),
+                                        size_t tagSize, const string& msg, const ManagedMemory& nonce,
+                                        const ManagedMemory& key, const string& ad = string{});
+
+      // generic handler for AEAD decryption, mixed form
+      string crypto_aead_decrypt(int (*funcPtr)(unsigned char *, unsigned long long *, unsigned char *,
+                                                            const unsigned char *, unsigned long long, const unsigned char *,
+                                                            unsigned long long, const unsigned char *, const unsigned char *),
+                                             size_t tagSize, const string& cipher, const ManagedMemory& nonce,
+                                                              const ManagedMemory& key, const string& ad = string{});
     };
 
     // a wrapper class for easy symmetric encryption / decryption

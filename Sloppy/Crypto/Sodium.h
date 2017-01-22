@@ -314,6 +314,13 @@ namespace Sloppy
                                                     const unsigned char *ad, unsigned long long adlen,
                                                     const unsigned char *npub, const unsigned char *k);
 
+      // public key cryptography, key generation
+      int (*crypto_box_keypair)(unsigned char *pk, unsigned char *sk);
+      int (*crypto_box_seed_keypair)(unsigned char *pk, unsigned char *sk,
+                                  const unsigned char *seed);
+      int (*crypto_scalarmult_base)(unsigned char *q, const unsigned char *n);
+
+
     };
 
     //----------------------------------------------------------------------------
@@ -422,6 +429,15 @@ namespace Sloppy
                                                   const string& ad = string{});
       string crypto_aead_aes256gcm_decrypt(const string& cipher, const AEAD_AES256GCM_NonceType& nonce, const AEAD_AES256GCM_KeyType& key,
                                                   const string& ad = string{});
+
+      // public key cryptography, key handling
+      using AsymKeyPublic_Type = SodiumKey<SodiumKeyType::Public, crypto_box_PUBLICKEYBYTES>;
+      using AsymKeySecret_Type = SodiumKey<SodiumKeyType::Secret, crypto_box_SECRETKEYBYTES>;
+      using AsymKeySeed_Type = SodiumKey<SodiumKeyType::Secret, crypto_box_SEEDBYTES>;
+      void genAsymKeyPair(AsymKeyPublic_Type& pk_out, AsymKeySecret_Type& sk_out);
+      bool genAsymKeyPairSeeded(const AsymKeySeed_Type& seed, AsymKeyPublic_Type& pk_out, AsymKeySecret_Type& sk_out);
+      bool genPublicKeyFromSecretKey(const AsymKeySecret_Type& sk, AsymKeyPublic_Type& pk_out);
+
 
     protected:
       SodiumLib(void* _libHandle);

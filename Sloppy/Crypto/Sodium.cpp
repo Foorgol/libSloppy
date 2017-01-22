@@ -326,6 +326,9 @@ namespace Sloppy
       *(void **)(&(sodium.crypto_aead_aes256gcm_decrypt)) = dlsym(libHandle, "crypto_aead_aes256gcm_decrypt");
       *(void **)(&(sodium.crypto_aead_aes256gcm_encrypt_detached)) = dlsym(libHandle, "crypto_aead_aes256gcm_encrypt_detached");
       *(void **)(&(sodium.crypto_aead_aes256gcm_decrypt_detached)) = dlsym(libHandle, "crypto_aead_aes256gcm_decrypt_detached");
+      *(void **)(&(sodium.crypto_box_keypair)) = dlsym(libHandle, "crypto_box_keypair");
+      *(void **)(&(sodium.crypto_box_seed_keypair)) = dlsym(libHandle, "crypto_box_seed_keypair");
+      *(void **)(&(sodium.crypto_scalarmult_base)) = dlsym(libHandle, "crypto_scalarmult_base");
       //*(void **)(&(sodium.)) = dlsym(libHandle, "sodium_");
 
       // make sure we've successfully loaded all symbols
@@ -361,7 +364,10 @@ namespace Sloppy
           (sodium.crypto_aead_aes256gcm_encrypt == nullptr) ||
           (sodium.crypto_aead_aes256gcm_decrypt == nullptr) ||
           (sodium.crypto_aead_aes256gcm_encrypt_detached == nullptr) ||
-          (sodium.crypto_aead_aes256gcm_decrypt_detached == nullptr)
+          (sodium.crypto_aead_aes256gcm_decrypt_detached == nullptr) ||
+          (sodium.crypto_box_keypair == nullptr) ||
+          (sodium.crypto_box_seed_keypair == nullptr) ||
+          (sodium.crypto_scalarmult_base == nullptr)
           //(sodium.crypto_aead_chacha20poly1305 == nullptr) ||
           )
       {
@@ -1239,6 +1245,41 @@ namespace Sloppy
       if (sodium.crypto_aead_aes256gcm_is_available() != 1) return string{};
 
       return crypto_aead_decrypt(sodium.crypto_aead_aes256gcm_decrypt, crypto_aead_aes256gcm_ABYTES, cipher, nonce, key, ad);
+    }
+
+    //----------------------------------------------------------------------------
+
+    void SodiumLib::genAsymKeyPair(AsymKeyPublic_Type& pk_out, AsymKeySecret_Type& sk_out)
+    {
+      sodium.crypto_box_keypair(pk_out.get_uc(), sk_out.get_uc());
+    }
+
+    //----------------------------------------------------------------------------
+
+    bool SodiumLib::genAsymKeyPairSeeded(const SodiumLib::AsymKeySeed_Type& seed, AsymKeyPublic_Type& pk_out, AsymKeySecret_Type& sk_out)
+    {
+      if (!(seed.isValid()))
+      {
+        return false;
+      }
+
+      sodium.crypto_box_seed_keypair(pk_out.get_uc(), sk_out.get_uc(), seed.get_uc());
+
+      return true;
+    }
+
+    //----------------------------------------------------------------------------
+
+    bool SodiumLib::genPublicKeyFromSecretKey(const SodiumLib::AsymKeySecret_Type& sk, AsymKeyPublic_Type& pk_out)
+    {
+      if (!(sk.isValid()))
+      {
+        return false;
+      }
+
+      sodium.crypto_scalarmult_base(pk_out.get_uc(), sk.get_uc());
+
+      return true;
     }
 
 

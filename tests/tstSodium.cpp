@@ -508,7 +508,6 @@ TEST(Sodium, Auth)
   ASSERT_TRUE(sodium->crypto_auth_verify(sMsg, sTag, sKey));
 }
 
-
 //----------------------------------------------------------------------------
 
 TEST(Sodium, AEAD_ChaCha20)
@@ -655,6 +654,8 @@ TEST(Sodium, AEAD_ChaCha20)
   ASSERT_TRUE(sMsg2.empty());
 }
 
+//----------------------------------------------------------------------------
+
 TEST(Sodium, AEAD_AES256GCM)
 {
   SodiumLib* sodium = SodiumLib::getInstance();
@@ -745,4 +746,31 @@ TEST(Sodium, AEAD_AES256GCM)
   // during encryption
   sMsg2 = sodium->crypto_aead_aes256gcm_decrypt(sCipher, sNonce, sKey, sAd);
   ASSERT_TRUE(sMsg2.empty());
+}
+
+//----------------------------------------------------------------------------
+
+TEST(Sodium, AsymKeyHandling)
+{
+  SodiumLib* sodium = SodiumLib::getInstance();
+  ASSERT_TRUE(sodium != nullptr);
+
+  // generate a random key pair
+  SodiumLib::AsymKeyPublic_Type pk;
+  SodiumLib::AsymKeySecret_Type sk;
+  sodium->genAsymKeyPair(pk, sk);
+
+  // re-gen the public key from the secret key
+  SodiumLib::AsymKeyPublic_Type pk2;
+  ASSERT_TRUE(sodium->genPublicKeyFromSecretKey(sk, pk2));
+  ASSERT_TRUE(sodium->memcmp(pk, pk2));
+
+  // gen key pair from seed
+  SodiumLib::AsymKeySeed_Type seed;
+  sodium->randombytes_buf(seed);
+  sodium->genAsymKeyPairSeeded(seed, pk, sk);
+  SodiumLib::AsymKeySecret_Type sk2;
+  sodium->genAsymKeyPairSeeded(seed, pk2, sk2);
+  ASSERT_TRUE(sodium->memcmp(pk, pk2));
+  ASSERT_TRUE(sodium->memcmp(sk, sk2));
 }

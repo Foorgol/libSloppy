@@ -1247,17 +1247,9 @@ namespace Sloppy
     //----------------------------------------------------------------------------
 
     SodiumSecretBox::SodiumSecretBox(const SodiumSecretBox::KeyType& _key, const SodiumSecretBox::NonceType& _nonce, bool autoIncNonce)
-      :nonceIncrementCount{0}, autoIncrementNonce{autoIncNonce}, lib{SodiumLib::getInstance()}
+      :NonceBox<SodiumKey<SodiumKeyType::Public, crypto_secretbox_NONCEBYTES>>{_nonce, autoIncNonce}
     {
-      if (lib == nullptr)
-      {
-        throw SodiumNotAvailableException{};
-      }
-
       key = _key.copy();
-      initialNonce = _nonce.copy();
-      nextNonce = _nonce.copy();
-      lastNonce = _nonce.copy();
 
       if (!(key.setAccess(SodiumSecureMemAccess::NoAccess)))
       {
@@ -1379,34 +1371,6 @@ namespace Sloppy
       {
         throw SodiumMemoryManagementException{"SecretBox, could not guard / unlock secret key"};
       }
-    }
-
-    //----------------------------------------------------------------------------
-
-    void SodiumSecretBox::incrementNonce()
-    {
-      if (nonceIncrementCount > 0) lib->increment(lastNonce);
-
-      lib->increment(nextNonce);
-
-      ++nonceIncrementCount;
-    }
-
-    //----------------------------------------------------------------------------
-
-    void SodiumSecretBox::resetNonce()
-    {
-      nextNonce = initialNonce.copy();
-      lastNonce = initialNonce.copy();
-      nonceIncrementCount = 0;
-    }
-
-    //----------------------------------------------------------------------------
-
-    void SodiumSecretBox::setNonce(const SodiumSecretBox::NonceType& n)
-    {
-      initialNonce = n.copy();
-      resetNonce();
     }
 
     //----------------------------------------------------------------------------

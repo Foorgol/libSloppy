@@ -316,11 +316,24 @@ namespace Sloppy
 
       // public key cryptography, key generation
       int (*crypto_box_keypair)(unsigned char *pk, unsigned char *sk);
-      int (*crypto_box_seed_keypair)(unsigned char *pk, unsigned char *sk,
-                                  const unsigned char *seed);
+      int (*crypto_box_seed_keypair)(unsigned char *pk, unsigned char *sk, const unsigned char *seed);
       int (*crypto_scalarmult_base)(unsigned char *q, const unsigned char *n);
 
-
+      // public key cryptography, encryption / decryption
+      int (*crypto_box_easy)(unsigned char *c, const unsigned char *m,
+                             unsigned long long mlen, const unsigned char *n,
+                             const unsigned char *pk, const unsigned char *sk);
+      int (*crypto_box_open_easy)(unsigned char *m, const unsigned char *c,
+                                  unsigned long long clen, const unsigned char *n,
+                                  const unsigned char *pk, const unsigned char *sk);
+      int (*crypto_box_detached)(unsigned char *c, unsigned char *mac,
+                                 const unsigned char *m, unsigned long long mlen,
+                                 const unsigned char *n, const unsigned char *pk,
+                                 const unsigned char *sk);
+      int (*crypto_box_open_detached)(unsigned char *m, const unsigned char *c,
+                                      const unsigned char *mac, unsigned long long clen,
+                                      const unsigned char *n, const unsigned char *pk,
+                                      const unsigned char *sk);
     };
 
     //----------------------------------------------------------------------------
@@ -431,12 +444,36 @@ namespace Sloppy
                                                   const string& ad = string{});
 
       // public key cryptography, key handling
-      using AsymKeyPublic_Type = SodiumKey<SodiumKeyType::Public, crypto_box_PUBLICKEYBYTES>;
-      using AsymKeySecret_Type = SodiumKey<SodiumKeyType::Secret, crypto_box_SECRETKEYBYTES>;
-      using AsymKeySeed_Type = SodiumKey<SodiumKeyType::Secret, crypto_box_SEEDBYTES>;
-      void genAsymKeyPair(AsymKeyPublic_Type& pk_out, AsymKeySecret_Type& sk_out);
-      bool genAsymKeyPairSeeded(const AsymKeySeed_Type& seed, AsymKeyPublic_Type& pk_out, AsymKeySecret_Type& sk_out);
-      bool genPublicKeyFromSecretKey(const AsymKeySecret_Type& sk, AsymKeyPublic_Type& pk_out);
+      using AsymCrypto_PublicKey = SodiumKey<SodiumKeyType::Public, crypto_box_PUBLICKEYBYTES>;
+      using AsymCrypto_SecretKey = SodiumKey<SodiumKeyType::Secret, crypto_box_SECRETKEYBYTES>;
+      using AsymCrypto_KeySeed = SodiumKey<SodiumKeyType::Secret, crypto_box_SEEDBYTES>;
+      void genAsymKeyPair(AsymCrypto_PublicKey& pk_out, AsymCrypto_SecretKey& sk_out);
+      bool genAsymKeyPairSeeded(const AsymCrypto_KeySeed& seed, AsymCrypto_PublicKey& pk_out, AsymCrypto_SecretKey& sk_out);
+      bool genPublicKeyFromSecretKey(const AsymCrypto_SecretKey& sk, AsymCrypto_PublicKey& pk_out);
+
+      // public key cryptography, encryption / decryption, buffer-based
+      using AsymCrypto_Nonce = SodiumKey<SodiumKeyType::Public, crypto_box_NONCEBYTES>;
+      using AsymCrypto_Tag = SodiumKey<SodiumKeyType::Public, crypto_box_MACBYTES>;
+      ManagedBuffer crypto_box_easy(const ManagedMemory& msg, const AsymCrypto_Nonce& nonce,
+                                    const AsymCrypto_PublicKey& recipientKey, const AsymCrypto_SecretKey& senderKey);
+      SodiumSecureMemory crypto_box_open_easy(const ManagedMemory& cipher, const AsymCrypto_Nonce& nonce, const AsymCrypto_PublicKey& senderKey,
+                                              const AsymCrypto_SecretKey& recipientKey, SodiumSecureMemType clearTextProtection = SodiumSecureMemType::Locked);
+      pair<ManagedBuffer, AsymCrypto_Tag> crypto_box_detached(const ManagedMemory& msg, const AsymCrypto_Nonce& nonce,
+                                    const AsymCrypto_PublicKey& recipientKey, const AsymCrypto_SecretKey& senderKey);
+      SodiumSecureMemory crypto_box_open_detached(const ManagedMemory& cipher, const AsymCrypto_Tag& mac, const AsymCrypto_Nonce& nonce, const AsymCrypto_PublicKey& senderKey,
+                                                  const AsymCrypto_SecretKey& recipientKey, SodiumSecureMemType clearTextProtection = SodiumSecureMemType::Locked);
+
+      // public key cryptography, encryption / decryption, string-based
+      // Note: I'll not provide encryption / decryption based on string-keys because
+      // there is point in doing so. Keys have to be specially generated and thus
+      // can't be simple strings
+      string crypto_box_easy(const string& msg, const AsymCrypto_Nonce& nonce,
+                                    const AsymCrypto_PublicKey& recipientKey, const AsymCrypto_SecretKey& senderKey);
+      string crypto_box_open_easy(const string& cipher, const AsymCrypto_Nonce& nonce, const AsymCrypto_PublicKey& senderKey, const AsymCrypto_SecretKey& recipientKey);
+      pair<string, string> crypto_box_detached(const string& msg, const AsymCrypto_Nonce& nonce,
+                                    const AsymCrypto_PublicKey& recipientKey, const AsymCrypto_SecretKey& senderKey);
+      string crypto_box_open_detached(const string& cipher, const string& mac, const AsymCrypto_Nonce& nonce, const AsymCrypto_PublicKey& senderKey,
+                                      const AsymCrypto_SecretKey& recipientKey);
 
 
     protected:

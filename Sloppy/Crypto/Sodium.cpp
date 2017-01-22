@@ -329,6 +329,10 @@ namespace Sloppy
       *(void **)(&(sodium.crypto_box_keypair)) = dlsym(libHandle, "crypto_box_keypair");
       *(void **)(&(sodium.crypto_box_seed_keypair)) = dlsym(libHandle, "crypto_box_seed_keypair");
       *(void **)(&(sodium.crypto_scalarmult_base)) = dlsym(libHandle, "crypto_scalarmult_base");
+      *(void **)(&(sodium.crypto_box_easy)) = dlsym(libHandle, "crypto_box_easy");
+      *(void **)(&(sodium.crypto_box_open_easy)) = dlsym(libHandle, "crypto_box_open_easy");
+      *(void **)(&(sodium.crypto_box_detached)) = dlsym(libHandle, "crypto_box_detached");
+      *(void **)(&(sodium.crypto_box_open_detached)) = dlsym(libHandle, "crypto_box_open_detached");
       //*(void **)(&(sodium.)) = dlsym(libHandle, "sodium_");
 
       // make sure we've successfully loaded all symbols
@@ -367,7 +371,11 @@ namespace Sloppy
           (sodium.crypto_aead_aes256gcm_decrypt_detached == nullptr) ||
           (sodium.crypto_box_keypair == nullptr) ||
           (sodium.crypto_box_seed_keypair == nullptr) ||
-          (sodium.crypto_scalarmult_base == nullptr)
+          (sodium.crypto_scalarmult_base == nullptr) ||
+          (sodium.crypto_box_easy == nullptr) ||
+          (sodium.crypto_box_open_easy == nullptr) ||
+          (sodium.crypto_box_detached == nullptr) ||
+          (sodium.crypto_box_open_detached == nullptr)
           //(sodium.crypto_aead_chacha20poly1305 == nullptr) ||
           )
       {
@@ -1249,14 +1257,14 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    void SodiumLib::genAsymKeyPair(AsymKeyPublic_Type& pk_out, AsymKeySecret_Type& sk_out)
+    void SodiumLib::genAsymKeyPair(AsymCrypto_PublicKey& pk_out, AsymCrypto_SecretKey& sk_out)
     {
       sodium.crypto_box_keypair(pk_out.get_uc(), sk_out.get_uc());
     }
 
     //----------------------------------------------------------------------------
 
-    bool SodiumLib::genAsymKeyPairSeeded(const SodiumLib::AsymKeySeed_Type& seed, AsymKeyPublic_Type& pk_out, AsymKeySecret_Type& sk_out)
+    bool SodiumLib::genAsymKeyPairSeeded(const SodiumLib::AsymCrypto_KeySeed& seed, AsymCrypto_PublicKey& pk_out, AsymCrypto_SecretKey& sk_out)
     {
       if (!(seed.isValid()))
       {
@@ -1270,7 +1278,7 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    bool SodiumLib::genPublicKeyFromSecretKey(const SodiumLib::AsymKeySecret_Type& sk, AsymKeyPublic_Type& pk_out)
+    bool SodiumLib::genPublicKeyFromSecretKey(const SodiumLib::AsymCrypto_SecretKey& sk, AsymCrypto_PublicKey& pk_out)
     {
       if (!(sk.isValid()))
       {
@@ -1280,6 +1288,193 @@ namespace Sloppy
       sodium.crypto_scalarmult_base(pk_out.get_uc(), sk.get_uc());
 
       return true;
+    }
+
+    //----------------------------------------------------------------------------
+
+    ManagedBuffer SodiumLib::crypto_box_easy(const ManagedMemory& msg, const SodiumLib::AsymCrypto_Nonce& nonce,
+                                             const SodiumLib::AsymCrypto_PublicKey& recipientKey, const SodiumLib::AsymCrypto_SecretKey& senderKey)
+    {
+      if (!(msg.isValid())) return ManagedBuffer{};
+      if (!(nonce.isValid())) return ManagedBuffer{};
+      if (!(recipientKey.isValid())) return ManagedBuffer{};
+      if (!(senderKey.isValid())) return ManagedBuffer{};
+
+      // allocate space for the result
+      ManagedBuffer cipher{msg.getSize() + crypto_box_MACBYTES};
+
+      // the actual encryption
+      sodium.crypto_box_easy(cipher.get_uc(), msg.get_uc(), msg.getSize(), nonce.get_uc(),
+                             recipientKey.get_uc(), senderKey.get_uc());
+
+      return cipher;
+    }
+
+    //----------------------------------------------------------------------------
+
+    SodiumSecureMemory SodiumLib::crypto_box_open_easy(const ManagedMemory& cipher, const SodiumLib::AsymCrypto_Nonce& nonce,
+                                                       const SodiumLib::AsymCrypto_PublicKey& senderKey, const SodiumLib::AsymCrypto_SecretKey& recipientKey,
+                                                       SodiumSecureMemType clearTextProtection)
+    {
+      // the cipher and keys should be valid
+      if (!(cipher.isValid())) return SodiumSecureMemory{};
+      if (!(nonce.isValid())) return SodiumSecureMemory{};
+      if (!(senderKey.isValid())) return SodiumSecureMemory{};
+      if (!(recipientKey.isValid())) return SodiumSecureMemory{};
+
+      // we need at least one message byte, so just the MAC is
+      // not sufficient
+      if (cipher.getSize() <= crypto_box_MACBYTES) return SodiumSecureMemory{};
+
+      // allocate space for the result
+      SodiumSecureMemory msg{cipher.getSize() - crypto_box_MACBYTES, clearTextProtection};
+
+      // decrypt
+      int isOkay = sodium.crypto_box_open_easy(msg.get_uc(), cipher.get_uc(), cipher.getSize(), nonce.get_uc(),
+                                               senderKey.get_uc(), recipientKey.get_uc());
+
+      // return the clear text or an invalid buffer
+      return (isOkay == 0) ? std::move(msg) : SodiumSecureMemory{};
+    }
+
+    //----------------------------------------------------------------------------
+
+    pair<ManagedBuffer, SodiumLib::AsymCrypto_Tag> SodiumLib::crypto_box_detached(const ManagedMemory& msg, const SodiumLib::AsymCrypto_Nonce& nonce,
+                                                                      const SodiumLib::AsymCrypto_PublicKey& recipientKey, const SodiumLib::AsymCrypto_SecretKey& senderKey)
+    {
+      auto errorResult = make_pair(ManagedBuffer{}, AsymCrypto_Tag{});
+      if (!(msg.isValid())) return errorResult;
+      if (!(nonce.isValid())) return errorResult;
+      if (!(recipientKey.isValid())) return errorResult;
+      if (!(senderKey.isValid())) return errorResult;
+
+      // allocate space for the cipher and the MAC
+      ManagedBuffer cipher{msg.getSize()};
+      AsymCrypto_Tag mac;
+
+      // encrypt
+      sodium.crypto_box_detached(cipher.get_uc(), mac.get_uc(), msg.get_uc(), msg.getSize(), nonce.get_uc(),
+                                 recipientKey.get_uc(), senderKey.get_uc());
+
+      return make_pair(std::move(cipher), std::move(mac));
+    }
+
+    //----------------------------------------------------------------------------
+
+    SodiumSecureMemory SodiumLib::crypto_box_open_detached(const ManagedMemory& cipher, const SodiumLib::AsymCrypto_Tag& mac, const SodiumLib::AsymCrypto_Nonce& nonce,
+                                                           const SodiumLib::AsymCrypto_PublicKey& senderKey, const AsymCrypto_SecretKey& recipientKey,
+                                                           SodiumSecureMemType clearTextProtection)
+    {
+      // the cipher, MAC and keys should be valid
+      if (!(cipher.isValid())) return SodiumSecureMemory{};
+      if (!(mac.isValid())) return SodiumSecureMemory{};
+      if (!(nonce.isValid())) return SodiumSecureMemory{};
+      if (!(senderKey.isValid())) return SodiumSecureMemory{};
+      if (!(recipientKey.isValid())) return SodiumSecureMemory{};
+
+      // allocate space for the result
+      SodiumSecureMemory msg{cipher.getSize(), clearTextProtection};
+
+      // decrypt
+      int isOkay = sodium.crypto_box_open_detached(msg.get_uc(), cipher.get_uc(), mac.get_uc(), cipher.getSize(),
+                                                   nonce.get_uc(), senderKey.get_uc(), recipientKey.get_uc());
+
+      // return the clear text or an invalid buffer
+      return (isOkay == 0) ? std::move(msg) : SodiumSecureMemory{};
+    }
+
+    //----------------------------------------------------------------------------
+
+    string SodiumLib::crypto_box_easy(const string& msg, const SodiumLib::AsymCrypto_Nonce& nonce, const SodiumLib::AsymCrypto_PublicKey& recipientKey,
+                                      const SodiumLib::AsymCrypto_SecretKey& senderKey)
+    {
+      if (msg.empty()) return string{};
+      if (!(nonce.isValid())) return string{};
+      if (!(recipientKey.isValid())) return string{};
+      if (!(senderKey.isValid())) return string{};
+
+      // allocate space for the result
+      string cipher;
+      cipher.resize(msg.size() + crypto_box_MACBYTES);
+
+      // the actual encryption
+      sodium.crypto_box_easy((unsigned char*)cipher.c_str(), (const unsigned char*)msg.c_str(), msg.size(),
+                             nonce.get_uc(), recipientKey.get_uc(), senderKey.get_uc());
+
+      return cipher;
+    }
+
+    //----------------------------------------------------------------------------
+
+    string SodiumLib::crypto_box_open_easy(const string& cipher, const SodiumLib::AsymCrypto_Nonce& nonce, const SodiumLib::AsymCrypto_PublicKey& senderKey,
+                                           const AsymCrypto_SecretKey& recipientKey)
+    {
+      // the cipher and keys should be valid
+      if (cipher.size() <= crypto_box_MACBYTES) return string{};
+      if (!(nonce.isValid())) return string{};
+      if (!(senderKey.isValid())) return string{};
+      if (!(recipientKey.isValid())) return string{};
+
+      // allocate space for the result
+      string msg;
+      msg.resize(cipher.size() - crypto_box_MACBYTES);
+
+      // decrypt
+      int isOkay = sodium.crypto_box_open_easy((unsigned char*)msg.c_str(), (const unsigned char*)cipher.c_str(), cipher.size(),
+                                               nonce.get_uc(), senderKey.get_uc(), recipientKey.get_uc());
+
+      // return the clear text or an invalid buffer
+      return (isOkay == 0) ? msg : string{};
+    }
+
+    //----------------------------------------------------------------------------
+
+    pair<string, string> SodiumLib::crypto_box_detached(const string& msg, const SodiumLib::AsymCrypto_Nonce& nonce,
+                                                        const SodiumLib::AsymCrypto_PublicKey& recipientKey, const SodiumLib::AsymCrypto_SecretKey& senderKey)
+    {
+      auto errorResult = make_pair(string{}, string{});
+      if (msg.empty()) return errorResult;
+      if (!(nonce.isValid())) return errorResult;
+      if (!(recipientKey.isValid())) return errorResult;
+      if (!(senderKey.isValid())) return errorResult;
+
+      // allocate space for the cipher and the MAC
+      string cipher;
+      cipher.resize(msg.size());
+      string mac;
+      mac.resize(crypto_box_MACBYTES);
+
+      // encrypt
+      sodium.crypto_box_detached((unsigned char*)cipher.c_str(), (unsigned char*)mac.c_str(),
+                                 (const unsigned char*)msg.c_str(), msg.size(),
+                                 nonce.get_uc(), recipientKey.get_uc(), senderKey.get_uc());
+
+      return make_pair(std::move(cipher), std::move(mac));
+    }
+
+    //----------------------------------------------------------------------------
+
+    string SodiumLib::crypto_box_open_detached(const string& cipher, const string& mac, const SodiumLib::AsymCrypto_Nonce& nonce,
+                                               const SodiumLib::AsymCrypto_PublicKey& senderKey, const AsymCrypto_SecretKey& recipientKey)
+    {
+      // the cipher, MAC and keys should be valid
+      if (cipher.empty()) return string{};
+      if (mac.size() != crypto_box_MACBYTES) return string{};
+      if (!(nonce.isValid())) return string{};
+      if (!(senderKey.isValid())) return string{};
+      if (!(recipientKey.isValid())) return string{};
+
+      // allocate space for the result
+      string msg;
+      msg.resize(cipher.size());
+
+      // decrypt
+      int isOkay = sodium.crypto_box_open_detached((unsigned char*)msg.c_str(), (const unsigned char*)cipher.c_str(),
+                                                   (const unsigned char*)mac.c_str(), cipher.size(),
+                                                   nonce.get_uc(), senderKey.get_uc(), recipientKey.get_uc());
+
+      // return the clear text or an invalid buffer
+      return (isOkay == 0) ? msg : string{};
     }
 
 

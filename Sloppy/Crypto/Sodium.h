@@ -334,6 +334,20 @@ namespace Sloppy
                                       const unsigned char *mac, unsigned long long clen,
                                       const unsigned char *n, const unsigned char *pk,
                                       const unsigned char *sk);
+
+      // public key signature
+      int (*crypto_sign_keypair)(unsigned char *pk, unsigned char *sk);
+      int (*crypto_sign_seed_keypair)(unsigned char *pk, unsigned char *sk, const unsigned char *seed);
+      int (*crypto_sign)(unsigned char *sm, unsigned long long *smlen,
+                         const unsigned char *m, unsigned long long mlen, const unsigned char *sk);
+      int (*crypto_sign_open)(unsigned char *m, unsigned long long *mlen,
+                              const unsigned char *sm, unsigned long long smlen, const unsigned char *pk);
+      int (*crypto_sign_detached)(unsigned char *sig, unsigned long long *siglen,
+                                  const unsigned char *m, unsigned long long mlen, const unsigned char *sk);
+      int (*crypto_sign_verify_detached)(const unsigned char *sig, const unsigned char *m,
+                                         unsigned long long mlen, const unsigned char *pk);
+      int (*crypto_sign_ed25519_sk_to_seed)(unsigned char *seed, const unsigned char *sk);
+      int (*crypto_sign_ed25519_sk_to_pk)(unsigned char *pk, const unsigned char *sk);
     };
 
     //----------------------------------------------------------------------------
@@ -447,9 +461,9 @@ namespace Sloppy
       using AsymCrypto_PublicKey = SodiumKey<SodiumKeyType::Public, crypto_box_PUBLICKEYBYTES>;
       using AsymCrypto_SecretKey = SodiumKey<SodiumKeyType::Secret, crypto_box_SECRETKEYBYTES>;
       using AsymCrypto_KeySeed = SodiumKey<SodiumKeyType::Secret, crypto_box_SEEDBYTES>;
-      void genAsymKeyPair(AsymCrypto_PublicKey& pk_out, AsymCrypto_SecretKey& sk_out);
-      bool genAsymKeyPairSeeded(const AsymCrypto_KeySeed& seed, AsymCrypto_PublicKey& pk_out, AsymCrypto_SecretKey& sk_out);
-      bool genPublicKeyFromSecretKey(const AsymCrypto_SecretKey& sk, AsymCrypto_PublicKey& pk_out);
+      void genAsymCryptoKeyPair(AsymCrypto_PublicKey& pk_out, AsymCrypto_SecretKey& sk_out);
+      bool genAsymCryptoKeyPairSeeded(const AsymCrypto_KeySeed& seed, AsymCrypto_PublicKey& pk_out, AsymCrypto_SecretKey& sk_out);
+      bool genPublicCryptoKeyFromSecretKey(const AsymCrypto_SecretKey& sk, AsymCrypto_PublicKey& pk_out);
 
       // public key cryptography, encryption / decryption, buffer-based
       using AsymCrypto_Nonce = SodiumKey<SodiumKeyType::Public, crypto_box_NONCEBYTES>;
@@ -474,6 +488,28 @@ namespace Sloppy
                                     const AsymCrypto_PublicKey& recipientKey, const AsymCrypto_SecretKey& senderKey);
       string crypto_box_open_detached(const string& cipher, const string& mac, const AsymCrypto_Nonce& nonce, const AsymCrypto_PublicKey& senderKey,
                                       const AsymCrypto_SecretKey& recipientKey);
+
+      // signatures, key handling
+      using AsymSign_PublicKey = SodiumKey<SodiumKeyType::Public, crypto_sign_PUBLICKEYBYTES>;
+      using AsymSign_SecretKey = SodiumKey<SodiumKeyType::Secret, crypto_sign_SECRETKEYBYTES>;
+      using AsymSign_KeySeed = SodiumKey<SodiumKeyType::Public, crypto_sign_SEEDBYTES>;
+      void genAsymSignKeyPair(AsymSign_PublicKey& pk_out, AsymSign_SecretKey& sk_out);
+      bool genAsymSignKeyPairSeeded(const AsymSign_KeySeed& seed, AsymSign_PublicKey& pk_out, AsymSign_SecretKey& sk_out);
+      bool genPublicSignKeyFromSecretKey(const AsymSign_SecretKey& sk, AsymSign_PublicKey& pk_out);
+      bool genSignKeySeedFromSecretKey(const AsymSign_SecretKey& sk, AsymSign_KeySeed& seed_out);
+
+      // signatures, buffer-based
+      using AsymSign_Signature = SodiumKey<SodiumKeyType::Public, crypto_sign_BYTES>;
+      ManagedBuffer crypto_sign(const ManagedMemory& msg, const AsymSign_SecretKey& sk);
+      ManagedBuffer crypto_sign_open(const ManagedMemory& signedMsg, const AsymSign_PublicKey& pk);
+      bool crypto_sign_detached(const ManagedMemory& msg, const AsymSign_SecretKey& sk, AsymSign_Signature& sig_out);
+      bool crypto_sign_verify_detached(const ManagedMemory& msg, const AsymSign_Signature& sig, const AsymSign_PublicKey& pk);
+
+      // signatures, string-based
+      string crypto_sign(const string& msg, const AsymSign_SecretKey& sk);
+      string crypto_sign_open(const string& signedMsg, const AsymSign_PublicKey& pk);
+      string crypto_sign_detached(const string& msg, const AsymSign_SecretKey& sk);
+      bool crypto_sign_verify_detached(const string& msg, const string& sig, const AsymSign_PublicKey& pk);
 
 
     protected:

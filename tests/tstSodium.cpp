@@ -758,19 +758,19 @@ TEST(Sodium, AsymKeyHandling)
   // generate a random key pair
   SodiumLib::AsymCrypto_PublicKey pk;
   SodiumLib::AsymCrypto_SecretKey sk;
-  sodium->genAsymKeyPair(pk, sk);
+  sodium->genAsymCryptoKeyPair(pk, sk);
 
   // re-gen the public key from the secret key
   SodiumLib::AsymCrypto_PublicKey pk2;
-  ASSERT_TRUE(sodium->genPublicKeyFromSecretKey(sk, pk2));
+  ASSERT_TRUE(sodium->genPublicCryptoKeyFromSecretKey(sk, pk2));
   ASSERT_TRUE(sodium->memcmp(pk, pk2));
 
   // gen key pair from seed
   SodiumLib::AsymCrypto_KeySeed seed;
   sodium->randombytes_buf(seed);
-  sodium->genAsymKeyPairSeeded(seed, pk, sk);
+  sodium->genAsymCryptoKeyPairSeeded(seed, pk, sk);
   SodiumLib::AsymCrypto_SecretKey sk2;
-  sodium->genAsymKeyPairSeeded(seed, pk2, sk2);
+  sodium->genAsymCryptoKeyPairSeeded(seed, pk2, sk2);
   ASSERT_TRUE(sodium->memcmp(pk, pk2));
   ASSERT_TRUE(sodium->memcmp(sk, sk2));
 }
@@ -785,10 +785,10 @@ TEST(Sodium, AsymKeyCrypto_Buffer)
   // generate a random key pair for sender and recipient
   SodiumLib::AsymCrypto_PublicKey pkSender;
   SodiumLib::AsymCrypto_SecretKey skSender;
-  sodium->genAsymKeyPair(pkSender, skSender);
+  sodium->genAsymCryptoKeyPair(pkSender, skSender);
   SodiumLib::AsymCrypto_PublicKey pkRecipient;
   SodiumLib::AsymCrypto_SecretKey skRecipient;
-  sodium->genAsymKeyPair(pkRecipient, skRecipient);
+  sodium->genAsymCryptoKeyPair(pkRecipient, skRecipient);
 
   // generate a random message
   static constexpr size_t msgSize = 500;
@@ -866,10 +866,10 @@ TEST(Sodium, AsymKeyCrypto_String)
   // generate a random key pair for sender and recipient
   SodiumLib::AsymCrypto_PublicKey pkSender;
   SodiumLib::AsymCrypto_SecretKey skSender;
-  sodium->genAsymKeyPair(pkSender, skSender);
+  sodium->genAsymCryptoKeyPair(pkSender, skSender);
   SodiumLib::AsymCrypto_PublicKey pkRecipient;
   SodiumLib::AsymCrypto_SecretKey skRecipient;
-  sodium->genAsymKeyPair(pkRecipient, skRecipient);
+  sodium->genAsymCryptoKeyPair(pkRecipient, skRecipient);
 
   // generate a random message
   static constexpr size_t msgSize = 500;
@@ -934,4 +934,151 @@ TEST(Sodium, AsymKeyCrypto_String)
     ASSERT_EQ(msg, msg2);
   }
 
+}
+
+//----------------------------------------------------------------------------
+
+TEST(Sodium, AsymKeyHandling_Sign)
+{
+  SodiumLib* sodium = SodiumLib::getInstance();
+  ASSERT_TRUE(sodium != nullptr);
+
+  // generate a random key pair
+  SodiumLib::AsymSign_PublicKey pk;
+  SodiumLib::AsymSign_SecretKey sk;
+  sodium->genAsymSignKeyPair(pk, sk);
+
+  // re-gen the public key from the secret key
+  SodiumLib::AsymSign_PublicKey pk2;
+  ASSERT_TRUE(sodium->genPublicSignKeyFromSecretKey(sk, pk2));
+  ASSERT_TRUE(sodium->memcmp(pk, pk2));
+
+  // re-gen the seed from the secret key
+  SodiumLib::AsymSign_KeySeed seed;
+  ASSERT_TRUE(sodium->genSignKeySeedFromSecretKey(sk, seed));
+
+  // gen key pair from seed
+  SodiumLib::AsymSign_SecretKey sk2;
+  sodium->genAsymSignKeyPairSeeded(seed, pk2, sk2);
+  ASSERT_TRUE(sodium->memcmp(pk, pk2));
+  ASSERT_TRUE(sodium->memcmp(sk, sk2));
+}
+
+//----------------------------------------------------------------------------
+
+TEST(Sodium, AsymKeySign_Buffer)
+{
+  SodiumLib* sodium = SodiumLib::getInstance();
+  ASSERT_TRUE(sodium != nullptr);
+
+  // generate a random key pair
+  SodiumLib::AsymSign_PublicKey pk;
+  SodiumLib::AsymSign_SecretKey sk;
+  sodium->genAsymSignKeyPair(pk, sk);
+
+  // generate a random message
+  static constexpr size_t msgSize = 500;
+  ManagedBuffer msg{msgSize};
+  sodium->randombytes_buf(msg);
+
+  // sign the message
+  auto signedMsg = sodium->crypto_sign(msg, sk);
+  ASSERT_TRUE(signedMsg.isValid());
+  ASSERT_EQ(msgSize + crypto_sign_BYTES, signedMsg.getSize());
+
+  // check and remove the signature
+  auto msg2 = sodium->crypto_sign_open(signedMsg, pk);
+  ASSERT_TRUE(msg2.isValid());
+  ASSERT_EQ(msgSize, msg2.getSize());
+  ASSERT_TRUE(sodium->memcmp(msg, msg2));
+
+  // tamper with message and public key
+  for (char* ptr : {signedMsg.get_c(), pk.get_c()})
+  {
+    ptr[5] += 1;
+    msg2 = sodium->crypto_sign_open(signedMsg, pk);
+    ASSERT_FALSE(msg2.isValid());
+    ptr[5] -= 1;
+    msg2 = sodium->crypto_sign_open(signedMsg, pk);
+    ASSERT_TRUE(msg2.isValid());
+    ASSERT_EQ(msgSize, msg2.getSize());
+    ASSERT_TRUE(sodium->memcmp(msg, msg2));
+  }
+
+  //
+  // detached version
+  //
+
+  SodiumLib::AsymSign_Signature sig;
+  ASSERT_TRUE(sodium->crypto_sign_detached(msg, sk, sig));
+  ASSERT_TRUE(sodium->crypto_sign_verify_detached(msg, sig, pk));
+
+  // tamper with message, signature and public key
+  for (char* ptr : {msg.get_c(), sig.get_c(), pk.get_c()})
+  {
+    ptr[5] += 1;
+    ASSERT_FALSE(sodium->crypto_sign_verify_detached(msg, sig, pk));
+    ptr[5] -= 1;
+    ASSERT_TRUE(sodium->crypto_sign_verify_detached(msg, sig, pk));
+  }
+}
+
+//----------------------------------------------------------------------------
+
+TEST(Sodium, AsymKeySign_String)
+{
+  SodiumLib* sodium = SodiumLib::getInstance();
+  ASSERT_TRUE(sodium != nullptr);
+
+  // generate a random key pair
+  SodiumLib::AsymSign_PublicKey pk;
+  SodiumLib::AsymSign_SecretKey sk;
+  sodium->genAsymSignKeyPair(pk, sk);
+
+  // generate a random message
+  static constexpr size_t msgSize = 500;
+  ManagedBuffer _msg{msgSize};
+  sodium->randombytes_buf(_msg);
+  string msg = _msg.copyToString();
+
+  // sign the message
+  string signedMsg = sodium->crypto_sign(msg, sk);
+  ASSERT_FALSE(signedMsg.empty());
+  ASSERT_EQ(msgSize + crypto_sign_BYTES, signedMsg.size());
+
+  // check and remove the signature
+  string msg2 = sodium->crypto_sign_open(signedMsg, pk);
+  ASSERT_FALSE(msg2.empty());
+  ASSERT_EQ(msgSize, msg2.size());
+  ASSERT_EQ(msg, msg2);
+
+  // tamper with message and public key
+  for (char* ptr : {(char *)signedMsg.c_str(), pk.get_c()})
+  {
+    ptr[5] += 1;
+    msg2 = sodium->crypto_sign_open(signedMsg, pk);
+    ASSERT_TRUE(msg2.empty());
+    ptr[5] -= 1;
+    msg2 = sodium->crypto_sign_open(signedMsg, pk);
+    ASSERT_FALSE(msg2.empty());
+    ASSERT_EQ(msgSize, msg2.size());
+    ASSERT_EQ(msg, msg2);
+  }
+
+  //
+  // detached version
+  //
+
+  string sig = sodium->crypto_sign_detached(msg, sk);
+  ASSERT_FALSE(sig.empty());
+  ASSERT_TRUE(sodium->crypto_sign_verify_detached(msg, sig, pk));
+
+  // tamper with message, signature and public key
+  for (char* ptr : {(char *)msg.c_str(), (char *)sig.c_str(), pk.get_c()})
+  {
+    ptr[5] += 1;
+    ASSERT_FALSE(sodium->crypto_sign_verify_detached(msg, sig, pk));
+    ptr[5] -= 1;
+    ASSERT_TRUE(sodium->crypto_sign_verify_detached(msg, sig, pk));
+  }
 }

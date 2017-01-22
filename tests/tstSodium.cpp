@@ -1210,3 +1210,42 @@ TEST(Sodium, ShortHash)
   auto bufHash2 = ManagedBuffer{sHash};
   ASSERT_TRUE(sodium->memcmp(bufHash, bufHash2));
 }
+
+//----------------------------------------------------------------------------
+
+TEST(Sodium, PasswdHash)
+{
+  SodiumLib* sodium = SodiumLib::getInstance();
+  ASSERT_TRUE(sodium != nullptr);
+
+  // a random passwd
+  static constexpr size_t pwSize = 5;
+  ManagedBuffer pw{pwSize};
+  sodium->randombytes_buf(pw);
+
+  // create a 16-byte hash from it
+  static constexpr size_t hashLen = 16;
+  auto tmp = sodium->crypto_pwhash(pw, hashLen);
+  SodiumSecureMemory hash;
+  ManagedBuffer salt;
+  hash = std::move(tmp.first);
+  salt = std::move(tmp.second);
+  ASSERT_TRUE(hash.isValid());
+  ASSERT_EQ(hashLen, hash.getSize());
+  ASSERT_TRUE(salt.isValid());
+
+  // use the other algo with an invalid strength
+  tmp = sodium->crypto_pwhash(pw, hashLen, SodiumLib::PasswdHashStrength::Moderate, SodiumLib::PasswdHashAlgo::Scrypt);
+  hash = std::move(tmp.first);
+  salt = std::move(tmp.second);
+  ASSERT_FALSE(hash.isValid());
+  ASSERT_FALSE(salt.isValid());
+
+  // use the other algo with a valid strength
+  tmp = sodium->crypto_pwhash(pw, hashLen, SodiumLib::PasswdHashStrength::High, SodiumLib::PasswdHashAlgo::Scrypt);
+  hash = std::move(tmp.first);
+  salt = std::move(tmp.second);
+  ASSERT_TRUE(hash.isValid());
+  ASSERT_EQ(hashLen, hash.getSize());
+  ASSERT_TRUE(salt.isValid());
+}

@@ -347,6 +347,12 @@ namespace Sloppy
       *(void **)(&(sodium.crypto_generichash_final)) = dlsym(libHandle, "crypto_generichash_final");
       *(void **)(&(sodium.crypto_generichash_statebytes)) = dlsym(libHandle, "crypto_generichash_statebytes");
       *(void **)(&(sodium.crypto_shorthash)) = dlsym(libHandle, "crypto_shorthash");
+      *(void **)(&(sodium.crypto_pwhash)) = dlsym(libHandle, "crypto_pwhash");
+      *(void **)(&(sodium.crypto_pwhash_str)) = dlsym(libHandle, "crypto_pwhash_str");
+      *(void **)(&(sodium.crypto_pwhash_str_verify)) = dlsym(libHandle, "crypto_pwhash_str_verify");
+      *(void **)(&(sodium.crypto_pwhash_scryptsalsa208sha256)) = dlsym(libHandle, "crypto_pwhash_scryptsalsa208sha256");
+      *(void **)(&(sodium.crypto_pwhash_scryptsalsa208sha256_str)) = dlsym(libHandle, "crypto_pwhash_scryptsalsa208sha256_str");
+      *(void **)(&(sodium.crypto_pwhash_scryptsalsa208sha256_str_verify)) = dlsym(libHandle, "crypto_pwhash_scryptsalsa208sha256_str_verify");
       //*(void **)(&(sodium.)) = dlsym(libHandle, "sodium_");
 
       // make sure we've successfully loaded all symbols
@@ -403,7 +409,13 @@ namespace Sloppy
           (sodium.crypto_generichash_update == nullptr) ||
           (sodium.crypto_generichash_final == nullptr) ||
           (sodium.crypto_generichash_statebytes == nullptr) ||
-          (sodium.crypto_shorthash == nullptr)
+          (sodium.crypto_shorthash == nullptr) ||
+          (sodium.crypto_pwhash == nullptr) ||
+          (sodium.crypto_pwhash_str == nullptr) ||
+          (sodium.crypto_pwhash_str_verify == nullptr) ||
+          (sodium.crypto_pwhash_scryptsalsa208sha256 == nullptr) ||
+          (sodium.crypto_pwhash_scryptsalsa208sha256_str == nullptr) ||
+          (sodium.crypto_pwhash_scryptsalsa208sha256_str_verify == nullptr)
           //(sodium.crypto_aead_chacha20poly1305 == nullptr) ||
           )
       {
@@ -1845,6 +1857,67 @@ namespace Sloppy
       sodium.crypto_shorthash((unsigned char*)hash.c_str(), (const unsigned char*)inData.c_str(), inData.size(), k.get_uc());
 
       return hash;
+    }
+
+    //----------------------------------------------------------------------------
+
+    pair<SodiumSecureMemory, ManagedBuffer> SodiumLib::crypto_pwhash(const ManagedMemory& pw, size_t hashLen, SodiumLib::PasswdHashStrength strength,
+                                                                     SodiumLib::PasswdHashAlgo algo, SodiumSecureMemType memType)
+    {
+      auto errorResult = make_pair(SodiumSecureMemory{}, ManagedBuffer{});
+
+      if (!(pw.isValid())) return errorResult;
+      if (hashLen == 0) return errorResult;
+
+      // strength "Moderate" is not defined for Scrypt
+      if ((algo == PasswdHashAlgo::Scrypt) && (strength == PasswdHashStrength::Moderate)) return errorResult;
+
+      // determine the salt length and allocate space
+      size_t saltLen = (algo == PasswdHashAlgo::Argon2) ? crypto_pwhash_SALTBYTES : crypto_pwhash_scryptsalsa208sha256_SALTBYTES;
+      ManagedBuffer salt{saltLen};
+      randombytes_buf(salt);
+
+      // allocate the result buffer
+      SodiumSecureMemory hash{hashLen, memType};
+
+      // determine opslimit and memlimit
+      unsigned long long opslimit;
+      size_t memlimit;
+      if (algo == PasswdHashAlgo::Argon2)
+      {
+        switch (strength)
+        {
+        case PasswdHashStrength::Interactive:
+          opslimit = crypto_pwhash_OPSLIMIT_INTERACTIVE;
+          memlimit = crypto_pwhash_MEMLIMIT_INTERACTIVE;
+          break;
+
+        case PasswdHashStrength::Moderate:
+          opslimit = crypto_pwhash_OPSLIMIT_MODERATE;
+          memlimit = crypto_pwhash_MEMLIMIT_MODERATE;
+          break;
+
+        default:
+          opslimit = crypto_pwhash_OPSLIMIT_SENSITIVE;
+          memlimit = crypto_pwhash_MEMLIMIT_SENSITIVE;
+        }
+      } else {
+        opslimit = (strength == PasswdHashStrength::Interactive) ? crypto_pwhash_scryptsalsa208sha256_OPSLIMIT_INTERACTIVE : crypto_pwhash_scryptsalsa208sha256_OPSLIMIT_SENSITIVE;
+        memlimit = (strength == PasswdHashStrength::Interactive) ? crypto_pwhash_scryptsalsa208sha256_MEMLIMIT_INTERACTIVE : crypto_pwhash_scryptsalsa208sha256_MEMLIMIT_SENSITIVE;
+      }
+
+      // call the hash function
+      int rc = -1;
+      if (algo == PasswdHashAlgo::Argon2)
+      {
+        rc = sodium.crypto_pwhash(hash.get_uc(), hash.getSize(), pw.get_c(), pw.getSize(),
+                                  salt.get_uc(), opslimit, memlimit, crypto_pwhash_ALG_DEFAULT);
+      } else {
+        rc = sodium.crypto_pwhash_scryptsalsa208sha256(hash.get_uc(), hash.getSize(), pw.get_c(), pw.getSize(),
+                                  salt.get_uc(), opslimit, memlimit);
+      }
+
+      return (rc == 0) ? make_pair(std::move(hash), std::move(salt)) : std::move(errorResult);
     }
 
 

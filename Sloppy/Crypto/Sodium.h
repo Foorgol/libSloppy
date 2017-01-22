@@ -364,6 +364,26 @@ namespace Sloppy
       size_t (*crypto_generichash_statebytes)(void);
       int (*crypto_shorthash)(unsigned char *out, const unsigned char *in,
                            unsigned long long inlen, const unsigned char *k);
+
+      // password hashing / key derivation
+      int (*crypto_pwhash)(unsigned char * const out, unsigned long long outlen,
+                        const char * const passwd, unsigned long long passwdlen,
+                        const unsigned char * const salt, unsigned long long opslimit,
+                        size_t memlimit, int alg);
+      int (*crypto_pwhash_str)(char out[crypto_pwhash_STRBYTES], const char * const passwd,
+                            unsigned long long passwdlen, unsigned long long opslimit,
+                            size_t memlimit);
+      int (*crypto_pwhash_str_verify)(const char str[crypto_pwhash_STRBYTES],
+                                   const char * const passwd, unsigned long long passwdlen);
+      int (*crypto_pwhash_scryptsalsa208sha256)(unsigned char * const out, unsigned long long outlen,
+                                             const char * const passwd, unsigned long long passwdlen,
+                                             const unsigned char * const salt, unsigned long long opslimit,
+                                             size_t memlimit);
+      int (*crypto_pwhash_scryptsalsa208sha256_str)(char out[crypto_pwhash_scryptsalsa208sha256_STRBYTES],
+                                                 const char * const passwd, unsigned long long passwdlen,
+                                                 unsigned long long opslimit, size_t memlimit);
+      int (*crypto_pwhash_scryptsalsa208sha256_str_verify)(const char str[crypto_pwhash_scryptsalsa208sha256_STRBYTES],
+                                                        const char * const passwd, unsigned long long passwdlen);
     };
 
     //----------------------------------------------------------------------------
@@ -542,6 +562,23 @@ namespace Sloppy
       string crypto_generichash_final_string(crypto_generichash_state *state);
       ManagedBuffer crypto_shorthash(const ManagedMemory& inData, const ShorthashKey& k);
       string crypto_shorthash(const string& inData, const ShorthashKey& k);
+
+      // password hashing and key derivation
+      enum class PasswdHashStrength
+      {
+        Interactive,
+        Moderate,
+        High
+      };
+      enum class PasswdHashAlgo
+      {
+        Argon2,
+        Scrypt
+      };
+      pair<SodiumSecureMemory, ManagedBuffer> crypto_pwhash(const ManagedMemory& pw, size_t hashLen,
+                                                            PasswdHashStrength strength = PasswdHashStrength::Moderate,
+                                                            PasswdHashAlgo algo = PasswdHashAlgo::Argon2,
+                                                            SodiumSecureMemType memType = SodiumSecureMemType::Locked);
 
     protected:
       SodiumLib(void* _libHandle);

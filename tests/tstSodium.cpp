@@ -1248,4 +1248,14 @@ TEST(Sodium, PasswdHash)
   ASSERT_TRUE(hash.isValid());
   ASSERT_EQ(hashLen, hash.getSize());
   ASSERT_TRUE(salt.isValid());
+
+  //
+  // try string operations
+  //
+  string spw{"password"};
+  string sHash;
+  string sSalt;
+  tie(sHash, sSalt) = sodium->crypto_pwhash(spw, hashLen);
+  ASSERT_FALSE(sHash.empty());
+  ASSERT_FALSE(sSalt.empty());
 }

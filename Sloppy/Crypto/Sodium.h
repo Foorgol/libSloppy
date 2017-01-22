@@ -579,6 +579,10 @@ namespace Sloppy
                                                             PasswdHashStrength strength = PasswdHashStrength::Moderate,
                                                             PasswdHashAlgo algo = PasswdHashAlgo::Argon2,
                                                             SodiumSecureMemType memType = SodiumSecureMemType::Locked);
+      pair<string, string> crypto_pwhash(const string& pw, size_t hashLen,
+                                         PasswdHashStrength strength = PasswdHashStrength::Moderate,
+                                         PasswdHashAlgo algo = PasswdHashAlgo::Argon2,
+                                         SodiumSecureMemType memType = SodiumSecureMemType::Locked);
 
     protected:
       SodiumLib(void* _libHandle);

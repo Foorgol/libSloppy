@@ -1920,6 +1920,27 @@ namespace Sloppy
       return (rc == 0) ? make_pair(std::move(hash), std::move(salt)) : std::move(errorResult);
     }
 
+    //----------------------------------------------------------------------------
+
+    pair<string, string> SodiumLib::crypto_pwhash(const string& pw, size_t hashLen, SodiumLib::PasswdHashStrength strength,
+                                                  SodiumLib::PasswdHashAlgo algo, SodiumSecureMemType memType)
+    {
+      // since password, hash and salt will be usually rather short
+      // we go for copy operations here instead of repeating the whole
+      // wrapper code again
+      ManagedBuffer _pw{pw};
+      auto tmp = crypto_pwhash(_pw, hashLen, strength, algo, memType);
+      SodiumSecureMemory hash;
+      ManagedBuffer salt;
+      hash = std::move(tmp.first);
+      salt = std::move(tmp.second);
+      if (hash.isValid() && salt.isValid())
+      {
+        return make_pair(hash.copyToString(), salt.copyToString());
+      }
+      return make_pair(string{}, string{});
+    }
+
 
     //----------------------------------------------------------------------------
     //----------------------------------------------------------------------------

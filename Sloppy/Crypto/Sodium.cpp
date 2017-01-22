@@ -341,6 +341,12 @@ namespace Sloppy
       *(void **)(&(sodium.crypto_sign_verify_detached)) = dlsym(libHandle, "crypto_sign_verify_detached");
       *(void **)(&(sodium.crypto_sign_ed25519_sk_to_seed)) = dlsym(libHandle, "crypto_sign_ed25519_sk_to_seed");
       *(void **)(&(sodium.crypto_sign_ed25519_sk_to_pk)) = dlsym(libHandle, "crypto_sign_ed25519_sk_to_pk");
+      *(void **)(&(sodium.crypto_generichash)) = dlsym(libHandle, "crypto_generichash");
+      *(void **)(&(sodium.crypto_generichash_init)) = dlsym(libHandle, "crypto_generichash_init");
+      *(void **)(&(sodium.crypto_generichash_update)) = dlsym(libHandle, "crypto_generichash_update");
+      *(void **)(&(sodium.crypto_generichash_final)) = dlsym(libHandle, "crypto_generichash_final");
+      *(void **)(&(sodium.crypto_generichash_statebytes)) = dlsym(libHandle, "crypto_generichash_statebytes");
+      *(void **)(&(sodium.crypto_shorthash)) = dlsym(libHandle, "crypto_shorthash");
       //*(void **)(&(sodium.)) = dlsym(libHandle, "sodium_");
 
       // make sure we've successfully loaded all symbols
@@ -391,7 +397,13 @@ namespace Sloppy
           (sodium.crypto_sign_detached == nullptr) ||
           (sodium.crypto_sign_verify_detached == nullptr) ||
           (sodium.crypto_sign_ed25519_sk_to_seed == nullptr) ||
-          (sodium.crypto_sign_ed25519_sk_to_pk == nullptr)
+          (sodium.crypto_sign_ed25519_sk_to_pk == nullptr) ||
+          (sodium.crypto_generichash == nullptr) ||
+          (sodium.crypto_generichash_init == nullptr) ||
+          (sodium.crypto_generichash_update == nullptr) ||
+          (sodium.crypto_generichash_final == nullptr) ||
+          (sodium.crypto_generichash_statebytes == nullptr) ||
+          (sodium.crypto_shorthash == nullptr)
           //(sodium.crypto_aead_chacha20poly1305 == nullptr) ||
           )
       {
@@ -1663,6 +1675,178 @@ namespace Sloppy
       return (rc == 0);
     }
 
+    //----------------------------------------------------------------------------
+
+    ManagedBuffer SodiumLib::crypto_generichash(const ManagedMemory& inData)
+    {
+      if (!(inData.isValid())) return ManagedBuffer{};
+
+      // allocate space for the result
+      ManagedBuffer hash{crypto_generichash_BYTES};
+
+      // calculate the hash
+      sodium.crypto_generichash(hash.get_uc(), crypto_generichash_BYTES, inData.get_uc(), inData.getSize(), nullptr, 0);
+
+      return hash;
+    }
+
+    //----------------------------------------------------------------------------
+
+    ManagedBuffer SodiumLib::crypto_generichash(const ManagedMemory& inData, const SodiumLib::GenericHashKey& key)
+    {
+      if (!(inData.isValid())) return ManagedBuffer{};
+      if (!(key.isValid())) return ManagedBuffer{};
+
+      // allocate space for the result
+      ManagedBuffer hash{crypto_generichash_BYTES};
+
+      // calculate the hash
+      sodium.crypto_generichash(hash.get_uc(), crypto_generichash_BYTES, inData.get_uc(), inData.getSize(),
+                                key.get_uc(), key.getSize());
+
+      return hash;
+    }
+
+    //----------------------------------------------------------------------------
+
+    string SodiumLib::crypto_generichash(const string& inData)
+    {
+      if (inData.empty()) return string{};
+
+      string hash;
+      hash.resize(crypto_generichash_BYTES);
+
+      sodium.crypto_generichash((unsigned char*)hash.c_str(), crypto_generichash_BYTES,
+                                (const unsigned char*)inData.c_str(), inData.size(), nullptr, 0);
+
+      return hash;
+    }
+
+    //----------------------------------------------------------------------------
+
+    string SodiumLib::crypto_generichash(const string& inData, const SodiumLib::GenericHashKey& key)
+    {
+      if (inData.empty()) return string{};
+      if (!(key.isValid())) return string{};
+
+      string hash;
+      hash.resize(crypto_generichash_BYTES);
+
+      sodium.crypto_generichash((unsigned char*)hash.c_str(), crypto_generichash_BYTES, (const unsigned char*)inData.c_str(), inData.size(),
+                                key.get_uc(), key.getSize());
+
+      return hash;
+    }
+
+    //----------------------------------------------------------------------------
+
+    bool SodiumLib::crypto_generichash_init(crypto_generichash_state* state)
+    {
+      if (state == nullptr) return false;
+
+      sodium.crypto_generichash_init(state, nullptr, 0, crypto_generichash_BYTES);
+
+      return true;
+    }
+
+    //----------------------------------------------------------------------------
+
+    bool SodiumLib::crypto_generichash_init(crypto_generichash_state* state, const GenericHashKey& k)
+    {
+      if (state == nullptr) return false;
+      if (!(k.isValid())) return false;
+
+      sodium.crypto_generichash_init(state, k.get_uc(), k.getSize(), crypto_generichash_BYTES);
+
+      return true;
+    }
+
+    //----------------------------------------------------------------------------
+
+    bool SodiumLib::crypto_generichash_update(crypto_generichash_state* state, const ManagedMemory& inData)
+    {
+      if (state == nullptr) return false;
+      if (!(inData.isValid())) return false;
+
+      sodium.crypto_generichash_update(state, inData.get_uc(), inData.getSize());
+      return true;
+    }
+
+    //----------------------------------------------------------------------------
+
+    bool SodiumLib::crypto_generichash_update(crypto_generichash_state* state, const string& inData)
+    {
+      if (state == nullptr) return false;
+      if (inData.empty()) return false;
+
+      sodium.crypto_generichash_update(state, (const unsigned char*)inData.c_str(), inData.size());
+      return true;
+    }
+
+    //----------------------------------------------------------------------------
+
+    ManagedBuffer SodiumLib::crypto_generichash_final(crypto_generichash_state* state)
+    {
+      if (state == nullptr) return ManagedBuffer{};
+
+      // allocate space for the result
+      ManagedBuffer hash{crypto_generichash_BYTES};
+
+      // finalize and get the hash
+      sodium.crypto_generichash_final(state, hash.get_uc(), crypto_generichash_BYTES);
+
+      return hash;
+    }
+
+    //----------------------------------------------------------------------------
+
+    string SodiumLib::crypto_generichash_final_string(crypto_generichash_state* state)
+    {
+      if (state == nullptr) return string{};
+
+      // allocate space for the result
+      string hash;
+      hash.resize(crypto_generichash_BYTES);
+
+      // finalize and get the hash
+      sodium.crypto_generichash_final(state, (unsigned char*)hash.c_str(), crypto_generichash_BYTES);
+
+      return hash;
+    }
+
+    //----------------------------------------------------------------------------
+
+    ManagedBuffer SodiumLib::crypto_shorthash(const ManagedMemory& inData, const SodiumLib::ShorthashKey& k)
+    {
+      if (!(inData.isValid())) return ManagedBuffer{};
+      if (!(k.isValid())) return ManagedBuffer{};
+
+      // allocate space for the result
+      ManagedBuffer hash{crypto_shorthash_BYTES};
+
+      // get the hash
+      sodium.crypto_shorthash(hash.get_uc(), inData.get_uc(), inData.getSize(), k.get_uc());
+
+      return hash;
+    }
+
+    //----------------------------------------------------------------------------
+
+    string SodiumLib::crypto_shorthash(const string& inData, const SodiumLib::ShorthashKey& k)
+    {
+      if (inData.empty()) return string{};
+      if (!(k.isValid())) return string{};
+
+      // allocate space for the result
+      string hash;
+      hash.resize(crypto_shorthash_BYTES);
+
+      // get the hash
+      sodium.crypto_shorthash((unsigned char*)hash.c_str(), (const unsigned char*)inData.c_str(), inData.size(), k.get_uc());
+
+      return hash;
+    }
+
 
     //----------------------------------------------------------------------------
     //----------------------------------------------------------------------------
@@ -1793,6 +1977,74 @@ namespace Sloppy
       {
         throw SodiumMemoryManagementException{"SecretBox, could not guard / unlock secret key"};
       }
+    }
+
+    //----------------------------------------------------------------------------
+
+    GenericHasher::GenericHasher()
+      :isFinalized{false}, lib{SodiumLib::getInstance()}
+    {
+      if (lib == nullptr)
+      {
+        throw SodiumNotAvailableException{};
+      }
+
+      lib->crypto_generichash_init(&state);
+    }
+
+    //----------------------------------------------------------------------------
+
+    GenericHasher::GenericHasher(const SodiumLib::GenericHashKey& k)
+      :isFinalized{false}, lib{SodiumLib::getInstance()}
+    {
+      if (lib == nullptr)
+      {
+        throw SodiumNotAvailableException{};
+      }
+
+      lib->crypto_generichash_init(&state, k);
+    }
+
+    //----------------------------------------------------------------------------
+
+    bool GenericHasher::append(const ManagedMemory& inData)
+    {
+      if (isFinalized) return false;
+
+      return lib->crypto_generichash_update(&state, inData);
+    }
+
+    //----------------------------------------------------------------------------
+
+    bool GenericHasher::append(const string& inData)
+    {
+      if (isFinalized) return false;
+
+      return lib->crypto_generichash_update(&state, inData);
+    }
+
+    //----------------------------------------------------------------------------
+
+    ManagedBuffer GenericHasher::finalize()
+    {
+      if (isFinalized) return ManagedBuffer{};
+
+      auto hash = lib->crypto_generichash_final(&state);
+      isFinalized = true;
+
+      return hash;
+    }
+
+    //----------------------------------------------------------------------------
+
+    string GenericHasher::finalize_string()
+    {
+      if (isFinalized) return string{};
+
+      auto hash = lib->crypto_generichash_final_string(&state);
+      isFinalized = true;
+
+      return hash;
     }
 
     //----------------------------------------------------------------------------

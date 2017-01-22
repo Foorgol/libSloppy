@@ -1082,3 +1082,131 @@ TEST(Sodium, AsymKeySign_String)
     ASSERT_TRUE(sodium->crypto_sign_verify_detached(msg, sig, pk));
   }
 }
+
+//----------------------------------------------------------------------------
+
+TEST(Sodium, GenericHashing_Buffer)
+{
+  SodiumLib* sodium = SodiumLib::getInstance();
+  ASSERT_TRUE(sodium != nullptr);
+
+  // generate a random hashing key
+  SodiumLib::GenericHashKey k;
+  sodium->randombytes_buf(k);
+
+  // generate a random message
+  static constexpr size_t msgSize = 500;
+  ManagedBuffer msg{msgSize};
+  sodium->randombytes_buf(msg);
+
+  // hash without key
+  auto h1 = sodium->crypto_generichash(msg);
+  ASSERT_TRUE(h1.isValid());
+
+  // hash with key
+  auto h2 = sodium->crypto_generichash(msg, k);
+  ASSERT_TRUE(h2.isValid());
+  ASSERT_FALSE(sodium->memcmp(h1, h2));
+
+  // use the hasher class
+  GenericHasher gh;
+  ASSERT_TRUE(gh.append(msg));
+  auto h3 = gh.finalize();
+  ASSERT_TRUE(h3.isValid());
+  ASSERT_TRUE(sodium->memcmp(h1, h3));
+
+  GenericHasher gh2{k};
+  ASSERT_TRUE(gh2.append(msg));
+  auto h4 = gh2.finalize();
+  ASSERT_TRUE(h4.isValid());
+  ASSERT_TRUE(sodium->memcmp(h2, h4));
+
+  // make sure we can't use the class anymore after
+  // we've called finalize
+  ASSERT_FALSE(gh.append(msg));
+  ASSERT_FALSE(gh2.append(msg));
+  h3 = gh.finalize();
+  ASSERT_FALSE(h3.isValid());
+  h4 = gh2.finalize();
+  ASSERT_FALSE(h4.isValid());
+}
+
+//----------------------------------------------------------------------------
+
+TEST(Sodium, GenericHashing_String)
+{
+  SodiumLib* sodium = SodiumLib::getInstance();
+  ASSERT_TRUE(sodium != nullptr);
+
+  // generate a random hashing key
+  SodiumLib::GenericHashKey k;
+  sodium->randombytes_buf(k);
+
+  // generate a random message
+  static constexpr size_t msgSize = 500;
+  ManagedBuffer _msg{msgSize};
+  sodium->randombytes_buf(_msg);
+  string msg = _msg.copyToString();
+
+  // hash without key
+  string h1 = sodium->crypto_generichash(msg);
+  ASSERT_FALSE(h1.empty());
+
+  // hash with key
+  string h2 = sodium->crypto_generichash(msg, k);
+  ASSERT_FALSE(h2.empty());
+  ASSERT_FALSE(h1 == h2);
+
+  // use the hasher class
+  GenericHasher gh;
+  ASSERT_TRUE(gh.append(msg));
+  string h3 = gh.finalize_string();
+  ASSERT_FALSE(h3.empty());
+  ASSERT_EQ(h1, h3);
+
+  GenericHasher gh2{k};
+  ASSERT_TRUE(gh2.append(msg));
+  string h4 = gh2.finalize_string();
+  ASSERT_FALSE(h4.empty());
+  ASSERT_EQ(h2, h4);
+
+  // make sure we can't use the class anymore after
+  // we've called finalize
+  ASSERT_FALSE(gh.append(msg));
+  ASSERT_FALSE(gh2.append(msg));
+  h3 = gh.finalize_string();
+  ASSERT_TRUE(h3.empty());
+  h4 = gh2.finalize_string();
+  ASSERT_TRUE(h4.empty());
+}
+
+//----------------------------------------------------------------------------
+
+TEST(Sodium, ShortHash)
+{
+  SodiumLib* sodium = SodiumLib::getInstance();
+  ASSERT_TRUE(sodium != nullptr);
+
+  // generate a random hashing key
+  SodiumLib::ShorthashKey k;
+  sodium->randombytes_buf(k);
+
+  // generate a random message
+  static constexpr size_t msgSize = 500;
+  ManagedBuffer msg{msgSize};
+  sodium->randombytes_buf(msg);
+  string sMsg = msg.copyToString();
+
+  // shorthash using buffers
+  auto bufHash = sodium->crypto_shorthash(msg, k);
+  ASSERT_TRUE(bufHash.isValid());
+
+  // shorthash using strings
+  string sHash = sodium->crypto_shorthash(sMsg, k);
+  ASSERT_FALSE(sHash.empty());
+
+  // cross-compare results
+  ASSERT_EQ(sHash, bufHash.copyToString());
+  auto bufHash2 = ManagedBuffer{sHash};
+  ASSERT_TRUE(sodium->memcmp(bufHash, bufHash2));
+}

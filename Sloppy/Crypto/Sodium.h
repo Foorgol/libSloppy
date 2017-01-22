@@ -348,6 +348,22 @@ namespace Sloppy
                                          unsigned long long mlen, const unsigned char *pk);
       int (*crypto_sign_ed25519_sk_to_seed)(unsigned char *seed, const unsigned char *sk);
       int (*crypto_sign_ed25519_sk_to_pk)(unsigned char *pk, const unsigned char *sk);
+
+      // hashing
+      int (*crypto_generichash)(unsigned char *out, size_t outlen,
+                             const unsigned char *in, unsigned long long inlen,
+                             const unsigned char *key, size_t keylen);
+      int (*crypto_generichash_init)(crypto_generichash_state *state,
+                                  const unsigned char *key,
+                                  const size_t keylen, const size_t outlen);
+      int (*crypto_generichash_update)(crypto_generichash_state *state,
+                                    const unsigned char *in,
+                                    unsigned long long inlen);
+      int (*crypto_generichash_final)(crypto_generichash_state *state,
+                                   unsigned char *out, const size_t outlen);
+      size_t (*crypto_generichash_statebytes)(void);
+      int (*crypto_shorthash)(unsigned char *out, const unsigned char *in,
+                           unsigned long long inlen, const unsigned char *k);
     };
 
     //----------------------------------------------------------------------------
@@ -511,6 +527,21 @@ namespace Sloppy
       string crypto_sign_detached(const string& msg, const AsymSign_SecretKey& sk);
       bool crypto_sign_verify_detached(const string& msg, const string& sig, const AsymSign_PublicKey& pk);
 
+      // hashing
+      using GenericHashKey = SodiumKey<SodiumKeyType::Secret, crypto_generichash_KEYBYTES>;
+      using ShorthashKey = SodiumKey<SodiumKeyType::Secret, crypto_shorthash_KEYBYTES>;
+      ManagedBuffer crypto_generichash(const ManagedMemory& inData);
+      ManagedBuffer crypto_generichash(const ManagedMemory& inData, const GenericHashKey& key);
+      string crypto_generichash(const string& inData);
+      string crypto_generichash(const string& inData, const GenericHashKey& key);
+      bool crypto_generichash_init(crypto_generichash_state *state);
+      bool crypto_generichash_init(crypto_generichash_state *state, const GenericHashKey& k);
+      bool crypto_generichash_update(crypto_generichash_state *state, const ManagedMemory& inData);
+      bool crypto_generichash_update(crypto_generichash_state *state, const string& inData);
+      ManagedBuffer crypto_generichash_final(crypto_generichash_state *state);
+      string crypto_generichash_final_string(crypto_generichash_state *state);
+      ManagedBuffer crypto_shorthash(const ManagedMemory& inData, const ShorthashKey& k);
+      string crypto_shorthash(const string& inData, const ShorthashKey& k);
 
     protected:
       SodiumLib(void* _libHandle);
@@ -640,6 +671,26 @@ namespace Sloppy
 
     private:
       KeyType key;
+    };
+
+    // a class that calculates a hash over multiple chunks of data
+    class GenericHasher
+    {
+    public:
+      GenericHasher();
+      GenericHasher(const SodiumLib::GenericHashKey& k);
+
+      bool append(const ManagedMemory& inData);
+      bool append(const string& inData);
+
+      ManagedBuffer finalize();
+      string finalize_string();
+
+    private:
+      crypto_generichash_state state;
+      bool isFinalized;
+      SodiumLib* lib;
+
     };
 
   }

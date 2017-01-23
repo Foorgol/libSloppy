@@ -1861,24 +1861,13 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    pair<SodiumSecureMemory, ManagedBuffer> SodiumLib::crypto_pwhash(const ManagedMemory& pw, size_t hashLen, SodiumLib::PasswdHashStrength strength,
+    pair<SodiumSecureMemory, SodiumLib::PwHashData> SodiumLib::crypto_pwhash(const ManagedMemory& pw, size_t hashLen, SodiumLib::PasswdHashStrength strength,
                                                                      SodiumLib::PasswdHashAlgo algo, SodiumSecureMemType memType)
     {
-      auto errorResult = make_pair(SodiumSecureMemory{}, ManagedBuffer{});
-
-      if (!(pw.isValid())) return errorResult;
-      if (hashLen == 0) return errorResult;
+      auto errorResult = make_pair(SodiumSecureMemory{}, PwHashData{});
 
       // strength "Moderate" is not defined for Scrypt
       if ((algo == PasswdHashAlgo::Scrypt) && (strength == PasswdHashStrength::Moderate)) return errorResult;
-
-      // determine the salt length and allocate space
-      size_t saltLen = (algo == PasswdHashAlgo::Argon2) ? crypto_pwhash_SALTBYTES : crypto_pwhash_scryptsalsa208sha256_SALTBYTES;
-      ManagedBuffer salt{saltLen};
-      randombytes_buf(salt);
-
-      // allocate the result buffer
-      SodiumSecureMemory hash{hashLen, memType};
 
       // determine opslimit and memlimit
       unsigned long long opslimit;
@@ -1906,18 +1895,56 @@ namespace Sloppy
         memlimit = (strength == PasswdHashStrength::Interactive) ? crypto_pwhash_scryptsalsa208sha256_MEMLIMIT_INTERACTIVE : crypto_pwhash_scryptsalsa208sha256_MEMLIMIT_SENSITIVE;
       }
 
+      // construct a new PwHashData struct with the hashing data.
+      // the salt is empty and will thus be filled with random data
+      PwHashData hDat{};
+      hDat.algo = algo;
+      hDat.memlimit = memlimit;
+      hDat.opslimit = opslimit;
+
       // call the hash function
-      int rc = -1;
-      if (algo == PasswdHashAlgo::Argon2)
+      SodiumSecureMemory hash = crypto_pwhash(pw, hashLen, hDat, memType);
+
+      return make_pair(std::move(hash), std::move(hDat));
+    }
+
+    //----------------------------------------------------------------------------
+
+    SodiumSecureMemory SodiumLib::crypto_pwhash(const ManagedMemory& pw, size_t hashLen, SodiumLib::PwHashData& hDat, SodiumSecureMemType memType)
+    {
+      if (!(pw.isValid())) return SodiumSecureMemory{};
+      if (hashLen == 0) return SodiumSecureMemory{};
+
+      // determine the salt length
+      size_t saltLen = (hDat.algo == PasswdHashAlgo::Argon2) ? crypto_pwhash_SALTBYTES : crypto_pwhash_scryptsalsa208sha256_SALTBYTES;
+
+      // if the salt has the wrong length, return with error
+      if ((hDat.salt.isValid()) && (hDat.salt.getSize() != saltLen)) return SodiumSecureMemory{};
+
+      // if the salt is empty create a new, random one
+      // and store it in the user provided struct
+      if (!(hDat.salt.isValid()))
       {
-        rc = sodium.crypto_pwhash(hash.get_uc(), hash.getSize(), pw.get_c(), pw.getSize(),
-                                  salt.get_uc(), opslimit, memlimit, crypto_pwhash_ALG_DEFAULT);
-      } else {
-        rc = sodium.crypto_pwhash_scryptsalsa208sha256(hash.get_uc(), hash.getSize(), pw.get_c(), pw.getSize(),
-                                  salt.get_uc(), opslimit, memlimit);
+        ManagedBuffer salt{saltLen};
+        randombytes_buf(salt);
+        hDat.salt = std::move(salt);
       }
 
-      return (rc == 0) ? make_pair(std::move(hash), std::move(salt)) : std::move(errorResult);
+      // allocate the result buffer
+      SodiumSecureMemory hash{hashLen, memType};
+
+      // call the hash function
+      int rc = -1;
+      if (hDat.algo == PasswdHashAlgo::Argon2)
+      {
+        rc = sodium.crypto_pwhash(hash.get_uc(), hash.getSize(), pw.get_c(), pw.getSize(),
+                                  hDat.salt.get_uc(), hDat.opslimit, hDat.memlimit, crypto_pwhash_ALG_DEFAULT);
+      } else {
+        rc = sodium.crypto_pwhash_scryptsalsa208sha256(hash.get_uc(), hash.getSize(), pw.get_c(), pw.getSize(),
+                                  hDat.salt.get_uc(), hDat.opslimit, hDat.memlimit);
+      }
+
+      return (rc == 0) ? std::move(hash) : SodiumSecureMemory{};
     }
 
     //----------------------------------------------------------------------------
@@ -1931,12 +1958,12 @@ namespace Sloppy
       ManagedBuffer _pw{pw};
       auto tmp = crypto_pwhash(_pw, hashLen, strength, algo, memType);
       SodiumSecureMemory hash;
-      ManagedBuffer salt;
+      PwHashData hDat;
       hash = std::move(tmp.first);
-      salt = std::move(tmp.second);
-      if (hash.isValid() && salt.isValid())
+      hDat = std::move(tmp.second);
+      if (hash.isValid() && hDat.salt.isValid())
       {
-        return make_pair(hash.copyToString(), salt.copyToString());
+        return make_pair(hash.copyToString(), hDat.salt.copyToString());
       }
       return make_pair(string{}, string{});
     }

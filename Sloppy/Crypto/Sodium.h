@@ -575,10 +575,20 @@ namespace Sloppy
         Argon2,
         Scrypt
       };
-      pair<SodiumSecureMemory, ManagedBuffer> crypto_pwhash(const ManagedMemory& pw, size_t hashLen,
+      struct PwHashData
+      {
+        ManagedBuffer salt;
+        unsigned long long opslimit;
+        size_t memlimit;
+        PasswdHashAlgo algo;
+      };
+
+      pair<SodiumSecureMemory, PwHashData> crypto_pwhash(const ManagedMemory& pw, size_t hashLen,
                                                             PasswdHashStrength strength = PasswdHashStrength::Moderate,
                                                             PasswdHashAlgo algo = PasswdHashAlgo::Argon2,
                                                             SodiumSecureMemType memType = SodiumSecureMemType::Locked);
+      SodiumSecureMemory crypto_pwhash(const ManagedMemory& pw, size_t hashLen, PwHashData& hDat,
+                                       SodiumSecureMemType memType = SodiumSecureMemType::Locked);
       pair<string, string> crypto_pwhash(const string& pw, size_t hashLen,
                                          PasswdHashStrength strength = PasswdHashStrength::Moderate,
                                          PasswdHashAlgo algo = PasswdHashAlgo::Argon2,

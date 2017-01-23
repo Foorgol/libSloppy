@@ -1227,27 +1227,37 @@ TEST(Sodium, PasswdHash)
   static constexpr size_t hashLen = 16;
   auto tmp = sodium->crypto_pwhash(pw, hashLen);
   SodiumSecureMemory hash;
-  ManagedBuffer salt;
+  SodiumLib::PwHashData hDat;
   hash = std::move(tmp.first);
-  salt = std::move(tmp.second);
+  hDat = std::move(tmp.second);
   ASSERT_TRUE(hash.isValid());
   ASSERT_EQ(hashLen, hash.getSize());
-  ASSERT_TRUE(salt.isValid());
+  ASSERT_TRUE(hDat.salt.isValid());
+
+  // make sure the hash is reproducible with
+  // the parameters provided in hDat
+  string oldSalt = hDat.salt.copyToString();
+  SodiumSecureMemory hash2 = sodium->crypto_pwhash(pw, hashLen, hDat);
+  ASSERT_TRUE(hash2.isValid());
+  ASSERT_EQ(hashLen, hash2.getSize());
+  ASSERT_TRUE(sodium->memcmp(hash, hash2));
+  string saltAfterCall = hDat.salt.copyToString();
+  ASSERT_EQ(oldSalt, saltAfterCall);
 
   // use the other algo with an invalid strength
   tmp = sodium->crypto_pwhash(pw, hashLen, SodiumLib::PasswdHashStrength::Moderate, SodiumLib::PasswdHashAlgo::Scrypt);
   hash = std::move(tmp.first);
-  salt = std::move(tmp.second);
+  hDat = std::move(tmp.second);
   ASSERT_FALSE(hash.isValid());
-  ASSERT_FALSE(salt.isValid());
+  ASSERT_FALSE(hDat.salt.isValid());
 
   // use the other algo with a valid strength
   tmp = sodium->crypto_pwhash(pw, hashLen, SodiumLib::PasswdHashStrength::High, SodiumLib::PasswdHashAlgo::Scrypt);
   hash = std::move(tmp.first);
-  salt = std::move(tmp.second);
+  hDat = std::move(tmp.second);
   ASSERT_TRUE(hash.isValid());
   ASSERT_EQ(hashLen, hash.getSize());
-  ASSERT_TRUE(salt.isValid());
+  ASSERT_TRUE(hDat.salt.isValid());
 
   //
   // try string operations

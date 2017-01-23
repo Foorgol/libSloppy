@@ -593,6 +593,12 @@ namespace Sloppy
                                          PasswdHashStrength strength = PasswdHashStrength::Moderate,
                                          PasswdHashAlgo algo = PasswdHashAlgo::Argon2,
                                          SodiumSecureMemType memType = SodiumSecureMemType::Locked);
+      string crypto_pwhash_str(const ManagedMemory& pw, PasswdHashStrength strength = PasswdHashStrength::Moderate,
+                               PasswdHashAlgo algo = PasswdHashAlgo::Argon2);
+      string crypto_pwhash_str(const string& pw, PasswdHashStrength strength = PasswdHashStrength::Moderate,
+                               PasswdHashAlgo algo = PasswdHashAlgo::Argon2);
+      bool crypto_pwhash_str_verify(const ManagedMemory& pw, const string& hashResult, PasswdHashAlgo algo = PasswdHashAlgo::Argon2);
+      bool crypto_pwhash_str_verify(const string& pw, const string& hashResult, PasswdHashAlgo algo = PasswdHashAlgo::Argon2);
 
     protected:
       SodiumLib(void* _libHandle);
@@ -641,6 +647,9 @@ namespace Sloppy
                                                             unsigned long long, const unsigned char *, const unsigned char *),
                                              size_t tagSize, const string& cipher, const ManagedMemory& nonce,
                                                               const ManagedMemory& key, const string& ad = string{});
+
+      // converts password hash strength and algorithm into values for opslimit and memlimit
+      pair<unsigned long long, size_t> pwHashConfigToValues(PasswdHashStrength strength, PasswdHashAlgo algo);
     };
 
     // a template class that provides nonce handling for "crypto boxes"

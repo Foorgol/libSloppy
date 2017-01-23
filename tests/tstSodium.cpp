@@ -1233,6 +1233,8 @@ TEST(Sodium, PasswdHash)
   ASSERT_TRUE(hash.isValid());
   ASSERT_EQ(hashLen, hash.getSize());
   ASSERT_TRUE(hDat.salt.isValid());
+  cout << "Moderate opslimit for Argon2 is " << hDat.opslimit << endl;
+  cout << "Moderate memlimit for Argon2 is " << hDat.memlimit << endl;
 
   // make sure the hash is reproducible with
   // the parameters provided in hDat
@@ -1268,4 +1270,26 @@ TEST(Sodium, PasswdHash)
   tie(sHash, sSalt) = sodium->crypto_pwhash(spw, hashLen);
   ASSERT_FALSE(sHash.empty());
   ASSERT_FALSE(sSalt.empty());
+}
+
+//----------------------------------------------------------------------------
+
+TEST(Sodium, PasswdHashStr)
+{
+  SodiumLib* sodium = SodiumLib::getInstance();
+  ASSERT_TRUE(sodium != nullptr);
+
+  // a random password
+  string pw{"This is some password"};
+
+  // hash it
+  string hash = sodium->crypto_pwhash_str(pw);
+  ASSERT_FALSE(hash.empty());
+  cout << "The password hash is: " << hash << endl;
+
+  // verify it with a valid PW
+  ASSERT_TRUE(sodium->crypto_pwhash_str_verify(pw, hash));
+
+  // try to verify a wrong pw
+  ASSERT_FALSE(sodium->crypto_pwhash_str_verify("xyz", hash));
 }

@@ -23,6 +23,7 @@
 #include <gtest/gtest.h>
 #include "../Sloppy/libSloppy.h"
 #include "../Sloppy/Crypto/Sodium.h"
+#include "../Sloppy/Crypto/Crypto.h"
 
 using namespace Sloppy;
 using namespace Sloppy::Crypto;
@@ -1292,4 +1293,38 @@ TEST(Sodium, PasswdHashStr)
 
   // try to verify a wrong pw
   ASSERT_FALSE(sodium->crypto_pwhash_str_verify("xyz", hash));
+}
+
+//----------------------------------------------------------------------------
+
+TEST(Sodium, DiffieHellmann)
+{
+  SodiumLib* sodium = SodiumLib::getInstance();
+  ASSERT_TRUE(sodium != nullptr);
+
+  DiffieHellmannExchanger c{true};
+  DiffieHellmannExchanger s{false};
+
+  auto shared1 = c.getSharedSecret(s.getMyPublicKey());
+  auto shared2 = s.getSharedSecret(c.getMyPublicKey());
+
+  ASSERT_TRUE(shared1.isValid());
+  ASSERT_TRUE(shared2.isValid());
+  ASSERT_TRUE(sodium->memcmp(shared1, shared2));
+
+  cout << "Shared secret is: " << toBase64(shared1) << endl;
+  cout << "Shared secret length is: " << shared1.getSize() * 8 << " bit" << endl;
+
+  // tamper with a public key
+  auto pkServ = s.getMyPublicKey();
+  char* ptr = pkServ.get_c();
+  ptr[2] += 1;
+  shared1 = c.getSharedSecret(pkServ);
+  ASSERT_FALSE(sodium->memcmp(shared1, shared2));
+  cout << "Wrong shared secret is: " << toBase64(shared1) << endl;
+
+  ptr[2] -= 1;
+  shared1 = c.getSharedSecret(pkServ);
+  ASSERT_TRUE(sodium->memcmp(shared1, shared2));
+
 }

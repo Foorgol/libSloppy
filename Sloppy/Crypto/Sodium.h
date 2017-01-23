@@ -211,6 +211,14 @@ namespace Sloppy
         return asCopy(*this);
       }
 
+      bool fillFromString(const string& data)
+      {
+        if (data.size() != keySize) return false;
+        if (!(canWrite())) return false;
+        memcpy(rawPtr, data.c_str(), keySize);
+        return true;
+      }
+
     protected:
       SodiumKeyType keyType;
     };
@@ -384,6 +392,9 @@ namespace Sloppy
                                                  unsigned long long opslimit, size_t memlimit);
       int (*crypto_pwhash_scryptsalsa208sha256_str_verify)(const char str[crypto_pwhash_scryptsalsa208sha256_STRBYTES],
                                                         const char * const passwd, unsigned long long passwdlen);
+
+      // Diffie-Hellmann key exchange
+      int (*crypto_scalarmult)(unsigned char *q, const unsigned char *n, const unsigned char *p);
     };
 
     //----------------------------------------------------------------------------
@@ -497,7 +508,7 @@ namespace Sloppy
       using AsymCrypto_PublicKey = SodiumKey<SodiumKeyType::Public, crypto_box_PUBLICKEYBYTES>;
       using AsymCrypto_SecretKey = SodiumKey<SodiumKeyType::Secret, crypto_box_SECRETKEYBYTES>;
       using AsymCrypto_KeySeed = SodiumKey<SodiumKeyType::Secret, crypto_box_SEEDBYTES>;
-      void genAsymCryptoKeyPair(AsymCrypto_PublicKey& pk_out, AsymCrypto_SecretKey& sk_out);
+      bool genAsymCryptoKeyPair(AsymCrypto_PublicKey& pk_out, AsymCrypto_SecretKey& sk_out);
       bool genAsymCryptoKeyPairSeeded(const AsymCrypto_KeySeed& seed, AsymCrypto_PublicKey& pk_out, AsymCrypto_SecretKey& sk_out);
       bool genPublicCryptoKeyFromSecretKey(const AsymCrypto_SecretKey& sk, AsymCrypto_PublicKey& pk_out);
 
@@ -599,6 +610,15 @@ namespace Sloppy
                                PasswdHashAlgo algo = PasswdHashAlgo::Argon2);
       bool crypto_pwhash_str_verify(const ManagedMemory& pw, const string& hashResult, PasswdHashAlgo algo = PasswdHashAlgo::Argon2);
       bool crypto_pwhash_str_verify(const string& pw, const string& hashResult, PasswdHashAlgo algo = PasswdHashAlgo::Argon2);
+
+      // Diffie-Hellmann key exchange
+      using DH_PublicKey = SodiumKey<SodiumKeyType::Public, crypto_scalarmult_BYTES>;
+      using DH_SecretKey = SodiumKey<SodiumKeyType::Secret, crypto_scalarmult_SCALARBYTES>;
+      using DH_SharedSecret = SodiumKey<SodiumKeyType::Secret, crypto_scalarmult_BYTES>;
+      bool genDHKeyPair(DH_PublicKey& pk_out, DH_SecretKey& sk_out);
+      bool genDHSharedSecret(const DH_SecretKey& mySecretKey, const DH_PublicKey& othersPublicKey, DH_SharedSecret& sh_out);
+      bool genPublicDHKeyFromSecretKey(const DH_SecretKey& sk, DH_PublicKey& pk_out);
+
 
     protected:
       SodiumLib(void* _libHandle);
@@ -751,6 +771,25 @@ namespace Sloppy
       bool isFinalized;
       SodiumLib* lib;
 
+    };
+
+    // a helper class for Diffie-Hellmann key exchange
+    // including additional hashing of the calculated
+    // shared secret
+    class DiffieHellmannExchanger
+    {
+    public:
+      using SharedSecret = SodiumKey<SodiumKeyType::Secret, crypto_generichash_BYTES>;
+
+      DiffieHellmannExchanger(bool _isClient);
+      SodiumLib::DH_PublicKey getMyPublicKey();
+      SharedSecret getSharedSecret(const SodiumLib::DH_PublicKey& othersPublicKey);
+
+    private:
+      bool isClient;
+      SodiumLib* lib;
+      SodiumLib::DH_SecretKey sk;
+      SodiumLib::DH_PublicKey pk;
     };
 
   }

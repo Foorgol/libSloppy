@@ -353,6 +353,7 @@ namespace Sloppy
       *(void **)(&(sodium.crypto_pwhash_scryptsalsa208sha256)) = dlsym(libHandle, "crypto_pwhash_scryptsalsa208sha256");
       *(void **)(&(sodium.crypto_pwhash_scryptsalsa208sha256_str)) = dlsym(libHandle, "crypto_pwhash_scryptsalsa208sha256_str");
       *(void **)(&(sodium.crypto_pwhash_scryptsalsa208sha256_str_verify)) = dlsym(libHandle, "crypto_pwhash_scryptsalsa208sha256_str_verify");
+      *(void **)(&(sodium.crypto_scalarmult)) = dlsym(libHandle, "crypto_scalarmult");
       //*(void **)(&(sodium.)) = dlsym(libHandle, "sodium_");
 
       // make sure we've successfully loaded all symbols
@@ -415,7 +416,8 @@ namespace Sloppy
           (sodium.crypto_pwhash_str_verify == nullptr) ||
           (sodium.crypto_pwhash_scryptsalsa208sha256 == nullptr) ||
           (sodium.crypto_pwhash_scryptsalsa208sha256_str == nullptr) ||
-          (sodium.crypto_pwhash_scryptsalsa208sha256_str_verify == nullptr)
+          (sodium.crypto_pwhash_scryptsalsa208sha256_str_verify == nullptr) ||
+          (sodium.crypto_scalarmult == nullptr)
           //(sodium.crypto_aead_chacha20poly1305 == nullptr) ||
           )
       {
@@ -1332,9 +1334,13 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    void SodiumLib::genAsymCryptoKeyPair(AsymCrypto_PublicKey& pk_out, AsymCrypto_SecretKey& sk_out)
+    bool SodiumLib::genAsymCryptoKeyPair(AsymCrypto_PublicKey& pk_out, AsymCrypto_SecretKey& sk_out)
     {
+      if (!(pk_out.isValid())) return false;
+      if (!(sk_out.isValid())) return false;
+
       sodium.crypto_box_keypair(pk_out.get_uc(), sk_out.get_uc());
+      return true;
     }
 
     //----------------------------------------------------------------------------
@@ -2043,6 +2049,39 @@ namespace Sloppy
       return crypto_pwhash_str_verify(_pw, hashResult, algo);
     }
 
+    //----------------------------------------------------------------------------
+
+    bool SodiumLib::genDHKeyPair(SodiumLib::DH_PublicKey& pk_out, SodiumLib::DH_SecretKey& sk_out)
+    {
+      if (!(sk_out.isValid())) return false;
+      randombytes_buf(sk_out);
+
+      genPublicDHKeyFromSecretKey(sk_out, pk_out);
+      return true;
+    }
+
+    //----------------------------------------------------------------------------
+
+    bool SodiumLib::genDHSharedSecret(const SodiumLib::DH_SecretKey& mySecretKey, const SodiumLib::DH_PublicKey& othersPublicKey, SodiumLib::DH_SharedSecret& sh_out)
+    {
+      if (!(mySecretKey.isValid())) return false;
+      if (!(othersPublicKey.isValid())) return false;
+      if (!(sh_out.isValid())) return false;
+
+      sodium.crypto_scalarmult(sh_out.get_uc(), mySecretKey.get_uc(), othersPublicKey.get_uc());
+      return true;
+    }
+
+    //----------------------------------------------------------------------------
+
+    bool SodiumLib::genPublicDHKeyFromSecretKey(const SodiumLib::DH_SecretKey& sk, SodiumLib::DH_PublicKey& pk_out)
+    {
+      if (!(sk.isValid())) return false;
+
+      sodium.crypto_scalarmult_base(pk_out.get_uc(), sk.get_uc());
+      return true;
+    }
+
 
     //----------------------------------------------------------------------------
     //----------------------------------------------------------------------------
@@ -2241,6 +2280,60 @@ namespace Sloppy
       isFinalized = true;
 
       return hash;
+    }
+
+    //----------------------------------------------------------------------------
+
+    DiffieHellmannExchanger::DiffieHellmannExchanger(bool _isClient)
+      :isClient{_isClient}, lib{SodiumLib::getInstance()}
+    {
+      if (lib == nullptr)
+      {
+        throw SodiumNotAvailableException{};
+      }
+
+      lib->genDHKeyPair(pk, sk);
+      sk.setAccess(SodiumSecureMemAccess::NoAccess);
+    }
+
+    //----------------------------------------------------------------------------
+
+    SodiumLib::DH_PublicKey DiffieHellmannExchanger::getMyPublicKey()
+    {
+      return SodiumLib::DH_PublicKey::asCopy(pk);
+    }
+
+    //----------------------------------------------------------------------------
+
+    DiffieHellmannExchanger::SharedSecret DiffieHellmannExchanger::getSharedSecret(const SodiumLib::DH_PublicKey& othersPublicKey)
+    {
+      SodiumLib::DH_SharedSecret shared;
+
+      sk.setAccess(SodiumSecureMemAccess::RO);
+      bool isOkay = lib->genDHSharedSecret(sk, othersPublicKey, shared);
+      sk.setAccess(SodiumSecureMemAccess::NoAccess);
+
+      if (!isOkay)
+      {
+        throw runtime_error("Damn, couldn't calculate Diffie-Hellmann shared secret. FIX: add a special exception for this!");
+      }
+
+      // hash this result with the two public keys
+      GenericHasher hasher;
+      hasher.append(shared);
+      if (isClient)
+      {
+        hasher.append(pk);
+        hasher.append(othersPublicKey);
+      } else {
+        hasher.append(othersPublicKey);
+        hasher.append(pk);
+      }
+
+      SharedSecret result;
+      result.fillFromString(hasher.finalize_string());
+
+      return result;
     }
 
     //----------------------------------------------------------------------------

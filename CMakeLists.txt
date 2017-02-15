@@ -38,6 +38,9 @@ set(LIB_SOURCES
     Sloppy/HTML/BasicElements.cpp
     Sloppy/HTML/Table.cpp
     Sloppy/HTML/Bootstrap.cpp
+    Sloppy/Net/ManagedSocket.cpp
+    Sloppy/Net/Net.cpp
+    Sloppy/Net/TcpClientServer.cpp
 )
 
 add_library(${PROJECT_NAME} SHARED ${LIB_SOURCES})
@@ -95,6 +98,7 @@ set(LIB_SOURCES_TST
     tests/tstCrypto.cpp
     tests/tstSodium.cpp
     tests/tstManagedMemory.cpp
+    tests/tstManagedFileDescriptor.cpp
 )
 
 find_package(GTest)

@@ -311,6 +311,151 @@ namespace Sloppy
 
   //----------------------------------------------------------------------------
 
+  constexpr int ManagedFileDescriptor::DefaultReadWait_ms;
+
+  ManagedFileDescriptor::ManagedFileDescriptor(int _fd)
+    :fd{_fd}, readBuf{nullptr}, st{State::Idle}
+  {
+    if (fd < 0)
+    {
+      throw InvalidDescriptor{};
+    }
+
+    readBuf = (char *)malloc(ReadChunkSize);
+    if (readBuf == nullptr)
+    {
+      ::close(fd);
+      throw OutOfMemory{};
+    }
+  }
+
+  //----------------------------------------------------------------------------
+
+  ManagedFileDescriptor::~ManagedFileDescriptor()
+  {
+    // wait for the fd to become available
+    lock_guard<mutex> lockFd{fdMutex};
+
+    if (st != State::Closed) ::close(fd);
+
+    if (readBuf != nullptr) delete readBuf;
+  }
+
+  //----------------------------------------------------------------------------
+
+  bool ManagedFileDescriptor::blockingWrite(const string &data)
+  {
+    // wait for the fd to become available
+    lock_guard<mutex> lockFd{fdMutex};
+
+    // just to be sure: check the state
+    if (st != State::Idle) return false;
+
+    // do the actual write
+    st = State::Writing;
+    int n = write(fd, data.c_str(), data.size());
+    st = State::Idle;
+
+    if (n < 0)
+    {
+      throw IOError{};
+    }
+
+    return (((size_t) n) == data.size());
+  }
+
+  //----------------------------------------------------------------------------
+
+  string ManagedFileDescriptor::blockingRead(size_t minLen, size_t maxLen, size_t timeout_ms)
+  {
+    if (minLen == 0) minLen = 1;   // zero means: no min length which is equivalent to "at least one byte"
+    if ((maxLen > 0) && (minLen > maxLen))
+    {
+      throw InvalidDataSize{};
+    }
+
+    // prepare the result string
+    string result;
+
+    // start a stop watch
+    auto startTime = chrono::high_resolution_clock::now();
+
+    // wait for the fd to become available
+    lock_guard<mutex> lockFd{fdMutex};
+
+    // just to be sure: check the state
+    if (st != State::Idle) return string{};
+
+    // do the actual read
+    st = State::Reading;
+    while (true)
+    {
+      // determine the maximum number of bytes to be read. do not read
+      // more than requested. do not read more than what fits into the buffer
+      size_t nMax = (maxLen > 0) ? (maxLen - result.size()) : ReadChunkSize;
+      if (nMax > ReadChunkSize) nMax = ReadChunkSize;
+
+      // if there is a timeout specified, calculate the remaining time
+      // we may wait for data to become available
+      if (timeout_ms > 0)
+      {
+        auto _elapsedTime = chrono::high_resolution_clock::now() - startTime;
+        size_t elapsedTime = chrono::duration_cast<chrono::milliseconds>(_elapsedTime).count();
+
+        if (elapsedTime > timeout_ms)
+        {
+          throw ReadTimeout{result};
+        }
+
+        // wait for data to become available
+        size_t remainingTime = timeout_ms - elapsedTime;
+        timeval tv;
+        tv.tv_sec = remainingTime / 1000;
+        tv.tv_usec = (remainingTime % 1000) * 1000;
+        fd_set readFd;
+        FD_ZERO(&readFd);
+        FD_SET(fd, &readFd);
+        int retVal = select(fd+1, &readFd, nullptr, nullptr, &tv);
+
+        // evaluate the result
+        if (retVal < 0)
+        {
+          throw IOError{};
+        }
+        if (retVal == 0)
+        {
+          throw ReadTimeout{result};
+        }
+
+        // continue with reading the data...
+      }
+
+      int n = read(fd, readBuf, nMax);
+
+      if (n > 0)
+      {
+        result += string{readBuf, (size_t)n};
+      }
+      if (n == 0)  // descriptor is non-blocking
+      {
+        this_thread::sleep_for(chrono::milliseconds{DefaultReadWait_ms});
+      }
+
+      if (result.size() >= minLen) break;
+    }
+
+    st = State::Idle;
+
+    return result;
+  }
+
+  //----------------------------------------------------------------------------
+
+  ManagedFileDescriptor::State ManagedFileDescriptor::getState()
+  {
+    return st;
+  }
+
 
 
   //----------------------------------------------------------------------------

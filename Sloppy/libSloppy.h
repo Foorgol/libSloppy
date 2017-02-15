@@ -22,6 +22,10 @@
 #include <string>
 #include <vector>
 #include <algorithm>
+#include <mutex>
+#include <atomic>
+#include <thread>
+#include <cstring>
 
 using namespace std;
 
@@ -142,6 +146,70 @@ namespace Sloppy
     virtual void releaseMemory() override;
   };
 
+  //----------------------------------------------------------------------------
+
+  class InvalidDescriptor{};
+  class InvalidDataSize{};
+  class OutOfMemory{};
+  class ReadTimeout
+  {
+  public:
+    ReadTimeout(const string& incompleteData)
+      :data{incompleteData}{}
+
+    string getIncompleteData() const { return data; }
+    size_t getNumBytesRead() const { return data.size(); }
+
+  private:
+    string data;
+  };
+  class IOError
+  {
+  public:
+    IOError()
+      :e{errno}, eStr{strerror(errno)}{}
+
+    IOError(int nError, const string& errStr)
+      :e{nError}, eStr{errStr}{}
+
+    int getErrorNumber() const { return e; }
+    string getErrString() const { return eStr; }
+
+  private:
+    int e;
+    string eStr;
+  };
+
+  class ManagedFileDescriptor
+  {
+  public:
+    static constexpr size_t ReadChunkSize = 512000;
+    static constexpr int DefaultReadWait_ms = 10;
+
+    enum class State
+    {
+      Idle,
+      Reading,
+      Writing,
+      Closed
+    };
+
+    ManagedFileDescriptor(int _fd);
+    virtual ~ManagedFileDescriptor();
+
+    bool blockingWrite(const string& data);
+    string blockingRead(size_t minLen, size_t maxLen = 0, size_t timeout_ms = 0);
+
+    void close();
+
+    State getState();
+
+  protected:
+    int fd;
+    mutex fdMutex;
+    atomic<State> st;
+    char* readBuf;
+  };
 }
 
 #endif

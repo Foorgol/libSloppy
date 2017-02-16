@@ -17,6 +17,7 @@
  */
 
 #include <regex>
+#include <iostream>
 
 #include <boost/algorithm/string.hpp>
 
@@ -336,9 +337,12 @@ namespace Sloppy
     // wait for the fd to become available
     lock_guard<mutex> lockFd{fdMutex};
 
-    if (st != State::Closed) ::close(fd);
+    if ((st != State::Closed) && (fd >= 0))
+    {
+      ::close(fd);
+    }
 
-    if (readBuf != nullptr) delete readBuf;
+    if (readBuf != nullptr) free(readBuf);
   }
 
   //----------------------------------------------------------------------------
@@ -359,6 +363,10 @@ namespace Sloppy
     if (n < 0)
     {
       throw IOError{};
+    }
+    if (n != data.size())
+    {
+      cerr << "FD write: only " << n << " of " << data.size() << " bytes written!" << endl;
     }
 
     return (((size_t) n) == data.size());
@@ -404,6 +412,7 @@ namespace Sloppy
 
         if (elapsedTime > timeout_ms)
         {
+          st = State::Idle;
           throw ReadTimeout{result};
         }
 
@@ -420,10 +429,12 @@ namespace Sloppy
         // evaluate the result
         if (retVal < 0)
         {
+          st = State::Idle;
           throw IOError{};
         }
         if (retVal == 0)
         {
+          st = State::Idle;
           throw ReadTimeout{result};
         }
 
@@ -454,6 +465,30 @@ namespace Sloppy
   ManagedFileDescriptor::State ManagedFileDescriptor::getState()
   {
     return st;
+  }
+
+  int ManagedFileDescriptor::releaseDescriptor()
+  {
+    // wait for the fd to become available
+    lock_guard<mutex> lockFd{fdMutex};
+
+    // just to be sure: check the state
+    if (st != State::Idle) return -1;
+
+    // return the descriptor in state "idle" and
+    // set the internal descriptor to an invalid
+    // value. the object should be used anymore
+    // after this operation
+
+    int tmp = fd;
+    fd = -1;
+    if (readBuf != nullptr)
+    {
+      free(readBuf);
+      readBuf = nullptr;
+    }
+
+    return tmp;
   }
 
 

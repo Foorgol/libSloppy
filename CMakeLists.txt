@@ -99,6 +99,7 @@ set(LIB_SOURCES_TST
     tests/tstSodium.cpp
     tests/tstManagedMemory.cpp
     tests/tstManagedFileDescriptor.cpp
+    tests/tstTcpClientServer.cpp
 )
 
 find_package(GTest)

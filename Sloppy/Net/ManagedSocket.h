@@ -38,8 +38,11 @@ namespace Sloppy
         UDP
       };
 
-      ManagedSocket(SocketType t)
+      explicit ManagedSocket(SocketType t)
         :ManagedFileDescriptor{socket(AF_INET, (t == SocketType::UDP) ? SOCK_DGRAM : SOCK_STREAM, 0)}{}
+
+      explicit ManagedSocket(int _fd)
+        :ManagedFileDescriptor(_fd) {}
 
       bool bind(const string& bindName, int port);
       bool listen(size_t maxConnectionCount = 1);

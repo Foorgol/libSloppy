@@ -204,6 +204,8 @@ namespace Sloppy
 
     State getState();
 
+    int releaseDescriptor();
+
   protected:
     int fd;
     mutex fdMutex;

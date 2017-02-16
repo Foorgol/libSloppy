@@ -16,6 +16,9 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <unistd.h>
+#include <thread>
+
 #include "../libSloppy.h"
 #include "TcpClientServer.h"
 
@@ -23,8 +26,92 @@ namespace Sloppy
 {
   namespace Net
   {
+    void AbstractWorker::run()
+    {
+      ws = WorkerStatus::Running;
+      doTheWork();
+      ws = WorkerStatus::Done;
+    }
+
+    //----------------------------------------------------------------------------
+
+    bool AbstractWorker::requestQuit()
+    {
+      if (ps != PreemptionStatus::Terminate) ps = PreemptionStatus::Quit;
+
+      return (ps == PreemptionStatus::Quit);
+    }
+
+    //----------------------------------------------------------------------------
+
+    void AbstractWorker::requestTermination()
+    {
+      ps = PreemptionStatus::Terminate;
+    }
+
+    //----------------------------------------------------------------------------
+
+    pair<AbstractWorker::PreemptiveReadResult, string> AbstractWorker::preemptiveRead(size_t nBytes, size_t timeout_ms)
+    {
+      string data;
+
+      // start a stop watch
+      auto startTime = chrono::high_resolution_clock::now();
+
+      while (true)
+      {
+        auto _elapsedTime = chrono::high_resolution_clock::now() - startTime;
+        int elapsedTime = chrono::duration_cast<chrono::milliseconds>(_elapsedTime).count();
+
+        int remainingTime = timeout_ms - elapsedTime;
+        if (remainingTime <= 0)
+        {
+          break;
+        }
+
+        size_t thisReadDuration = (remainingTime <= ReadTimeSlice_ms) ? remainingTime : ReadTimeSlice_ms;
+
+        string chunk;
+
+        try
+        {
+          chunk = socket.blockingRead(nBytes, nBytes, thisReadDuration);
+          data += chunk;
+        }
+        catch (ReadTimeout& e)
+        {
+          continue;   // a time out is not bad. maybe we don't receive anything in this cycle but maybe in the next
+        }
+        catch (...)
+        {
+          cerr << strerror(errno) << endl;
+          return make_pair(PreemptiveReadResult::Error, "");
+        }
+
+        // are we requested to stop?
+        if (ps != PreemptionStatus::Continue)
+        {
+          return make_pair(PreemptiveReadResult::Interrupted, data);
+        }
+
+        // is the data complete?
+        if (data.size() == nBytes) break;
+      }
+
+      return make_pair((data.size() == nBytes) ? PreemptiveReadResult::Complete : PreemptiveReadResult::Timeout, data);
+    }
+
+    //----------------------------------------------------------------------------
+
+    bool AbstractWorker::write(const string& data)
+    {
+      return socket.blockingWrite(data);
+    }
+
+    //----------------------------------------------------------------------------
+
     TcpServerWrapper::TcpServerWrapper(const string& bindName, int port, size_t maxConCount)
-      :srvSocket{ManagedSocket::SocketType::TCP}
+      :srvSocket{ManagedSocket::SocketType::TCP}, isStopRequested{false}
     {
       if (!(srvSocket.bind(bindName, port)))
       {
@@ -39,43 +126,65 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    void TcpServerWrapper::mainLoop()
+    void TcpServerWrapper::mainLoop(AbstractWorkerFactory& workerFac)
     {
-      int clientFd;
-      sockaddr_in cliAddr;
-      cout << "\t\t\tSrv: wait for connect!" << endl;
-      tie(clientFd, cliAddr) = srvSocket.acceptNext();
-      cout << "\t\t\tSrv: Connection on fd " << clientFd << "!" << endl;
+      vector<thread> workerThreads;
+      vector<unique_ptr<AbstractWorker>> workerObjects;
 
-      ManagedFileDescriptor mfd{clientFd};
-      mfd.blockingWrite("Srv --> client\n");
+      do
+      {
+        int clientFd;
+        sockaddr_in cliAddr;
 
-      // client FD will be closed when we're leaving this scope
+        cout << "\t\t\twrapper: wait for connect!" << endl;
+        tie(clientFd, cliAddr) = srvSocket.acceptNext();
+        cout << "\t\t\twrapper: Connection on fd " << clientFd << "!" << endl;
 
-      // server FD will be closed when the TcpServerWrapper is destroyed
+        unique_ptr<AbstractWorker> newWorker = workerFac.getNewWorker(clientFd, cliAddr);
+        if (newWorker == nullptr)
+        {
+          // the factory refused to handle this connection. So we close
+          // it immediately
+          ::close(clientFd);
+        } else {
+          // start a new thread for this worker and store the
+          // thread handle
+          auto wrkPtr = newWorker.get();
+          thread tWorker{[&](){wrkPtr->run();}};
+          workerThreads.push_back(std::move(tWorker));
+          workerObjects.push_back(std::move(newWorker));
+        }
+      } while (!isStopRequested);
+      cout << "\t\t\twrapper: left while-loop" << endl;
+
+      // join all started threads
+      for (thread& t : workerThreads) t.join();
+
+      // the worker objects will be automatically destroyed / freed
+      // when the workerObjects container is destroyed
     }
 
     //----------------------------------------------------------------------------
 
-    TcpClient::TcpClient(const string& _srvName, int _port)
-      :cliSocket{ManagedSocket::SocketType::TCP}, srvName{_srvName},
-       port{_port} {}
+    BasicTcpClient::BasicTcpClient(const string& _srvName, int _port)
+      :AbstractWorker{getConnectedRawSocket(_srvName, _port)}, srvName{_srvName}, port{_port} {}
 
     //----------------------------------------------------------------------------
 
-    void TcpClient::connectAndRun()
+    int BasicTcpClient::getConnectedRawSocket(const string& srvName, int port)
     {
-      cout << "\tClient: waiting to connect" << endl;
-      cliSocket.connect(srvName, port);
+      ManagedSocket s{ManagedSocket::SocketType::TCP};
 
+      cout << "\tClient: waiting to connect" << endl;
+      s.connect(srvName, port);
       cout << "\tClient: connected, waiting for data" << endl;
 
-      this_thread::sleep_for(chrono::milliseconds{1000});
+      int tmp = s.releaseDescriptor();
+      cout << "\t Client socket is " << tmp << endl;
 
-      string d = cliSocket.blockingRead(10, 20, 1000);
-
-      cout << "\tClient: received: " << d << endl;
+      return tmp;
     }
+
 
   }
 }

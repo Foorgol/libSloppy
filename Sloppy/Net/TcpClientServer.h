@@ -20,6 +20,7 @@
 #define SLOPPY__TCP_CLIENT_SERVER_H
 
 #include <iostream>
+#include <atomic>
 
 #include "ManagedSocket.h"
 
@@ -29,26 +30,96 @@ namespace Sloppy
 {
   namespace Net
   {
-    class TcpServerWrapper
+    class AbstractWorker
     {
     public:
-      TcpServerWrapper(const string& bindName, int port, size_t maxConCount);
-      void mainLoop();
+      enum class PreemptionStatus
+      {
+        Continue,   // go on serving
+        Quit,       // stop when its conveniert, e.g. after finishing the current request
+        Terminate   // stop as sonn as possible
+      };
+      enum class WorkerStatus
+      {
+        Ready,     // waiting to be started
+        Running,   // started
+        Done       // finished
+      };
+
+      AbstractWorker(int _fd)
+        :socket{_fd}, ps{PreemptionStatus::Continue}, ws{WorkerStatus::Ready} {}
+
+      AbstractWorker(ManagedSocket& s)
+        :socket{s.releaseDescriptor()}, ps{PreemptionStatus::Continue}, ws{WorkerStatus::Ready} {}
+
+      virtual ~AbstractWorker() {}
+
+      // this is the actual thread function
+      virtual void run() final;
+
+      bool requestQuit();
+      void requestTermination();
+
+      WorkerStatus getWorkerStatus() { return ws; }
+      PreemptionStatus getPreemptionStatus() { return ps; }
+
+    protected:
+      enum class PreemptiveReadResult
+      {
+        Complete,  // all requested data has been read
+        Timeout,   // a timeout occured and the returned data is incomplete
+        Interrupted, // the parent requested to QUIT or TERMINATE
+        Error      // an IOError occured
+      };
+
+      pair<PreemptiveReadResult, string> preemptiveRead(size_t nBytes, size_t timeout_ms);
+      bool write(const string& data);
+
+      // this one has to be overriden by the specific worker
+      virtual void doTheWork() {}
 
     private:
-      ManagedSocket srvSocket;
+      static constexpr int ReadTimeSlice_ms = 10;
+      ManagedSocket socket;
+      atomic<PreemptionStatus> ps;
+      atomic<WorkerStatus> ws;
     };
 
     //----------------------------------------------------------------------------
 
-    class TcpClient
+    class AbstractWorkerFactory
     {
     public:
-      TcpClient(const string& _srvName, int _port);
-      void connectAndRun();
+      AbstractWorkerFactory() {}
+      virtual ~AbstractWorkerFactory() {}
+
+      virtual unique_ptr<AbstractWorker> getNewWorker(int _fd, sockaddr_in _clientAddress) = 0;
+    };
+
+    //----------------------------------------------------------------------------
+
+    class TcpServerWrapper
+    {
+    public:
+      TcpServerWrapper(const string& bindName, int port, size_t maxConCount);
+      void mainLoop(AbstractWorkerFactory& workerFac);
+      void requestStop() { isStopRequested = true; }
 
     private:
-      ManagedSocket cliSocket;
+      ManagedSocket srvSocket;
+      atomic<bool> isStopRequested;
+    };
+
+    //----------------------------------------------------------------------------
+
+    class BasicTcpClient : public AbstractWorker
+    {
+    public:
+      BasicTcpClient(const string& _srvName, int _port);
+
+      static int getConnectedRawSocket(const string& srvName, int port);
+
+    private:
       string srvName;
       int port;
     };

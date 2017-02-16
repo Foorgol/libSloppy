@@ -75,6 +75,9 @@ namespace Sloppy
       pair<PreemptiveReadResult, string> preemptiveRead(size_t nBytes, size_t timeout_ms);
       bool write(const string& data);
 
+      pair<PreemptiveReadResult, string> preemptiveRead_framed(size_t timeout_ms);
+      bool write_framed(const string& data);
+
       // this one has to be overriden by the specific worker
       virtual void doTheWork() {}
 

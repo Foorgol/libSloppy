@@ -52,5 +52,50 @@ namespace Sloppy
 
       return result;
     }
+
+    //----------------------------------------------------------------------------
+
+    string hton_sizet(const size_t& in)
+    {
+      static_assert(sizeof(size_t) == 8, "Need 64-bit size_t!!");
+
+      uint32_t high = (in >> 32);
+      uint32_t low = (in & 0xffffffff);
+
+      uint32_t netHigh = htonl(high);
+      uint32_t netLow = htonl(low);
+
+      string sHigh{(char *)&netHigh, 4};
+      string sLow{(char *)&netLow, 4};
+
+      return sHigh + sLow;
+    }
+
+    //----------------------------------------------------------------------------
+
+    size_t ntoh_sizet(const string& in)
+    {
+      static_assert(sizeof(size_t) == 8, "Need 64-bit size_t!!");
+
+      if (in.size() != 8)
+      {
+        throw std::invalid_argument("Need 8 bytes for size_t conversion!");
+      }
+
+      string sHigh = in.substr(0, 4);
+      string sLow = in.substr(4);
+
+      uint32_t netHigh = *((uint32_t*)sHigh.c_str());
+      uint32_t netLow = *((uint32_t*)sLow.c_str());;
+
+      size_t high = ntohl(netHigh);
+      uint32_t low = ntohl(netLow);
+
+      size_t out = (high << 32) + low;
+
+      return out;
+    }
+
+
   }
 }

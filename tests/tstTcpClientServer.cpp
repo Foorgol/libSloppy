@@ -42,7 +42,7 @@ TEST(TcpClientServer, HelloWorld)
       {
         AbstractWorker::PreemptiveReadResult rr;
         string data;
-        tie(rr, data) = preemptiveRead(5, 1000);
+        tie(rr, data) = preemptiveRead_framed(1000);
 
         // quit if we don't receive enough data or
         // if we're requested to stop
@@ -72,7 +72,7 @@ TEST(TcpClientServer, HelloWorld)
         ASSERT_EQ("Hello", data);
 
         // send a response
-        ASSERT_TRUE(write("World"));
+        ASSERT_TRUE(write_framed("World"));
       }
     }
   };
@@ -102,11 +102,11 @@ TEST(TcpClientServer, HelloWorld)
       constexpr int nRounds = 10;
       for (int i=0; i < nRounds; ++i)
       {
-        ASSERT_TRUE(write("Hello"));
+        ASSERT_TRUE(write_framed("Hello"));
 
         AbstractWorker::PreemptiveReadResult rr;
         string response;
-        tie(rr, response) = preemptiveRead(5, 100);
+        tie(rr, response) = preemptiveRead_framed(100);
 
         // quit if we don't receive enough data or
         // if we're requested to stop

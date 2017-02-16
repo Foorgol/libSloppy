@@ -31,6 +31,12 @@ namespace Sloppy
     class InvalidHostname{};
 
     sockaddr_in fillSockAddr(const string& hostName, int port);
+
+    //----------------------------------------------------------------------------
+
+    string hton_sizet(const size_t& in);
+    size_t ntoh_sizet(const string& in);
+
   }
 }
 

@@ -115,7 +115,7 @@ TEST(TcpClientServer, HelloWorld)
         // quit if we don't receive "World"
         ASSERT_EQ("World", response);
 
-        cout << "Client: round " << i+1 << " of " << nRounds << " completed!" << endl;
+        //cout << "Client: round " << i+1 << " of " << nRounds << " completed!" << endl;
 
         this_thread::sleep_for(chrono::milliseconds{50});
       }
@@ -132,23 +132,26 @@ TEST(TcpClientServer, HelloWorld)
   SrvWorkerFactory f;
 
   // prep a server wrapper on localhost:11111
+  // and run it in a dedicated thread
   TcpServerWrapper wrp{"localhost", 11111, 5};
+  thread tWrapper{[&](){ wrp.mainLoop(f); }};
 
   // instanciate a client and start it in a new
   // thread
   SimpleClient c;
   thread tClient{[&](){c.run();}};
 
-  // make the wrapper stop after the first connect
-  // and run the wrapper in the main thread
+  // wait
+  this_thread::sleep_for(chrono::seconds{3});
+
+  // force-quit the server and its worker
   wrp.requestStop();
-  wrp.mainLoop(f);
+  cout << "Asked the wrapper to stop" << endl;
+  tWrapper.join();
+  cout << "The wrapper stopped." << endl;
 
   // wait for the client to finish
   tClient.join();
-
-  // let the server finish
-  //tWrapper.join();
 
 }
 

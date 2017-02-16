@@ -418,21 +418,19 @@ namespace Sloppy
 
         // wait for data to become available
         size_t remainingTime = timeout_ms - elapsedTime;
-        timeval tv;
-        tv.tv_sec = remainingTime / 1000;
-        tv.tv_usec = (remainingTime % 1000) * 1000;
-        fd_set readFd;
-        FD_ZERO(&readFd);
-        FD_SET(fd, &readFd);
-        int retVal = select(fd+1, &readFd, nullptr, nullptr, &tv);
-
-        // evaluate the result
-        if (retVal < 0)
+        bool hasData;
+        try
+        {
+          hasData = waitForReadOnDescriptor(fd, remainingTime);
+        }
+        catch (IOError)
         {
           st = State::Idle;
-          throw IOError{};
+          throw;
         }
-        if (retVal == 0)
+
+        // evaluate the result
+        if (!hasData)
         {
           st = State::Idle;
           throw ReadTimeout{result};
@@ -489,6 +487,27 @@ namespace Sloppy
     }
 
     return tmp;
+  }
+
+  //----------------------------------------------------------------------------
+
+  bool waitForReadOnDescriptor(int fd, size_t timeout_ms)
+  {
+    timeval tv;
+    tv.tv_sec = timeout_ms / 1000;
+    tv.tv_usec = (timeout_ms % 1000) * 1000;
+    fd_set readFd;
+    FD_ZERO(&readFd);
+    FD_SET(fd, &readFd);
+    int retVal = select(fd+1, &readFd, nullptr, nullptr, &tv);
+
+    // evaluate the result
+    if (retVal < 0)
+    {
+      throw IOError{};
+    }
+
+    return (retVal > 0);
   }
 
 

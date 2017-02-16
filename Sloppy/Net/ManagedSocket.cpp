@@ -43,10 +43,23 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    pair<int, sockaddr_in> ManagedSocket::acceptNext()
+    pair<int, sockaddr_in> ManagedSocket::acceptNext(size_t timeout_ms)
     {
       sockaddr_in cliAddr;
       socklen_t clilen = sizeof(cliAddr);
+
+      // if we have a timeout, wait for available
+      // connections using select()
+      if (timeout_ms > 0)
+      {
+        bool hasData = waitForReadOnDescriptor(fd, timeout_ms);
+
+        if (!hasData)
+        {
+          bzero(&cliAddr, clilen);
+          return make_pair(-1, cliAddr);   // fd == -1 indicates timeout
+        }
+      }
 
       int newFd = ::accept(fd, (sockaddr *)&cliAddr, &clilen);
 

@@ -101,6 +101,7 @@ namespace Sloppy
     class TcpServerWrapper
     {
     public:
+      static constexpr size_t AcceptCycleTime_ms = 100;
       TcpServerWrapper(const string& bindName, int port, size_t maxConCount);
       void mainLoop(AbstractWorkerFactory& workerFac);
       void requestStop() { isStopRequested = true; }

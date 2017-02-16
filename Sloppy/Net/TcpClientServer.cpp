@@ -135,29 +135,66 @@ namespace Sloppy
       {
         int clientFd;
         sockaddr_in cliAddr;
+        tie(clientFd, cliAddr) = srvSocket.acceptNext(AcceptCycleTime_ms);
 
-        cout << "\t\t\twrapper: wait for connect!" << endl;
-        tie(clientFd, cliAddr) = srvSocket.acceptNext();
-        cout << "\t\t\twrapper: Connection on fd " << clientFd << "!" << endl;
-
-        unique_ptr<AbstractWorker> newWorker = workerFac.getNewWorker(clientFd, cliAddr);
-        if (newWorker == nullptr)
+        // if the previous call wasn't a timeout, instanciate a new worker
+        // for this connection
+        if (clientFd >= 0)
         {
-          // the factory refused to handle this connection. So we close
-          // it immediately
-          ::close(clientFd);
-        } else {
-          // start a new thread for this worker and store the
-          // thread handle
-          auto wrkPtr = newWorker.get();
-          thread tWorker{[&](){wrkPtr->run();}};
-          workerThreads.push_back(std::move(tWorker));
-          workerObjects.push_back(std::move(newWorker));
+          unique_ptr<AbstractWorker> newWorker = workerFac.getNewWorker(clientFd, cliAddr);
+          if (newWorker == nullptr)
+          {
+            // the factory refused to handle this connection. So we close
+            // it immediately
+            ::close(clientFd);
+          } else {
+            // start a new thread for this worker and store the
+            // thread handle
+            auto wrkPtr = newWorker.get();
+            thread tWorker{[&](){wrkPtr->run();}};
+            workerThreads.push_back(std::move(tWorker));
+            workerObjects.push_back(std::move(newWorker));
+          }
+        }
+
+        // after every connection or timeout
+        // we cleanup our worker list
+        auto itWorkerObject = workerObjects.begin();
+        while (itWorkerObject != workerObjects.end())
+        {
+          AbstractWorker::WorkerStatus st = (*itWorkerObject)->getWorkerStatus();
+
+          if (st == AbstractWorker::WorkerStatus::Done)
+          {
+            // calc the iterator to the thread object
+            size_t idx = itWorkerObject - workerObjects.begin();
+            auto itThread = workerThreads.begin() + idx;
+
+            // the following call should return immediately
+            (*itThread).join();
+
+            // delete the container entries which deletes
+            // the objects as well
+            workerThreads.erase(itThread);
+            itWorkerObject = workerObjects.erase(itWorkerObject);
+          } else {
+            ++itWorkerObject;
+          }
         }
       } while (!isStopRequested);
-      cout << "\t\t\twrapper: left while-loop" << endl;
 
-      // join all started threads
+      // we were requested to finish, so we kindly ask all our
+      // worker threads to finish as well
+      auto itWorkerObject = workerObjects.begin();
+      while (itWorkerObject != workerObjects.end())
+      {
+        (*itWorkerObject)->requestQuit();
+        ++itWorkerObject;
+      }
+
+
+      // and now we cross our fingers, hope for the best
+      // and join all started worker threads
       for (thread& t : workerThreads) t.join();
 
       // the worker objects will be automatically destroyed / freed

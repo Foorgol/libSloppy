@@ -180,6 +180,8 @@ namespace Sloppy
     string eStr;
   };
 
+  bool waitForReadOnDescriptor(int fd, size_t timeout_ms);
+
   class ManagedFileDescriptor
   {
   public:

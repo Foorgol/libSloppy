@@ -46,7 +46,7 @@ namespace Sloppy
 
       bool bind(const string& bindName, int port);
       bool listen(size_t maxConnectionCount = 1);
-      pair<int, sockaddr_in> acceptNext();
+      pair<int, sockaddr_in> acceptNext(size_t timeout_ms = 0);
       bool connect(const string& srvName, int srvPort);
     };
 

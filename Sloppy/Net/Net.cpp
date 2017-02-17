@@ -55,45 +55,176 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    string hton_sizet(const size_t& in)
+    uint64_t hton_sizet(const uint64_t& in)
     {
-      static_assert(sizeof(size_t) == 8, "Need 64-bit size_t!!");
-
       uint32_t high = (in >> 32);
       uint32_t low = (in & 0xffffffff);
 
       uint32_t netHigh = htonl(high);
       uint32_t netLow = htonl(low);
 
-      string sHigh{(char *)&netHigh, 4};
-      string sLow{(char *)&netLow, 4};
+      // My personal definition: high-word first!
+      uint64_t result = netHigh;
+      result = result << 32;
+      result += netLow;
 
-      return sHigh + sLow;
+      return result;
     }
 
     //----------------------------------------------------------------------------
 
-    size_t ntoh_sizet(const string& in)
+    uint64_t ntoh_sizet(const uint64_t& in)
     {
-      static_assert(sizeof(size_t) == 8, "Need 64-bit size_t!!");
+      uint32_t netHigh = (in >> 32);  // my personal definition: high-word first!
+      uint32_t netLow = (in & 0xffffffff);
 
-      if (in.size() != 8)
-      {
-        throw std::invalid_argument("Need 8 bytes for size_t conversion!");
-      }
+      uint32_t h = ntohl(netHigh);
+      uint32_t l = ntohl(netLow);
 
-      string sHigh = in.substr(0, 4);
-      string sLow = in.substr(4);
+      uint64_t result = h;
+      result = result << 32;
+      result += l;
 
-      uint32_t netHigh = *((uint32_t*)sHigh.c_str());
-      uint32_t netLow = *((uint32_t*)sLow.c_str());;
+      return result;
+    }
 
-      size_t high = ntohl(netHigh);
-      uint32_t low = ntohl(netLow);
+    //----------------------------------------------------------------------------
 
-      size_t out = (high << 32) + low;
+    void MessageBuilder::addString(const string& s)
+    {
+      addUI64(s.size());
+      data += ByteString{(uint8_t*)s.c_str(), s.size()};
+    }
 
-      return out;
+    //----------------------------------------------------------------------------
+
+    void MessageBuilder::addByte(uint8_t b)
+    {
+      data += b;
+    }
+
+    //----------------------------------------------------------------------------
+
+    void MessageBuilder::addInt(int i)
+    {
+      static_assert(sizeof(int) == 4, "Need 32-bit int!!");
+
+      addUI32((uint32_t) i);
+    }
+
+    //----------------------------------------------------------------------------
+
+    void MessageBuilder::addUI16(uint16_t u)
+    {
+      uint16_t networkOrder = htons(u);
+      data += ByteString{(uint8_t*)&networkOrder, 2};
+    }
+
+    //----------------------------------------------------------------------------
+
+    void MessageBuilder::addUI32(uint32_t u)
+    {
+      uint32_t networkOrder = htonl(u);
+      data += ByteString{(uint8_t*)&networkOrder, 4};
+    }
+
+    //----------------------------------------------------------------------------
+
+    void MessageBuilder::addUI64(uint64_t u)
+    {
+      uint32_t high = (u >> 32);
+      addUI32(high);
+      uint32_t low = (u & 0xffffffff);
+      addUI32(low);
+    }
+
+    //----------------------------------------------------------------------------
+
+    string MessageDissector::getString()
+    {
+      // get the string length
+      assertSufficientData(8);
+      size_t len = getUI64();
+
+      // get the string itself
+      assertSufficientData(len);
+      string result{((char *)data.c_str() + offset), len};
+      offset += len;
+
+      return result;
+    }
+
+    //----------------------------------------------------------------------------
+
+    uint8_t MessageDissector::getByte()
+    {
+      assertSufficientData(1);
+      return data[offset++];
+    }
+
+    //----------------------------------------------------------------------------
+
+    int MessageDissector::getInt()
+    {
+      uint32_t u = getUI32();
+
+      return (int)u;
+    }
+
+    //----------------------------------------------------------------------------
+
+    uint16_t MessageDissector::getUI16()
+    {
+      assertSufficientData(2);
+
+      uint16_t networkOrder = *((uint16_t *)(data.c_str() + offset));
+      offset += 2;
+
+      return ntohs(networkOrder);
+    }
+
+    //----------------------------------------------------------------------------
+
+    uint32_t MessageDissector::getUI32()
+    {
+      assertSufficientData(4);
+
+      uint32_t networkOrder = *((uint32_t *)(data.c_str() + offset));
+      offset += 4;
+
+      return ntohl(networkOrder);
+    }
+
+    //----------------------------------------------------------------------------
+
+    uint64_t MessageDissector::getUI64()
+    {
+      assertSufficientData(8);
+
+      uint32_t high = getUI32();
+      uint32_t low = getUI32();
+
+      uint64_t result = high;
+      result = result << 32;
+      result += low;
+
+      return result;
+    }
+
+    //----------------------------------------------------------------------------
+
+    bool MessageDissector::getBool()
+    {
+      return (getByte() != 0);
+    }
+
+    //----------------------------------------------------------------------------
+
+    void MessageDissector::assertSufficientData(size_t n) const
+    {
+      if (offset >= data.size()) throw InvalidMessageAccess{};
+      size_t remaining = data.size() - offset;
+      if (remaining < n) throw InvalidMessageAccess{};
     }
 
 

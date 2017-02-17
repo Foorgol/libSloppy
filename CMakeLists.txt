@@ -100,6 +100,7 @@ set(LIB_SOURCES_TST
     tests/tstManagedMemory.cpp
     tests/tstManagedFileDescriptor.cpp
     tests/tstTcpClientServer.cpp
+    tests/tstNetFunc.cpp
 )
 
 find_package(GTest)

@@ -140,6 +140,14 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
+    void MessageBuilder::addManagedMemory(const ManagedMemory& mem)
+    {
+      addUI64(mem.getSize());
+      data += ByteString{mem.get_uc(), mem.getSize()};
+    }
+
+    //----------------------------------------------------------------------------
+
     string MessageDissector::getString()
     {
       // get the string length
@@ -216,6 +224,21 @@ namespace Sloppy
     bool MessageDissector::getBool()
     {
       return (getByte() != 0);
+    }
+
+    //----------------------------------------------------------------------------
+
+    ManagedBuffer MessageDissector::getManagedBuffer()
+    {
+      assertSufficientData(8);
+      size_t len = getUI64();
+
+      assertSufficientData(len);
+      ManagedBuffer result{len};
+      memcpy(result.get_c(), data.c_str() + offset, len);
+      offset += len;
+
+      return result;   // let's hope the compiler picks move()-semantics here
     }
 
     //----------------------------------------------------------------------------

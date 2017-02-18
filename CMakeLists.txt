@@ -41,6 +41,7 @@ set(LIB_SOURCES
     Sloppy/Net/ManagedSocket.cpp
     Sloppy/Net/Net.cpp
     Sloppy/Net/TcpClientServer.cpp
+    Sloppy/Net/CryptoClientServer.cpp
 )
 
 add_library(${PROJECT_NAME} SHARED ${LIB_SOURCES})
@@ -101,6 +102,7 @@ set(LIB_SOURCES_TST
     tests/tstManagedFileDescriptor.cpp
     tests/tstTcpClientServer.cpp
     tests/tstNetFunc.cpp
+    tests/tstCryptoClientServer.cpp
 )
 
 find_package(GTest)

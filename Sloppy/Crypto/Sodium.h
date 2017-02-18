@@ -219,6 +219,14 @@ namespace Sloppy
         return true;
       }
 
+      bool fillFromManagedMemory(const ManagedMemory& data)
+      {
+        if (data.getSize() != keySize) return false;
+        if (!(canWrite())) return false;
+        memcpy(rawPtr, data.get_c(), keySize);
+        return true;
+      }
+
     protected:
       SodiumKeyType keyType;
     };

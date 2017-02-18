@@ -22,6 +22,8 @@
 #include <string>
 #include <netdb.h>
 
+#include "../libSloppy.h"
+
 using namespace std;
 
 namespace Sloppy
@@ -53,12 +55,16 @@ namespace Sloppy
       void addUI32(uint32_t u);
       void addUI64(uint64_t u);
       void addBool(bool b) { addByte(b ? 1 : 0); }
+      void addManagedMemory(const ManagedMemory& mem);
 
       const ByteString& getDataAsRef() const { return data; }
       ByteString getData() const { return data; }
 
       const uint8_t* ucPtr() const { return data.c_str(); }
       const char* charPtr() const { return (char *)data.c_str(); }
+      size_t getSize() const { return data.size(); }
+
+      void clear() { data.clear(); }
 
     private:
       ByteString data;
@@ -83,6 +89,7 @@ namespace Sloppy
       uint32_t getUI32();
       uint64_t getUI64();
       bool getBool();
+      ManagedBuffer getManagedBuffer();
 
     private:
       ByteString data;

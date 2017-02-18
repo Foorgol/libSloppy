@@ -353,7 +353,11 @@ namespace Sloppy
     lock_guard<mutex> lockFd{fdMutex};
 
     // just to be sure: check the state
-    if (st != State::Idle) return false;
+    if (st != State::Idle)
+    {
+      cerr << "FD lock acquired, but FD not idle!" << endl;
+      return false;
+    }
 
     // do the actual write
     st = State::Writing;
@@ -460,10 +464,24 @@ namespace Sloppy
 
   //----------------------------------------------------------------------------
 
+  void ManagedFileDescriptor::close()
+  {
+    // wait for the fd to become available
+    lock_guard<mutex> lockFd{fdMutex};
+
+    int rc = ::close(fd);
+    fd = -1;
+    if (rc < 0) throw IOError{};
+  }
+
+  //----------------------------------------------------------------------------
+
   ManagedFileDescriptor::State ManagedFileDescriptor::getState()
   {
     return st;
   }
+
+  //----------------------------------------------------------------------------
 
   int ManagedFileDescriptor::releaseDescriptor()
   {

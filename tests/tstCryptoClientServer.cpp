@@ -23,6 +23,7 @@
 
 #include "../Sloppy/Net/CryptoClientServer.h"
 #include "../Sloppy/Crypto/Sodium.h"
+#include "../Sloppy/Crypto/Crypto.h"
 
 using namespace Sloppy;
 using namespace Sloppy::Net;
@@ -46,6 +47,11 @@ TEST(CryptoClientServerDemo, HelloWorld)
       :AbstractWorkerFactory(), sodium{SodiumLib::getInstance()}
     {
       sodium->genAsymCryptoKeyPair(pk, sk);
+    }
+
+    SodiumLib::AsymCrypto_PublicKey getPublicServerKey() const
+    {
+      return SodiumLib::AsymCrypto_PublicKey::asCopy(pk);
     }
 
     virtual unique_ptr<AbstractWorker> getNewWorker(int _fd, sockaddr_in _clientAddress) override
@@ -87,6 +93,8 @@ TEST(CryptoClientServerDemo, HelloWorld)
   SodiumLib::AsymCrypto_SecretKey sk;
   sodium->genAsymCryptoKeyPair(pk, sk);
   SimpleClient c{pk, sk};
+  cout << "Testcase main: server public key is " << Sloppy::Crypto::toBase64(f.getPublicServerKey()) << endl;
+  c.setExpectedServerKey(f.getPublicServerKey());
   thread tClient{[&](){c.run();}};
 
   // wait

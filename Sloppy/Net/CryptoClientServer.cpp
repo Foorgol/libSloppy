@@ -43,7 +43,7 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    bool CryptoClientServer::CryptoServer::doAuthProcess()
+    bool CryptoClientServer::CryptoServer::authStep1()
     {
       // Step 1: wait for the client to open with "LetMeInPlease"
       PreemptiveReadResult rr;
@@ -56,9 +56,18 @@ namespace Sloppy
       bool isOkay = write("OK");
       if (!isOkay) return false;
       cout << "ServerWorker: AU1, reponse sent" << endl;
-      cout << "ServerWorker: AuthStep 1 okay" << endl;
 
+      cout << "ServerWorker: AuthStep 1 okay" << endl;
+      return true;
+    }
+
+    //----------------------------------------------------------------------------
+
+    bool CryptoClientServer::CryptoServer::authStep2()
+    {
       // Step 2a: wait for public key and challenge
+      PreemptiveReadResult rr;
+      string data;
       tie(rr, data) = preemptiveRead_framed(AuthStepTimeout_ms);
       if (rr != PreemptiveReadResult::Complete) return false;
       MessageDissector d{data};
@@ -74,7 +83,6 @@ namespace Sloppy
         return false;
       }
       if (_clientPubKey.size() != crypto_box_PUBLICKEYBYTES) return false;
-      SodiumLib::AsymCrypto_PublicKey clientPubKey;
       clientPubKey.fillFromString(_clientPubKey);
       if (challengeFromClient.getSize() != ChallengeSize) return false;
 
@@ -83,21 +91,104 @@ namespace Sloppy
       MessageBuilder b;
       b.addManagedMemory(pk);
 
-      SodiumLib::AsymCrypto_Nonce asymNonce;
       sodium->randombytes_buf(asymNonce);
       ManagedBuffer cipher = sodium->crypto_box_easy(challengeFromClient, asymNonce, clientPubKey, sk);
       b.addManagedMemory(cipher);
 
       b.addManagedMemory(asymNonce);
 
-      ManagedBuffer challengeForClient{ChallengeSize};
       sodium->randombytes_buf(challengeForClient);
       b.addManagedMemory(challengeForClient);
 
-      isOkay = write_framed((const string&)b.getDataAsRef());
+      bool isOkay = write_framed((const string&)b.getDataAsRef());
       if (!isOkay) return false;
 
       cout << "ServerWorker: AuthStep 2 okay" << endl;
+      return true;
+    }
+
+    //----------------------------------------------------------------------------
+
+    bool CryptoClientServer::CryptoServer::authStep3()
+    {
+      // Step 3a: wait for encrypted/signed challenge, symmetric nonce and
+      // public DH parameter from the client
+      PreemptiveReadResult rr;
+      string data;
+      tie(rr, data) = preemptiveRead_framed(AuthStepTimeout_ms);
+      if (rr != PreemptiveReadResult::Complete) return false;
+      cout << "ServerWorker: received Auth3 data from client" << endl;
+
+      MessageDissector d{data};
+      ManagedBuffer cipherChallenge;
+      ManagedBuffer signedPubDHKey;
+      try
+      {
+        cipherChallenge = d.getManagedBuffer();
+        if (!(symNonce.fillFromManagedMemory(d.getManagedBuffer()))) return false;
+        signedPubDHKey = d.getManagedBuffer();
+      }
+      catch (...)
+      {
+        return false;
+      }
+      cout << "ServerWorker: dissected Auth3 data from client" << endl;
+
+      if (cipherChallenge.getSize() != (ChallengeSize + crypto_box_MACBYTES)) return false;
+      cout << "ServerWorker: encrypted cipher has correct size" << endl;
+
+      if (signedPubDHKey.getSize() != (crypto_scalarmult_BYTES + crypto_box_MACBYTES)) return false;
+      cout << "ServerWorker: encrypted DH key has correct size" << endl;
+
+      sodium->increment(asymNonce);
+      SodiumSecureMemory returnedChallenge = sodium->crypto_box_open_easy(cipherChallenge, asymNonce, clientPubKey, sk);
+      if (!(returnedChallenge.isValid())) return false;
+      cout << "ServerWorker: encrypted cipher has valid signature" << endl;
+
+      if (!(sodium->memcmp(returnedChallenge, challengeForClient))) return false;
+      cout << "ServerWorker: returned cipher from client matches source" << endl;
+
+      // the client has proven that it actually controls the private key. check if the
+      // client to be accepted
+      if (!(isClientAcceptable(clientPubKey))) return false;
+      cout << "ServerWorker: client's public key accepted" << endl;
+
+      // derive the session key from the DH parameter
+      sodium->increment(asymNonce);
+      SodiumSecureMemory pubDh = sodium->crypto_box_open_easy(signedPubDHKey, asymNonce, clientPubKey, sk);
+      if (!(pubDh.isValid())) return false;
+      cout << "ServerWorker: client's public DH key has valid signature" << endl;
+
+      SodiumLib::DH_PublicKey pubDHKey;
+      if (!(pubDHKey.fillFromManagedMemory(pubDh))) return false;
+      cout << "ServerWorker: client's public DH key has valid size" << endl;
+
+      sessionKey = dhEx.getSharedSecret(pubDHKey);
+      cout << "ServerWorker: session key is " << toBase64(sessionKey) << endl;
+      sessionKey.setAccess(SodiumSecureMemAccess::NoAccess);
+
+      //
+      // step 3b: send our signed public DH key
+      //
+      sodium->increment(asymNonce);
+      ManagedBuffer signedDH = sodium->crypto_box_easy(dhEx.getMyPublicKey(), asymNonce, clientPubKey, sk);
+      bool isOk = write_framed(signedDH.copyToString());
+      if (!isOk) return false;
+      cout << "ServerWorker: sent signed DH key" << endl;
+
+      cout << "ServerWorker: AuthStep 3 okay" << endl;
+      return true;
+    }
+
+    //----------------------------------------------------------------------------
+
+    bool CryptoClientServer::CryptoServer::doAuthProcess()
+    {
+      if (!(authStep1())) return false;
+      if (!(authStep2())) return false;
+      if (!(authStep3())) return false;
+
+      cout << "ServerWorker: !!! Authentication finished, switching to symmetric encryption !!! " << endl;
 
       return true;
     }
@@ -119,53 +210,77 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
+    void CryptoClientServer::CryptoClient::setExpectedServerKey(const CryptoClientServer::PubKey& srvPubKey)
+    {
+      expectedServerKey = PubKey::asCopy(srvPubKey);
+      hasExpectedServerKey = true;
+    }
+
+    //----------------------------------------------------------------------------
+
     bool CryptoClientServer::CryptoClient::doAuthProcess()
+    {
+      if (!(authStep1())) return false;
+      if (!(authStep2())) return false;
+      if (!(authStep3())) return false;
+
+      cout << "\t\t\tClient: !!! Authentication finished, switching to symmetric encryption !!! " << endl;
+
+      return true;
+    }
+
+    //----------------------------------------------------------------------------
+
+    bool CryptoClientServer::CryptoClient::authStep1()
     {
       // Step 1: present the magic words and wait for an "OK"
       bool isOk = write(MagicPhrase);
       if (!isOk) return false;
       cout << "\t\t\tClient: phrase sent" << endl;
+
       PreemptiveReadResult rr;
       string data;
       tie(rr, data) = preemptiveRead(2, AuthStepTimeout_ms);
       if (rr != PreemptiveReadResult::Complete) return false;
       cout << "\t\t\tClient: Server response complete" << endl;
+
       if (data != "OK") return false;
       cout << "\t\t\tClient: Server response correct" << endl;
-      cout << "\t\t\tClient: AuthStep 1 okay" << endl;
 
+      cout << "\t\t\tClient: AuthStep 1 okay" << endl;
+      return true;
+    }
+
+    //----------------------------------------------------------------------------
+
+    bool CryptoClientServer::CryptoClient::authStep2()
+    {
       // Step 2a: transmit our public key and a challenge for the server
       MessageBuilder b;
       b.addString(pk.copyToString());
       ManagedBuffer challenge{ChallengeSize};
       sodium->randombytes_buf(challenge);
       b.addManagedMemory(challenge);
-      isOk = write_framed((const string&)b.getDataAsRef());
+      bool isOk = write_framed((const string&)b.getDataAsRef());
       if (!isOk) return false;
 
       // step 2b: expect the server's public key, the signed/encrypted challenge,
       // the used nonce and a challenge for us
+      PreemptiveReadResult rr;
+      string data;
       tie(rr, data) = preemptiveRead_framed(AuthStepTimeout_ms);
       if (rr != PreemptiveReadResult::Complete) return false;
       cout << "\t\t\tClient: AuthStep 2, received server response" << endl;
 
-      ManagedBuffer _srvPubKey;
       ManagedBuffer cipherChallenge;
-      ManagedBuffer _asymNonce;
-      ManagedBuffer challengeFromServer;
       try
       {
-        cout << "00" << endl;
         MessageDissector d{data};
-        cout << "0" << endl;
-        _srvPubKey = d.getManagedBuffer();
-        cout << "1" << endl;
+
+        if (!(srvPubKey.fillFromManagedMemory(d.getManagedBuffer()))) return false;;
         cipherChallenge = d.getManagedBuffer();
-        cout << "2" << endl;
-        _asymNonce = d.getManagedBuffer();
-        cout << "3" << endl;
+        if (!(asymNonce.fillFromManagedMemory(d.getManagedBuffer()))) return false;;
         challengeFromServer = d.getManagedBuffer();
-        cout << "4" << endl;
       }
       catch (...)
       {
@@ -173,35 +288,97 @@ namespace Sloppy
       }
       cout << "\t\t\tClient: AuthStep 2, dissected server response" << endl;
 
-      if (_srvPubKey.getSize() != crypto_box_PUBLICKEYBYTES) return false;
-      cout << "\t\t\tClient: Server public key has correct length" << endl;
-
       if (cipherChallenge.getSize() != (ChallengeSize + crypto_box_MACBYTES)) return false;
       cout << "\t\t\tClient: Signed and encrypted challenge has correct length" << endl;
 
-      if (_asymNonce.getSize() != crypto_box_NONCEBYTES) return false;
-      cout << "\t\t\tClient: Nonce has correct length" << endl;
-
       if (challengeFromServer.getSize() != ChallengeSize) return false;
       cout << "\t\t\tClient: Challenge from server has correct length" << endl;
-
-      SodiumLib::AsymCrypto_PublicKey srvPubKey;
-      srvPubKey.fillFromManagedMemory(_srvPubKey);
-
-      SodiumLib::AsymCrypto_Nonce asymNonce;
-      asymNonce.fillFromManagedMemory(_asymNonce);
+      cout << "\t\t\tClient: Challenge from server is " << toBase64(challengeFromServer) << endl;
 
       // check the encrypted challenge
       // THIS PROVES THAT THE SERVER ACTUALLY CONTROLS THE PRIVATE KEY
       auto returnedChallenge = sodium->crypto_box_open_easy(cipherChallenge, asymNonce, srvPubKey, sk);
       if (!(returnedChallenge.isValid())) return false;
       cout << "\t\t\tClient: returned challenge from server has valid signature" << endl;
+
       if (!(sodium->memcmp(challenge, returnedChallenge))) return false;
       cout << "\t\t\tClient: returned challenge from server has correct content" << endl;
 
-      cout << "\t\t\tClient: AuthStep 2 okay" << endl;
+      // call the hook for authorizing the server's public key
+      if (!(isServerAcceptable(srvPubKey))) return false;
+      cout << "\t\t\tClient: server's public key (==> identity!) accepted!" << endl;
 
+      cout << "\t\t\tClient: AuthStep 2 okay" << endl;
       return true;
+    }
+
+    //----------------------------------------------------------------------------
+
+    bool CryptoClientServer::CryptoClient::authStep3()
+    {
+      // step 3a: send the encrypted and signed challenge from the server
+      // back to the server; append an initial nonce for later symmetric
+      // encryption and public DH parameter (signed by the client)
+      sodium->increment(asymNonce);
+      ManagedBuffer cipherChallenge = sodium->crypto_box_easy(challengeFromServer, asymNonce, srvPubKey, sk);
+
+      sodium->randombytes_buf(symNonce);
+
+      MessageBuilder b;
+      b.addManagedMemory(cipherChallenge);
+      b.addManagedMemory(symNonce);
+
+      sodium->increment(asymNonce);
+      auto signedAndEncryptedDH = sodium->crypto_box_easy(dhEx.getMyPublicKey(), asymNonce, srvPubKey, sk);
+      b.addManagedMemory(signedAndEncryptedDH);
+
+      bool isOk = write_framed((const string&)b.getDataAsRef());
+      if (!isOk) return false;
+      cout << "\t\t\tClient: AuthStep 3 data sent" << endl;
+
+      //
+      // step 3b: wait for the server's signed public DH key
+      //
+      PreemptiveReadResult rr;
+      string data;
+      tie(rr, data) = preemptiveRead_framed(AuthStepTimeout_ms);
+      if (rr != PreemptiveReadResult::Complete) return false;
+      cout << "\t\t\tClient: AuthStep 3, received server response" << endl;
+
+      if (data.size() != (crypto_scalarmult_BYTES + crypto_box_MACBYTES)) return false;
+      cout << "\t\t\tClient: server's signed DH key has valid length" << endl;
+
+      sodium->increment(asymNonce);
+      string _pubDh = sodium->crypto_box_open_easy(data, asymNonce, srvPubKey, sk);
+      if (_pubDh.empty()) return false;
+      cout << "\t\t\tClient: server's signed DH key has valid signature" << endl;
+
+      SodiumLib::DH_PublicKey pubDH;
+      if (!(pubDH.fillFromString(_pubDh))) return false;
+      sessionKey = dhEx.getSharedSecret(pubDH);
+      cout << "\t\t\tClient: session key is " << toBase64(sessionKey) << endl;
+      sessionKey.setAccess(SodiumSecureMemAccess::NoAccess);
+
+      cout << "\t\t\tClient: AuthStep 3 okay" << endl;
+      return true;
+
+    }
+
+    //----------------------------------------------------------------------------
+
+    bool CryptoClientServer::CryptoClient::cmpServerKeys(const PubKey& srvPubKey) const
+    {
+      if (!hasExpectedServerKey) return false;
+
+      bool isEq = (srvPubKey == expectedServerKey);
+      if (!isEq)
+      {
+        string s = "Client: public server key mismatch!\n";
+        s += "Expected key:  " + toBase64(expectedServerKey) + "\n";
+        s += "Presented key: " + toBase64(srvPubKey) + "\n";
+        cerr << s;
+      }
+      return isEq;
     }
 
   }

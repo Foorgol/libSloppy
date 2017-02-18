@@ -179,6 +179,14 @@ namespace Sloppy
       *this = std::move(newMem);
     }
 
+    bool SodiumSecureMemory::operator ==(const SodiumSecureMemory& other) const
+    {
+      if (this == &other) return true;   // identity
+
+      // we actually have to compare memory contents
+      return lib->memcmp(*this, other);
+    }
+
     //----------------------------------------------------------------------------
 
     SodiumSecureMemory SodiumSecureMemory::asCopy(const SodiumSecureMemory& src)

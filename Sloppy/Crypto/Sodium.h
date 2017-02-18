@@ -138,6 +138,9 @@ namespace Sloppy
       // size change
       virtual void shrink(size_t newSize) override;
 
+      // comparison of SodiumSecureMemory contents
+      bool operator == (const SodiumSecureMemory& other) const;
+
     protected:
       SodiumSecureMemType type;
       SodiumLib* lib;

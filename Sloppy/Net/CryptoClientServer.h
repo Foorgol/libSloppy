@@ -56,7 +56,10 @@ namespace Sloppy
         CryptoServer(PubKey& _pk, SecKey& _sk, int _fd, sockaddr_in sa)
           :AbstractWorker{_fd}, pk{PubKey::asCopy(_pk)}, sk{SecKey::asCopy(_sk)},
            sodium{SodiumLib::getInstance()}, challengeForClient{ChallengeSize},
-           dhEx{false} {}
+           dhEx{false}, handshakeComplete{false}
+        {
+          sk.setAccess(SodiumSecureMemAccess::NoAccess);
+        }
 
         virtual void doTheWork() override final;
 
@@ -65,6 +68,8 @@ namespace Sloppy
         virtual bool isClientAcceptable(const PubKey& k) const { return true; }
 
         PubKey getPublicKey() const { return PubKey::asCopy(pk); }
+
+        bool isAuthenticated() const { return handshakeComplete; }
 
       private:
         SodiumLib* sodium;
@@ -80,6 +85,8 @@ namespace Sloppy
         SymKey sessionKey;
 
         DiffieHellmannExchanger dhEx;
+
+        bool handshakeComplete;
 
         bool authStep1();
         bool authStep2();
@@ -97,8 +104,10 @@ namespace Sloppy
           :BasicTcpClient{_srvName, _port}, pk{PubKey::asCopy(_pk)},
             sk{SecKey::asCopy(_sk)}, sodium{SodiumLib::getInstance()},
             hasExpectedServerKey{false}, challengeFromServer{},
-            dhEx{true}
+            dhEx{true}, handshakeComplete{false}
         {
+          sk.setAccess(SodiumSecureMemAccess::NoAccess);
+
           // invalidate the placeholder for the server's public key
           bzero(expectedServerKey.get(), expectedServerKey.getSize());
           bzero(srvPubKey.get(), srvPubKey.getSize());
@@ -117,6 +126,7 @@ namespace Sloppy
           return cmpServerKeys(k);
         }
 
+        bool isAuthenticated() const { return handshakeComplete; }
 
       private:
         SodiumLib* sodium;
@@ -133,6 +143,8 @@ namespace Sloppy
         SymKey sessionKey;
 
         DiffieHellmannExchanger dhEx;
+
+        bool handshakeComplete;
 
         bool doAuthProcess();
         bool authStep1();

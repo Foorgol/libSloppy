@@ -92,7 +92,9 @@ namespace Sloppy
       b.addManagedMemory(pk);
 
       sodium->randombytes_buf(asymNonce);
+      sk.setAccess(SodiumSecureMemAccess::RO);
       ManagedBuffer cipher = sodium->crypto_box_easy(challengeFromClient, asymNonce, clientPubKey, sk);
+      sk.setAccess(SodiumSecureMemAccess::NoAccess);
       b.addManagedMemory(cipher);
 
       b.addManagedMemory(asymNonce);
@@ -141,7 +143,9 @@ namespace Sloppy
       cout << "ServerWorker: encrypted DH key has correct size" << endl;
 
       sodium->increment(asymNonce);
+      sk.setAccess(SodiumSecureMemAccess::RO);
       SodiumSecureMemory returnedChallenge = sodium->crypto_box_open_easy(cipherChallenge, asymNonce, clientPubKey, sk);
+      sk.setAccess(SodiumSecureMemAccess::NoAccess);
       if (!(returnedChallenge.isValid())) return false;
       cout << "ServerWorker: encrypted cipher has valid signature" << endl;
 
@@ -155,7 +159,9 @@ namespace Sloppy
 
       // derive the session key from the DH parameter
       sodium->increment(asymNonce);
+      sk.setAccess(SodiumSecureMemAccess::RO);
       SodiumSecureMemory pubDh = sodium->crypto_box_open_easy(signedPubDHKey, asymNonce, clientPubKey, sk);
+      sk.setAccess(SodiumSecureMemAccess::NoAccess);
       if (!(pubDh.isValid())) return false;
       cout << "ServerWorker: client's public DH key has valid signature" << endl;
 
@@ -171,7 +177,9 @@ namespace Sloppy
       // step 3b: send our signed public DH key
       //
       sodium->increment(asymNonce);
+      sk.setAccess(SodiumSecureMemAccess::RO);
       ManagedBuffer signedDH = sodium->crypto_box_easy(dhEx.getMyPublicKey(), asymNonce, clientPubKey, sk);
+      sk.setAccess(SodiumSecureMemAccess::NoAccess);
       bool isOk = write_framed(signedDH.copyToString());
       if (!isOk) return false;
       cout << "ServerWorker: sent signed DH key" << endl;
@@ -189,6 +197,7 @@ namespace Sloppy
       if (!(authStep3())) return false;
 
       cout << "ServerWorker: !!! Authentication finished, switching to symmetric encryption !!! " << endl;
+      handshakeComplete = true;
 
       return true;
     }
@@ -225,6 +234,7 @@ namespace Sloppy
       if (!(authStep3())) return false;
 
       cout << "\t\t\tClient: !!! Authentication finished, switching to symmetric encryption !!! " << endl;
+      handshakeComplete = true;
 
       return true;
     }
@@ -297,7 +307,9 @@ namespace Sloppy
 
       // check the encrypted challenge
       // THIS PROVES THAT THE SERVER ACTUALLY CONTROLS THE PRIVATE KEY
+      sk.setAccess(SodiumSecureMemAccess::RO);
       auto returnedChallenge = sodium->crypto_box_open_easy(cipherChallenge, asymNonce, srvPubKey, sk);
+      sk.setAccess(SodiumSecureMemAccess::NoAccess);
       if (!(returnedChallenge.isValid())) return false;
       cout << "\t\t\tClient: returned challenge from server has valid signature" << endl;
 
@@ -320,7 +332,9 @@ namespace Sloppy
       // back to the server; append an initial nonce for later symmetric
       // encryption and public DH parameter (signed by the client)
       sodium->increment(asymNonce);
+      sk.setAccess(SodiumSecureMemAccess::RO);
       ManagedBuffer cipherChallenge = sodium->crypto_box_easy(challengeFromServer, asymNonce, srvPubKey, sk);
+      sk.setAccess(SodiumSecureMemAccess::NoAccess);
 
       sodium->randombytes_buf(symNonce);
 
@@ -329,7 +343,9 @@ namespace Sloppy
       b.addManagedMemory(symNonce);
 
       sodium->increment(asymNonce);
+      sk.setAccess(SodiumSecureMemAccess::RO);
       auto signedAndEncryptedDH = sodium->crypto_box_easy(dhEx.getMyPublicKey(), asymNonce, srvPubKey, sk);
+      sk.setAccess(SodiumSecureMemAccess::NoAccess);
       b.addManagedMemory(signedAndEncryptedDH);
 
       bool isOk = write_framed((const string&)b.getDataAsRef());
@@ -349,7 +365,9 @@ namespace Sloppy
       cout << "\t\t\tClient: server's signed DH key has valid length" << endl;
 
       sodium->increment(asymNonce);
+      sk.setAccess(SodiumSecureMemAccess::RO);
       string _pubDh = sodium->crypto_box_open_easy(data, asymNonce, srvPubKey, sk);
+      sk.setAccess(SodiumSecureMemAccess::NoAccess);
       if (_pubDh.empty()) return false;
       cout << "\t\t\tClient: server's signed DH key has valid signature" << endl;
 

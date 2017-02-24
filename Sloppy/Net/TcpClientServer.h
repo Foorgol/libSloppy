@@ -63,6 +63,8 @@ namespace Sloppy
       WorkerStatus getWorkerStatus() { return ws; }
       PreemptionStatus getPreemptionStatus() { return ps; }
 
+      void closeSocket() { socket.close(); }
+
     protected:
       enum class PreemptiveReadResult
       {
@@ -87,8 +89,6 @@ namespace Sloppy
 
       // this one has to be overriden by the specific worker
       virtual void doTheWork() {}
-
-      void closeSocket() { socket.close(); }
 
     private:
       static constexpr int ReadTimeSlice_ms = 10;

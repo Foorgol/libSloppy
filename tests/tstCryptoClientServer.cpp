@@ -39,7 +39,7 @@ TEST(CryptoClientServerDemo, HelloWorld)
     SrvWorker(SodiumLib::AsymCrypto_PublicKey& _pk, SodiumLib::AsymCrypto_SecretKey& _sk, int _fd, sockaddr_in sa)
       :Net::CryptoClientServer::CryptoServer(_pk, _sk, _fd, sa) {}
 
-    virtual pair<CryptoClientServer::RequestResponse, ManagedBuffer> handleRequest(const SodiumSecureMemory& reqData) override
+    virtual pair<CryptoClientServer::RequestResponse, ManagedBuffer> handleRequest(const ManagedBuffer& reqData) override
     {
       ManagedBuffer returnCopy = ManagedBuffer::asCopy(reqData);
 
@@ -85,11 +85,12 @@ TEST(CryptoClientServerDemo, HelloWorld)
       ManagedBuffer out{nBytes};
       sodium->randombytes_buf(out);
 
-      encryptAndWrite(out);
+      ASSERT_TRUE(encryptAndWrite(out));
+      cout << "Pingpong: " << out.getSize() << " unencrypted Bytes sent to server" << endl;
 
-      SodiumSecureMemory returnCopy;
+      ManagedBuffer returnCopy;
       PreemptiveReadResult rr;
-      tie(rr, returnCopy) = readAndDecrypt(1000);
+      tie(rr, returnCopy) = readAndDecrypt(5000);
 
       ASSERT_TRUE(rr == PreemptiveReadResult::Complete);
       ASSERT_TRUE(returnCopy.isValid());
@@ -122,9 +123,10 @@ TEST(CryptoClientServerDemo, HelloWorld)
   ASSERT_TRUE(c.doAuthProcess());
   for (int i=0; i < 10; ++i)
   {
-    c.pingpong(10000);
+    c.pingpong(10000000);
     cout << "Client: finished pingpong-iteration #" << i << endl;
   }
+  c.closeSocket();
 
   // force-quit the server and its worker
   wrp.requestStop();

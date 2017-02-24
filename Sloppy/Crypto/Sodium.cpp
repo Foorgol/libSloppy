@@ -627,13 +627,45 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    SodiumSecureMemory SodiumLib::crypto_secretbox_open_easy(const ManagedMemory& cipher, const SecretBoxNonceType& nonce, const SecretBoxKeyType& key, SodiumSecureMemType clearTextProtection)
+    bool SodiumLib::crypto_secretbox_open_easy__internal(char* targetBuf, size_t targetBufSize, const ManagedMemory& cipher, const SodiumLib::SecretBoxNonceType& nonce, const SodiumLib::SecretBoxKeyType& key)
     {
       // the cipher should be valid
-      if (!(cipher.isValid())) return SodiumSecureMemory{};
-      if (!(nonce.isValid())) return SodiumSecureMemory{};
-      if (!(key.isValid())) return SodiumSecureMemory{};
+      if (!(cipher.isValid())) return false;
+      if (!(nonce.isValid())) return false;
+      if (!(key.isValid())) return false;
+      if (targetBuf == nullptr) return false;
+      if (cipher.getSize() <= crypto_secretbox_MACBYTES) return false;
+      if (targetBufSize != (cipher.getSize() - crypto_secretbox_MACBYTES)) return false;
 
+      // decrypt
+      int isOkay = sodium.crypto_secretbox_open_easy((unsigned char *)targetBuf, cipher.get_uc(), cipher.getSize(), nonce.get_uc(), key.get_uc());
+
+      // return the clear text or an invalid buffer
+      return (isOkay == 0);
+    }
+
+    //----------------------------------------------------------------------------
+
+    ManagedBuffer SodiumLib::crypto_secretbox_open_easy(const ManagedMemory& cipher, const SodiumLib::SecretBoxNonceType& nonce, const SodiumLib::SecretBoxKeyType& key)
+    {
+      // we need at least one message byte, so just the MAC is
+      // not sufficient
+      if (cipher.getSize() <= crypto_secretbox_MACBYTES) return ManagedBuffer{};
+
+      // allocate space for the result
+      ManagedBuffer msg{cipher.getSize() - crypto_secretbox_MACBYTES};
+
+      // decrypt
+      bool isOkay = crypto_secretbox_open_easy__internal(msg.get_c(), msg.getSize(), cipher, nonce, key);
+
+      // return the clear text or an invalid buffer
+      return isOkay ? std::move(msg) : ManagedBuffer{};
+    }
+
+    //----------------------------------------------------------------------------
+
+    SodiumSecureMemory SodiumLib::crypto_secretbox_open_easy__secure(const ManagedMemory& cipher, const SecretBoxNonceType& nonce, const SecretBoxKeyType& key, SodiumSecureMemType clearTextProtection)
+    {
       // we need at least one message byte, so just the MAC is
       // not sufficient
       if (cipher.getSize() <= crypto_secretbox_MACBYTES) return SodiumSecureMemory{};
@@ -642,10 +674,10 @@ namespace Sloppy
       SodiumSecureMemory msg{cipher.getSize() - crypto_secretbox_MACBYTES, clearTextProtection};
 
       // decrypt
-      int isOkay = sodium.crypto_secretbox_open_easy(msg.get_uc(), cipher.get_uc(), cipher.getSize(), nonce.get_uc(), key.get_uc());
+      bool isOkay = crypto_secretbox_open_easy__internal(msg.get_c(), msg.getSize(), cipher, nonce, key);
 
       // return the clear text or an invalid buffer
-      return (isOkay == 0) ? std::move(msg) : SodiumSecureMemory{};
+      return isOkay ? std::move(msg) : SodiumSecureMemory{};
     }
 
     //----------------------------------------------------------------------------
@@ -2163,7 +2195,7 @@ namespace Sloppy
     SodiumSecureMemory SodiumSecretBox::decryptCombined(const ManagedMemory& cipher, SodiumSecureMemType clearTextProtection)
     {
       setKeyLockState(false);
-      SodiumSecureMemory result = lib->crypto_secretbox_open_easy(cipher, nextNonce, key, clearTextProtection);
+      SodiumSecureMemory result = lib->crypto_secretbox_open_easy__secure(cipher, nextNonce, key, clearTextProtection);
       setKeyLockState(true);
 
       if (autoIncrementNonce) incrementNonce();

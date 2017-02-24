@@ -448,8 +448,10 @@ namespace Sloppy
       using SecretBoxKeyType = SodiumKey<SodiumKeyType::Secret, crypto_secretbox_KEYBYTES>;
       using SecretBoxNonceType = SodiumKey<SodiumKeyType::Public, crypto_secretbox_NONCEBYTES>;
       ManagedBuffer crypto_secretbox_easy(const ManagedMemory& msg, const SecretBoxNonceType& nonce, const SecretBoxKeyType& key);
-      SodiumSecureMemory crypto_secretbox_open_easy(const ManagedMemory& cipher, const SecretBoxNonceType& nonce, const SecretBoxKeyType& key,
+      bool crypto_secretbox_open_easy__internal(char* targetBuf, size_t targetBufSize, const ManagedMemory& cipher, const SecretBoxNonceType& nonce, const SecretBoxKeyType& key);
+      SodiumSecureMemory crypto_secretbox_open_easy__secure(const ManagedMemory& cipher, const SecretBoxNonceType& nonce, const SecretBoxKeyType& key,
                                                     SodiumSecureMemType clearTextProtection = SodiumSecureMemType::Locked);
+      ManagedBuffer crypto_secretbox_open_easy(const ManagedMemory& cipher, const SecretBoxNonceType& nonce, const SecretBoxKeyType& key);
       pair<ManagedBuffer, ManagedBuffer> crypto_secretbox_detached(const ManagedMemory& msg, const SecretBoxNonceType& nonce, const SecretBoxKeyType& key);
       SodiumSecureMemory crypto_secretbox_open_detached(const ManagedMemory& cipher, const ManagedMemory& mac, const SecretBoxNonceType& nonce, const SecretBoxKeyType& key,
                                                         SodiumSecureMemType clearTextProtection = SodiumSecureMemType::Locked);

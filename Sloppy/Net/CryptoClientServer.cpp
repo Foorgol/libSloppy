@@ -28,7 +28,7 @@ namespace Sloppy
   {
     const string CryptoClientServer::MagicPhrase{"LetMeInPlease"};
 
-    pair<CryptoClientServer::RequestResponse, ManagedBuffer> CryptoClientServer::CryptoServer::handleRequest(const SodiumSecureMemory& reqData)
+    pair<CryptoClientServer::RequestResponse, ManagedBuffer> CryptoClientServer::CryptoServer::handleRequest(const ManagedBuffer& reqData)
     {
       return make_pair(RequestResponse::QuitWithoutSending, ManagedBuffer{});
     }
@@ -70,7 +70,7 @@ namespace Sloppy
         // decrypt the request
         sodium->increment(symNonce);
         sessionKey.setAccess(SodiumSecureMemAccess::RO);
-        auto plain = sodium->crypto_secretbox_open_easy(cipher, symNonce, sessionKey);
+        ManagedBuffer plain = sodium->crypto_secretbox_open_easy(cipher, symNonce, sessionKey);
         sessionKey.setAccess(SodiumSecureMemAccess::NoAccess);
 
         // quit if the MAC was invalid
@@ -99,7 +99,11 @@ namespace Sloppy
           cerr << "ServerWorker: error when encrypting response to client ==> terminating!" << endl;
           break;
         }
-        write_framed_MB(cipher);
+        if (!(write_framed_MB(cipher)))
+        {
+          cerr << "ServerWorker: error when sending response to client ==> terminating!" << endl;
+          break;
+        }
 
         cout << "ServerWorker: sent response, " << cipher.getSize() << " bytes" << endl;
 
@@ -485,7 +489,7 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    pair<AbstractWorker::PreemptiveReadResult, SodiumSecureMemory> CryptoClientServer::CryptoClient::readAndDecrypt(size_t timeout_ms)
+    pair<AbstractWorker::PreemptiveReadResult, ManagedBuffer> CryptoClientServer::CryptoClient::readAndDecrypt(size_t timeout_ms)
     {
       PreemptiveReadResult rr;
       ManagedBuffer cipher;
@@ -494,7 +498,7 @@ namespace Sloppy
       if (rr != PreemptiveReadResult::Complete)
       {
         cerr << "Cryptoclient: error while waiting for data (interrupted, incomplete, timeout or error)" << endl;
-        return make_pair(rr, SodiumSecureMemory{});
+        return make_pair(rr, ManagedBuffer{});
       }
 
       // decrypt the data
@@ -507,7 +511,7 @@ namespace Sloppy
       if (!(plain.isValid()))
       {
         cerr << "Cryptoclient: received invalid / corrupted data from server ==> error!" << endl;
-        return make_pair(PreemptiveReadResult::Error, SodiumSecureMemory{});
+        return make_pair(PreemptiveReadResult::Error, ManagedBuffer{});
       }
 
       return make_pair(rr, std::move(plain));

@@ -75,7 +75,7 @@ namespace Sloppy
         // this one should be overridden if client
         // identities shall be checked
         virtual bool isClientAcceptable(const PubKey& k) const { return true; }
-        virtual pair<RequestResponse, ManagedBuffer> handleRequest(const SodiumSecureMemory& reqData);
+        virtual pair<RequestResponse, ManagedBuffer> handleRequest(const ManagedBuffer& reqData);
 
 
         //
@@ -147,7 +147,7 @@ namespace Sloppy
 
       protected:
         bool encryptAndWrite(const ManagedMemory& msg);
-        pair<PreemptiveReadResult, SodiumSecureMemory> readAndDecrypt(size_t timeout_ms);
+        pair<PreemptiveReadResult, ManagedBuffer> readAndDecrypt(size_t timeout_ms);
         SodiumLib* const sodium;
 
       private:

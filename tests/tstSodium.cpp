@@ -235,7 +235,7 @@ TEST(Sodium, SymmetricLowLevel)
   ASSERT_EQ(msgSize + crypto_secretbox_MACBYTES, cipher.getSize());
 
   // decrypt
-  SodiumSecureMemory msg2 = sodium->crypto_secretbox_open_easy(cipher, nonce, key);
+  SodiumSecureMemory msg2 = sodium->crypto_secretbox_open_easy__secure(cipher, nonce, key);
   ASSERT_TRUE(msg2.isValid());
   ASSERT_EQ(msgSize, msg2.getSize());
   ASSERT_TRUE(sodium->memcmp(msg, msg2));
@@ -244,7 +244,7 @@ TEST(Sodium, SymmetricLowLevel)
   auto trueCipher = ManagedBuffer::asCopy(cipher);
   char* ptr = cipher.get_c();
   ptr[12] += 1;
-  msg2 = sodium->crypto_secretbox_open_easy(cipher, nonce, key);
+  msg2 = sodium->crypto_secretbox_open_easy__secure(cipher, nonce, key);
   ASSERT_FALSE(msg2.isValid());
   ASSERT_EQ(0, msg2.getSize());
   ASSERT_FALSE(sodium->memcmp(msg, msg2));
@@ -253,7 +253,7 @@ TEST(Sodium, SymmetricLowLevel)
   auto trueKey = SodiumLib::SecretBoxKeyType::asCopy(key);
   ptr = key.get_c();
   ptr[12] += 1;
-  msg2 = sodium->crypto_secretbox_open_easy(trueCipher, nonce, key);
+  msg2 = sodium->crypto_secretbox_open_easy__secure(trueCipher, nonce, key);
   ASSERT_FALSE(msg2.isValid());
   ASSERT_EQ(0, msg2.getSize());
   ASSERT_FALSE(sodium->memcmp(msg, msg2));
@@ -262,7 +262,7 @@ TEST(Sodium, SymmetricLowLevel)
   auto trueNonce = SodiumLib::SecretBoxNonceType::asCopy(nonce);
   ptr = nonce.get_c();
   ptr[12] += 1;
-  msg2 = sodium->crypto_secretbox_open_easy(trueCipher, nonce, trueKey);
+  msg2 = sodium->crypto_secretbox_open_easy__secure(trueCipher, nonce, trueKey);
   ASSERT_FALSE(msg2.isValid());
   ASSERT_EQ(0, msg2.getSize());
   ASSERT_FALSE(sodium->memcmp(msg, msg2));

@@ -35,7 +35,8 @@ namespace Sloppy
   namespace Net
   {
     class CryptoClientServer
-    {
+    {      
+    public:
       // the whole concepts relies on sodium's DH function to
       // return shared secrets of the same size we need for
       // the symmetric encryption!
@@ -48,8 +49,14 @@ namespace Sloppy
       using SymKey = SodiumLib::SecretBoxKeyType;
       using SymNonce = SodiumLib::SecretBoxNonceType;
 
+      enum class RequestResponse
+      {
+        SendAndContinue,
+        SendAndQuit,
+        QuitWithoutSending,
+        ContinueWithoutSending
+      };
 
-    public:
       class CryptoServer : public AbstractWorker
       {
       public:
@@ -61,11 +68,20 @@ namespace Sloppy
           sk.setAccess(SodiumSecureMemAccess::NoAccess);
         }
 
-        virtual void doTheWork() override final;
+        //
+        // Hooks to be overriden by deriving classes
+        //
 
         // this one should be overridden if client
         // identities shall be checked
         virtual bool isClientAcceptable(const PubKey& k) const { return true; }
+        virtual pair<RequestResponse, ManagedBuffer> handleRequest(const SodiumSecureMemory& reqData);
+
+
+        //
+        // Other functions / helpers
+        //
+        virtual void doTheWork() override final;
 
         PubKey getPublicKey() const { return PubKey::asCopy(pk); }
 
@@ -91,7 +107,6 @@ namespace Sloppy
         bool authStep1();
         bool authStep2();
         bool authStep3();
-
         bool doAuthProcess();
       };
 
@@ -119,6 +134,8 @@ namespace Sloppy
 
         bool cmpServerKeys(const PubKey& srvPubKey) const;
 
+        bool doAuthProcess();
+
         // this one should be overriden by derived classes if they
         // want to perform more sophisticated checks
         virtual bool isServerAcceptable(const PubKey& k) const
@@ -128,8 +145,12 @@ namespace Sloppy
 
         bool isAuthenticated() const { return handshakeComplete; }
 
+      protected:
+        bool encryptAndWrite(const ManagedMemory& msg);
+        pair<PreemptiveReadResult, SodiumSecureMemory> readAndDecrypt(size_t timeout_ms);
+        SodiumLib* const sodium;
+
       private:
-        SodiumLib* sodium;
         PubKey pk;
         SecKey sk;
         PubKey expectedServerKey;
@@ -146,7 +167,6 @@ namespace Sloppy
 
         bool handshakeComplete;
 
-        bool doAuthProcess();
         bool authStep1();
         bool authStep2();
         bool authStep3();

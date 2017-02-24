@@ -269,7 +269,7 @@ namespace Sloppy
 
   //----------------------------------------------------------------------------
 
-  ManagedBuffer ManagedBuffer::asCopy(const ManagedBuffer& src)
+  ManagedBuffer ManagedBuffer::asCopy(const ManagedMemory& src)
   {
     if (!(src.isValid())) return ManagedBuffer{};
 
@@ -349,6 +349,20 @@ namespace Sloppy
 
   bool ManagedFileDescriptor::blockingWrite(const string &data)
   {
+    return blockingWrite(data.c_str(), data.size());
+  }
+
+  //----------------------------------------------------------------------------
+
+  bool ManagedFileDescriptor::blockingWrite(const ManagedMemory& data)
+  {
+    return blockingWrite(data.get_c(), data.getSize());
+  }
+
+  //----------------------------------------------------------------------------
+
+  bool ManagedFileDescriptor::blockingWrite(const char* ptr, size_t len)
+  {
     // wait for the fd to become available
     lock_guard<mutex> lockFd{fdMutex};
 
@@ -361,20 +375,21 @@ namespace Sloppy
 
     // do the actual write
     st = State::Writing;
-    int n = write(fd, data.c_str(), data.size());
+    int n = write(fd, ptr, len);
     st = State::Idle;
 
     if (n < 0)
     {
       throw IOError{};
     }
-    if (n != data.size())
+    if (n != len)
     {
-      cerr << "FD write: only " << n << " of " << data.size() << " bytes written!" << endl;
+      cerr << "FD write: only " << n << " of " << len << " bytes written!" << endl;
     }
 
-    return (((size_t) n) == data.size());
+    return (((size_t) n) == len);
   }
+
 
   //----------------------------------------------------------------------------
 
@@ -388,6 +403,15 @@ namespace Sloppy
 
     // prepare the result string
     string result;
+
+    // special case: if the result length is fixed, use
+    // a direct-write-to-buffer version
+    if (minLen == maxLen)
+    {
+      result.resize(maxLen);
+      blockingRead((char *)result.c_str(), maxLen, timeout_ms);
+      return result;
+    }
 
     // start a stop watch
     auto startTime = chrono::high_resolution_clock::now();
@@ -453,6 +477,10 @@ namespace Sloppy
       {
         this_thread::sleep_for(chrono::milliseconds{DefaultReadWait_ms});
       }
+      if (n < 0)
+      {
+        throw IOError{};
+      }
 
       if (result.size() >= minLen) break;
     }
@@ -460,6 +488,111 @@ namespace Sloppy
     st = State::Idle;
 
     return result;
+  }
+
+  //----------------------------------------------------------------------------
+
+  ManagedBuffer ManagedFileDescriptor::blockingRead_MB(size_t expectedLen, size_t timeout_ms)
+  {
+    if (expectedLen == 0)
+    {
+      throw InvalidDataSize{};
+    }
+
+    // prepare the result buffer
+    ManagedBuffer result{expectedLen};
+
+    // do the actual read
+    try
+    {
+      blockingRead(result.get_c(), expectedLen, timeout_ms);
+    }
+    catch (ReadTimeout ex)
+    {
+      result.shrink(ex.getNumBytesRead());
+      throw ReadTimeout{result.copyToString()};
+    }
+
+    return result;
+  }
+
+  //----------------------------------------------------------------------------
+
+  size_t ManagedFileDescriptor::blockingRead(char* buf, size_t expectedLen, size_t timeout_ms)
+  {
+    if (expectedLen == 0)
+    {
+      throw InvalidDataSize{};
+    }
+
+    size_t offset = 0;
+
+    // start a stop watch
+    auto startTime = chrono::high_resolution_clock::now();
+
+    // wait for the fd to become available
+    lock_guard<mutex> lockFd{fdMutex};
+    if (st != State::Idle) return 0;
+
+    // do the actual read
+    st = State::Reading;
+    while (offset != expectedLen)
+    {
+      // determine the maximum number of bytes to be read.
+      size_t remainingBytes = expectedLen - offset;
+
+      // if there is a timeout specified, calculate the remaining time
+      // we may wait for data to become available
+      if (timeout_ms > 0)
+      {
+        auto _elapsedTime = chrono::high_resolution_clock::now() - startTime;
+        size_t elapsedTime = chrono::duration_cast<chrono::milliseconds>(_elapsedTime).count();
+
+        if (elapsedTime > timeout_ms)
+        {
+          st = State::Idle;
+          throw ReadTimeout{offset};
+        }
+
+        // wait for data to become available
+        size_t remainingTime = timeout_ms - elapsedTime;
+        bool hasData;
+        try
+        {
+          hasData = waitForReadOnDescriptor(fd, remainingTime);
+        }
+        catch (IOError)
+        {
+          st = State::Idle;
+          throw;
+        }
+
+        // evaluate the result
+        if (!hasData)
+        {
+          st = State::Idle;
+          throw ReadTimeout{offset};
+        }
+
+        // continue with reading the data...
+      }
+
+      int n = read(fd, buf + offset, remainingBytes);
+      offset += n;
+
+      if (n == 0)  // descriptor is non-blocking
+      {
+        this_thread::sleep_for(chrono::milliseconds{DefaultReadWait_ms});
+      }
+      if (n < 0)
+      {
+        throw IOError{};
+      }
+    }
+
+    st = State::Idle;
+
+    return offset;
   }
 
   //----------------------------------------------------------------------------

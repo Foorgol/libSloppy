@@ -72,11 +72,18 @@ namespace Sloppy
         Error      // an IOError occured
       };
 
-      pair<PreemptiveReadResult, string> preemptiveRead(size_t nBytes, size_t timeout_ms);
-      bool write(const string& data);
+      PreemptiveReadResult preemptiveRead(char * buf, size_t nBytes, size_t timeout_ms);
 
+      pair<PreemptiveReadResult, string> preemptiveRead(size_t nBytes, size_t timeout_ms);
+      pair<PreemptiveReadResult, ManagedBuffer> preemptiveRead_MB(size_t nBytes, size_t timeout_ms);
       pair<PreemptiveReadResult, string> preemptiveRead_framed(size_t timeout_ms);
+      pair<PreemptiveReadResult, ManagedBuffer> preemptiveRead_framed_MB(size_t timeout_ms);
+
+      bool write(const string& data);
+      bool write(const ManagedMemory& data);
       bool write_framed(const string& data);
+      bool write_framed_MB(const ManagedMemory& data);
+
 
       // this one has to be overriden by the specific worker
       virtual void doTheWork() {}
@@ -88,6 +95,8 @@ namespace Sloppy
       ManagedSocket socket;
       atomic<PreemptionStatus> ps;
       atomic<WorkerStatus> ws;
+
+      tuple<PreemptiveReadResult, size_t, size_t> preemptiveRead_framed__prep(size_t timeout_ms);
     };
 
     //----------------------------------------------------------------------------

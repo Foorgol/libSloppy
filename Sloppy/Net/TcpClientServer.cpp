@@ -51,15 +51,17 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    pair<AbstractWorker::PreemptiveReadResult, string> AbstractWorker::preemptiveRead(size_t nBytes, size_t timeout_ms)
+    AbstractWorker::PreemptiveReadResult AbstractWorker::preemptiveRead(char* buf, size_t nBytes, size_t timeout_ms)
     {
-      string data;
-
       // start a stop watch
       auto startTime = chrono::high_resolution_clock::now();
 
-      while (true)
+      size_t offset = 0;
+
+      while (offset != nBytes)
       {
+        if (ps != PreemptionStatus::Continue) return PreemptiveReadResult::Interrupted;
+
         size_t thisReadDuration;
 
         if (timeout_ms > 0)
@@ -78,12 +80,10 @@ namespace Sloppy
           thisReadDuration = ReadTimeSlice_ms;
         }
 
-        string chunk;
-
         try
         {
-          chunk = socket.blockingRead(nBytes, nBytes, thisReadDuration);
-          data += chunk;
+          size_t chunkSize = socket.blockingRead(buf + offset, nBytes - offset, thisReadDuration);
+          offset += chunkSize;
         }
         catch (ReadTimeout& e)
         {
@@ -92,20 +92,29 @@ namespace Sloppy
         catch (...)
         {
           cerr << strerror(errno) << endl;
-          return make_pair(PreemptiveReadResult::Error, "");
+          return PreemptiveReadResult::Error;
         }
 
         // are we requested to stop?
         if (ps != PreemptionStatus::Continue)
         {
-          return make_pair(PreemptiveReadResult::Interrupted, data);
+          return PreemptiveReadResult::Interrupted;
         }
-
-        // is the data complete?
-        if (data.size() == nBytes) break;
       }
 
-      return make_pair((data.size() == nBytes) ? PreemptiveReadResult::Complete : PreemptiveReadResult::Timeout, data);
+      return (offset == nBytes) ? PreemptiveReadResult::Complete : PreemptiveReadResult::Timeout;
+    }
+
+    //----------------------------------------------------------------------------
+
+    pair<AbstractWorker::PreemptiveReadResult, string> AbstractWorker::preemptiveRead(size_t nBytes, size_t timeout_ms)
+    {
+      string data;
+      data.resize(nBytes);
+
+      PreemptiveReadResult rr = preemptiveRead((char *)data.c_str(), nBytes, timeout_ms);
+
+      return make_pair(rr, data);
     }
 
     //----------------------------------------------------------------------------
@@ -117,49 +126,40 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
+    pair<AbstractWorker::PreemptiveReadResult, ManagedBuffer> AbstractWorker::preemptiveRead_MB(size_t nBytes, size_t timeout_ms)
+    {
+      ManagedBuffer result{nBytes};
+
+      PreemptiveReadResult rr = preemptiveRead(result.get_c(), nBytes, timeout_ms);
+
+      return make_pair(rr, std::move(result));
+    }
+
+    //----------------------------------------------------------------------------
+
+    bool AbstractWorker::write(const ManagedMemory& data)
+    {
+      socket.blockingWrite(data);
+    }
+
+    //----------------------------------------------------------------------------
+
     pair<AbstractWorker::PreemptiveReadResult, string> AbstractWorker::preemptiveRead_framed(size_t timeout_ms)
     {
-      // start a stop watch
-      auto startTime = chrono::high_resolution_clock::now();
-
-      // read 4 byte, because they encode the number of following bytes
       PreemptiveReadResult rr;
-      string sLen;
-      tie(rr, sLen) = preemptiveRead(4, timeout_ms);
+      size_t nBytes;
+      size_t remainingTime;
+      tie(rr, nBytes, remainingTime) = preemptiveRead_framed__prep(timeout_ms);
 
-      // in case of any errors, simply return the error
-      if (rr != PreemptiveReadResult::Complete)
-      {
-        return make_pair(rr, "");
-      }
+      if (rr != PreemptiveReadResult::Complete) return make_pair(rr, "");
 
-      // convert the string into and uint32 and then into a size_t
-      uint32_t netByteCount = *((uint32_t*)sLen.c_str());
-      size_t byteCount = ntohl(netByteCount);
-
-
-      // calculate the remaining time and try to read the rest
-      size_t remainingTime = 0;   // default: no timeout, read infinitely
-      if (timeout_ms > 0)
-      {
-        auto _elapsed = chrono::high_resolution_clock::now() - startTime;
-        size_t elapsed = chrono::duration_cast<chrono::milliseconds>(_elapsed).count();
-        if (elapsed >= timeout_ms)
-        {
-          return make_pair(PreemptiveReadResult::Timeout, "");
-        }
-
-        remainingTime = timeout_ms - elapsed;
-      }
-
-      return preemptiveRead(byteCount, remainingTime);
+      return preemptiveRead(nBytes, remainingTime);
     }
 
     //----------------------------------------------------------------------------
 
     bool AbstractWorker::write_framed(const string& data)
     {
-
       if ((data.size() >> 32) >= 1)
       {
         throw std::invalid_argument("Cannot send more that 2^32 bytes of framed data!");
@@ -172,6 +172,80 @@ namespace Sloppy
       bool isOk = write(sLen);
       if (!isOk) return false;
       return write(data);
+    }
+
+    //----------------------------------------------------------------------------
+
+    pair<AbstractWorker::PreemptiveReadResult, ManagedBuffer> AbstractWorker::preemptiveRead_framed_MB(size_t timeout_ms)
+    {
+      PreemptiveReadResult rr;
+      size_t nBytes;
+      size_t remainingTime;
+      tie(rr, nBytes, remainingTime) = preemptiveRead_framed__prep(timeout_ms);
+
+      if (rr != PreemptiveReadResult::Complete) return make_pair(rr, ManagedBuffer{});
+
+      // allocate the result buffer
+      ManagedBuffer result{nBytes};
+
+      return preemptiveRead_MB(nBytes, remainingTime);
+    }
+
+    //----------------------------------------------------------------------------
+
+    bool AbstractWorker::write_framed_MB(const ManagedMemory& data)
+    {
+      if ((data.getSize() >> 32) >= 1)
+      {
+        throw std::invalid_argument("Cannot send more that 2^32 bytes of framed data!");
+      }
+
+      uint32_t byteCount = (data.getSize() & 0xffffffff);
+      uint32_t netByteCount = htonl(byteCount);
+      string sLen{(char *)&netByteCount, 4};
+
+      bool isOk = write(sLen);
+      if (!isOk) return false;
+      return write(data);
+    }
+
+    //----------------------------------------------------------------------------
+
+    tuple<AbstractWorker::PreemptiveReadResult, size_t, size_t> AbstractWorker::preemptiveRead_framed__prep(size_t timeout_ms)
+    {
+      // start a stop watch
+      auto startTime = chrono::high_resolution_clock::now();
+
+      // read 4 byte, because they encode the number of following bytes
+      PreemptiveReadResult rr;
+      string sLen;
+      tie(rr, sLen) = preemptiveRead(4, timeout_ms);
+
+      // in case of any errors, simply return the error
+      if (rr != PreemptiveReadResult::Complete)
+      {
+        return make_tuple(rr, 0, 0);
+      }
+
+      // convert the string into and uint32 and then into a size_t
+      uint32_t netByteCount = *((uint32_t*)sLen.c_str());
+      size_t byteCount = ntohl(netByteCount);
+
+      // calculate the remaining time
+      size_t remainingTime = 0;   // default: no timeout, read infinitely
+      if (timeout_ms > 0)
+      {
+        auto _elapsed = chrono::high_resolution_clock::now() - startTime;
+        size_t elapsed = chrono::duration_cast<chrono::milliseconds>(_elapsed).count();
+        if (elapsed >= timeout_ms)
+        {
+          return make_tuple(PreemptiveReadResult::Timeout, 0, 0);
+        }
+
+        remainingTime = timeout_ms - elapsed;
+      }
+
+      return make_tuple(PreemptiveReadResult::Complete, byteCount, remainingTime);
     }
 
     //----------------------------------------------------------------------------

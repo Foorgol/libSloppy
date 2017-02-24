@@ -28,6 +28,13 @@ namespace Sloppy
   {
     const string CryptoClientServer::MagicPhrase{"LetMeInPlease"};
 
+    pair<CryptoClientServer::RequestResponse, ManagedBuffer> CryptoClientServer::CryptoServer::handleRequest(const SodiumSecureMemory& reqData)
+    {
+      return make_pair(RequestResponse::QuitWithoutSending, ManagedBuffer{});
+    }
+
+    //----------------------------------------------------------------------------
+
     void CryptoClientServer::CryptoServer::doTheWork()
     {
       bool authSuccess = doAuthProcess();
@@ -38,7 +45,68 @@ namespace Sloppy
         return;   // unconditionally quit if anything goes wrong
       }
 
-      this_thread::sleep_for(chrono::seconds{2});
+      cout << "ServerWorker: entering main request-response-loop" << endl;
+      while (true)
+      {
+        // wait (infinitely) for the next request and
+        // terminate upon external request
+        PreemptiveReadResult rr;
+        ManagedBuffer cipher;
+        tie(rr, cipher) = preemptiveRead_framed_MB(0);
+
+        if (rr == PreemptiveReadResult::Interrupted)
+        {
+          cerr << "ServerWorker: received termination request!" << endl;
+          break;
+        }
+        if (rr != PreemptiveReadResult::Complete)
+        {
+          cerr << "ServerWorker: error while waiting for data ==> terminating!" << endl;
+          break;
+        }
+
+        cout << "ServerWorker: received request, " << cipher.getSize() << " bytes" << endl;
+
+        // decrypt the request
+        sodium->increment(symNonce);
+        sessionKey.setAccess(SodiumSecureMemAccess::RO);
+        auto plain = sodium->crypto_secretbox_open_easy(cipher, symNonce, sessionKey);
+        sessionKey.setAccess(SodiumSecureMemAccess::NoAccess);
+
+        // quit if the MAC was invalid
+        if (!(plain.isValid()))
+        {
+          cerr << "ServerWorker: received invalid / corrupted data from client ==> terminating!" << endl;
+          break;
+        }
+
+        // forward the valid request to the request handler
+        RequestResponse respCode;
+        ManagedBuffer data;
+        tie(respCode, data) = handleRequest(plain);
+
+        // decide what to do based on the response code
+        if (respCode == RequestResponse::ContinueWithoutSending) continue;
+        if (respCode == RequestResponse::QuitWithoutSending) break;
+
+        // send the response
+        sodium->increment(symNonce);
+        sessionKey.setAccess(SodiumSecureMemAccess::RO);
+        cipher = sodium->crypto_secretbox_easy(data, symNonce, sessionKey);
+        sessionKey.setAccess(SodiumSecureMemAccess::NoAccess);
+        if (!(cipher.isValid()))
+        {
+          cerr << "ServerWorker: error when encrypting response to client ==> terminating!" << endl;
+          break;
+        }
+        write_framed_MB(cipher);
+
+        cout << "ServerWorker: sent response, " << cipher.getSize() << " bytes" << endl;
+
+        if (respCode == RequestResponse::SendAndQuit) break;
+      }
+      cout << "ServerWorker: left main request-response-loop" << endl;
+      closeSocket();
     }
 
     //----------------------------------------------------------------------------
@@ -397,6 +465,52 @@ namespace Sloppy
         cerr << s;
       }
       return isEq;
+    }
+
+    //----------------------------------------------------------------------------
+
+    bool CryptoClientServer::CryptoClient::encryptAndWrite(const ManagedMemory& msg)
+    {
+      sodium->increment(symNonce);
+      sessionKey.setAccess(SodiumSecureMemAccess::RO);
+      ManagedBuffer cipher = sodium->crypto_secretbox_easy(msg, symNonce, sessionKey);
+      sessionKey.setAccess(SodiumSecureMemAccess::NoAccess);
+      if (!(cipher.isValid()))
+      {
+        cerr << "Cryptoclient: error when encrypting response to server! No data sent!" << endl;
+        return false;
+      }
+      return write_framed_MB(cipher);
+    }
+
+    //----------------------------------------------------------------------------
+
+    pair<AbstractWorker::PreemptiveReadResult, SodiumSecureMemory> CryptoClientServer::CryptoClient::readAndDecrypt(size_t timeout_ms)
+    {
+      PreemptiveReadResult rr;
+      ManagedBuffer cipher;
+      tie(rr, cipher) = preemptiveRead_framed_MB(timeout_ms);
+
+      if (rr != PreemptiveReadResult::Complete)
+      {
+        cerr << "Cryptoclient: error while waiting for data (interrupted, incomplete, timeout or error)" << endl;
+        return make_pair(rr, SodiumSecureMemory{});
+      }
+
+      // decrypt the data
+      sodium->increment(symNonce);
+      sessionKey.setAccess(SodiumSecureMemAccess::RO);
+      auto plain = sodium->crypto_secretbox_open_easy(cipher, symNonce, sessionKey);
+      sessionKey.setAccess(SodiumSecureMemAccess::NoAccess);
+
+      // quit if the MAC was invalid
+      if (!(plain.isValid()))
+      {
+        cerr << "Cryptoclient: received invalid / corrupted data from server ==> error!" << endl;
+        return make_pair(PreemptiveReadResult::Error, SodiumSecureMemory{});
+      }
+
+      return make_pair(rr, std::move(plain));
     }
 
   }

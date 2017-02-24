@@ -137,7 +137,7 @@ namespace Sloppy
     virtual ManagedBuffer& operator=(ManagedBuffer&& other); // move assignment
 
     // create a copy
-    static ManagedBuffer asCopy(const ManagedBuffer& src);
+    static ManagedBuffer asCopy(const ManagedMemory& src);
 
     // size change
     virtual void shrink(size_t newSize) override;
@@ -154,14 +154,17 @@ namespace Sloppy
   class ReadTimeout
   {
   public:
-    ReadTimeout(const string& incompleteData)
-      :data{incompleteData}{}
+    explicit ReadTimeout(const string& incompleteData)
+      :data{incompleteData}, len{incompleteData.size()}{}
+    explicit ReadTimeout(const size_t& incompleteDataLen)
+      :data{}, len{incompleteDataLen}{}
 
     string getIncompleteData() const { return data; }
     size_t getNumBytesRead() const { return data.size(); }
 
   private:
     string data;
+    size_t len;
   };
   class IOError
   {
@@ -200,7 +203,11 @@ namespace Sloppy
     virtual ~ManagedFileDescriptor();
 
     bool blockingWrite(const string& data);
+    bool blockingWrite(const ManagedMemory& data);
+
     string blockingRead(size_t minLen, size_t maxLen = 0, size_t timeout_ms = 0);
+    ManagedBuffer blockingRead_MB(size_t expectedLen, size_t timeout_ms = 0);
+    size_t blockingRead(char* buf, size_t expectedLen, size_t timeout_ms = 0);
 
     void close();
 
@@ -213,6 +220,9 @@ namespace Sloppy
     mutex fdMutex;
     atomic<State> st;
     char* readBuf;
+
+  private:
+    bool blockingWrite(const char* ptr, size_t len);
   };
 }
 

@@ -24,6 +24,7 @@
 #include "../Sloppy/Net/CryptoClientServer.h"
 #include "../Sloppy/Crypto/Sodium.h"
 #include "../Sloppy/Crypto/Crypto.h"
+#include "../Sloppy/libSloppy.h"
 
 using namespace Sloppy;
 using namespace Sloppy::Net;
@@ -31,12 +32,19 @@ using namespace Sloppy::Net;
 TEST(CryptoClientServerDemo, HelloWorld)
 {
   // prepare a server worker class that waits for a
-  // "Hello" from the client and responds with "World"
-  class SrvWorker : public Net::CryptoClientServer::CryptoServer
+  // data from the client and responds with a copy of that data
+  class SrvWorker : public CryptoClientServer::CryptoServer
   {
   public:
     SrvWorker(SodiumLib::AsymCrypto_PublicKey& _pk, SodiumLib::AsymCrypto_SecretKey& _sk, int _fd, sockaddr_in sa)
       :Net::CryptoClientServer::CryptoServer(_pk, _sk, _fd, sa) {}
+
+    virtual pair<CryptoClientServer::RequestResponse, ManagedBuffer> handleRequest(const SodiumSecureMemory& reqData) override
+    {
+      ManagedBuffer returnCopy = ManagedBuffer::asCopy(reqData);
+
+      return make_pair(CryptoClientServer::RequestResponse::SendAndContinue, std::move(returnCopy));
+    }
   };
 
   // prepare a simple worker factory
@@ -72,6 +80,22 @@ TEST(CryptoClientServerDemo, HelloWorld)
     SimpleClient(SodiumLib::AsymCrypto_PublicKey& _pk, SodiumLib::AsymCrypto_SecretKey& _sk)
       :Net::CryptoClientServer::CryptoClient(_pk, _sk, "localhost", 11111) {}
 
+    void pingpong(size_t nBytes)
+    {
+      ManagedBuffer out{nBytes};
+      sodium->randombytes_buf(out);
+
+      encryptAndWrite(out);
+
+      SodiumSecureMemory returnCopy;
+      PreemptiveReadResult rr;
+      tie(rr, returnCopy) = readAndDecrypt(1000);
+
+      ASSERT_TRUE(rr == PreemptiveReadResult::Complete);
+      ASSERT_TRUE(returnCopy.isValid());
+      ASSERT_TRUE(sodium->memcmp(out, returnCopy));
+    }
+
   };
 
   //
@@ -86,8 +110,8 @@ TEST(CryptoClientServerDemo, HelloWorld)
   TcpServerWrapper wrp{"localhost", 11111, 5};
   thread tWrapper{[&](){ wrp.mainLoop(f); }};
 
-  // instanciate a client and start it in a new
-  // thread
+  // instanciate a client and send a few
+  // chunks of data
   SodiumLib* sodium = SodiumLib::getInstance();
   SodiumLib::AsymCrypto_PublicKey pk;
   SodiumLib::AsymCrypto_SecretKey sk;
@@ -95,20 +119,18 @@ TEST(CryptoClientServerDemo, HelloWorld)
   SimpleClient c{pk, sk};
   cout << "Testcase main: server public key is " << Sloppy::Crypto::toBase64(f.getPublicServerKey()) << endl;
   c.setExpectedServerKey(f.getPublicServerKey());
-  thread tClient{[&](){c.run();}};
-
-  // wait
-  this_thread::sleep_for(chrono::seconds{3});
+  ASSERT_TRUE(c.doAuthProcess());
+  for (int i=0; i < 10; ++i)
+  {
+    c.pingpong(10000);
+    cout << "Client: finished pingpong-iteration #" << i << endl;
+  }
 
   // force-quit the server and its worker
   wrp.requestStop();
   cout << "Asked the wrapper to stop" << endl;
   tWrapper.join();
   cout << "The wrapper stopped." << endl;
-
-  // wait for the client to finish
-  tClient.join();
-
 }
 
 //----------------------------------------------------------------------------

@@ -148,6 +148,25 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
+    void MessageBuilder::addByteString(const ByteString& bs)
+    {
+      addUI64(bs.size());
+      data += bs;
+    }
+
+    //----------------------------------------------------------------------------
+
+    void MessageBuilder::addMessageList(const vector<MessageBuilder>& msgList)
+    {
+      addUI64(msgList.size());
+      for (const MessageBuilder& msg : msgList)
+      {
+        addByteString(msg.getDataAsRef());
+      }
+    }
+
+    //----------------------------------------------------------------------------
+
     string MessageDissector::getString()
     {
       // get the string length
@@ -239,6 +258,37 @@ namespace Sloppy
       offset += len;
 
       return result;   // let's hope the compiler picks move()-semantics here
+    }
+
+    //----------------------------------------------------------------------------
+
+    ByteString MessageDissector::getByteString()
+    {
+      // get the string length
+      assertSufficientData(8);
+      size_t len = getUI64();
+
+      // get the string itself
+      assertSufficientData(len);
+      ByteString result{data.c_str() + offset, len};
+      offset += len;
+
+      return result;
+    }
+
+    //----------------------------------------------------------------------------
+
+    vector<MessageDissector> MessageDissector::getMessageList()
+    {
+      size_t cnt = getUI64();
+
+      vector<MessageDissector> result;
+      for (size_t i = 0; i < cnt; ++i)
+      {
+        result.push_back(MessageDissector{getByteString()});
+      }
+
+      return result;
     }
 
     //----------------------------------------------------------------------------

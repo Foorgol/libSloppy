@@ -116,3 +116,59 @@ TEST(NetFuncs, Uint64Conversion)
     ASSERT_EQ(u, hostOrder);
   }
 }
+
+//----------------------------------------------------------------------------
+
+TEST(NetFuncs, MessageLists)
+{
+  vector<MessageBuilder> v;
+  for (int i=0; i <10 ; ++i)
+  {
+    MessageBuilder msg;
+    msg.addString(to_string(i));
+    msg.addInt(i);
+
+    v.push_back(msg);
+  }
+
+  MessageBuilder frame;
+  frame.addString("SomeData");
+  frame.addMessageList(v);
+  frame.addString("SomeOtherData");
+
+
+  MessageDissector d{frame.getDataAsRef()};
+  ASSERT_EQ("SomeData", d.getString());
+  vector<MessageDissector> vDis = d.getMessageList();
+  ASSERT_EQ(10, vDis.size());
+  int i = 0;
+  for (MessageDissector& innerDis : vDis)
+  {
+    ASSERT_EQ(to_string(i), innerDis.getString());
+    ASSERT_EQ(i, innerDis.getInt());
+    ++i;
+  }
+  ASSERT_EQ("SomeOtherData", d.getString());
+}
+
+//----------------------------------------------------------------------------
+
+TEST(NetFuncs, TypedMessages)
+{
+  enum class MsgTypes
+  {
+    T1,
+    T2,
+    T3
+  };
+
+  using MyMsg = TypedMessageBuilder<MsgTypes>;
+  using MyDis = TypedMessageDissector<MsgTypes>;
+
+  MyMsg msg(MsgTypes::T2);
+  msg.addString("SomeData");
+
+  MyDis d{msg.getDataAsRef()};
+  ASSERT_EQ(MsgTypes::T2, d.getType());
+  ASSERT_EQ("SomeData", d.getString());
+}

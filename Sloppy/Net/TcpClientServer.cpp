@@ -51,7 +51,7 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    AbstractWorker::PreemptiveReadResult AbstractWorker::preemptiveRead(char* buf, size_t nBytes, size_t timeout_ms)
+    PreemptiveReadResult AbstractWorker::preemptiveRead(char* buf, size_t nBytes, size_t timeout_ms)
     {
       // start a stop watch
       auto startTime = chrono::high_resolution_clock::now();
@@ -107,7 +107,7 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    pair<AbstractWorker::PreemptiveReadResult, string> AbstractWorker::preemptiveRead(size_t nBytes, size_t timeout_ms)
+    pair<PreemptiveReadResult, string> AbstractWorker::preemptiveRead(size_t nBytes, size_t timeout_ms)
     {
       string data;
       data.resize(nBytes);
@@ -126,7 +126,7 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    pair<AbstractWorker::PreemptiveReadResult, ManagedBuffer> AbstractWorker::preemptiveRead_MB(size_t nBytes, size_t timeout_ms)
+    pair<PreemptiveReadResult, ManagedBuffer> AbstractWorker::preemptiveRead_MB(size_t nBytes, size_t timeout_ms)
     {
       ManagedBuffer result{nBytes};
 
@@ -139,12 +139,12 @@ namespace Sloppy
 
     bool AbstractWorker::write(const ManagedMemory& data)
     {
-      socket.blockingWrite(data);
+      return socket.blockingWrite(data);
     }
 
     //----------------------------------------------------------------------------
 
-    pair<AbstractWorker::PreemptiveReadResult, string> AbstractWorker::preemptiveRead_framed(size_t timeout_ms)
+    pair<PreemptiveReadResult, string> AbstractWorker::preemptiveRead_framed(size_t timeout_ms)
     {
       PreemptiveReadResult rr;
       size_t nBytes;
@@ -176,7 +176,7 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    pair<AbstractWorker::PreemptiveReadResult, ManagedBuffer> AbstractWorker::preemptiveRead_framed_MB(size_t timeout_ms)
+    pair<PreemptiveReadResult, ManagedBuffer> AbstractWorker::preemptiveRead_framed_MB(size_t timeout_ms)
     {
       PreemptiveReadResult rr;
       size_t nBytes;
@@ -211,7 +211,7 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    tuple<AbstractWorker::PreemptiveReadResult, size_t, size_t> AbstractWorker::preemptiveRead_framed__prep(size_t timeout_ms)
+    tuple<PreemptiveReadResult, size_t, size_t> AbstractWorker::preemptiveRead_framed__prep(size_t timeout_ms)
     {
       // start a stop watch
       auto startTime = chrono::high_resolution_clock::now();
@@ -251,7 +251,7 @@ namespace Sloppy
     //----------------------------------------------------------------------------
 
     TcpServerWrapper::TcpServerWrapper(const string& bindName, int port, size_t maxConCount)
-      :srvSocket{ManagedSocket::SocketType::TCP}, isStopRequested{false}
+      :srvSocket{SocketType::TCP}, isStopRequested{false}
     {
       if (!(srvSocket.bind(bindName, port)))
       {
@@ -343,14 +343,9 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    BasicTcpClient::BasicTcpClient(const string& _srvName, int _port)
-      :AbstractWorker{getConnectedRawSocket(_srvName, _port)}, srvName{_srvName}, port{_port} {}
-
-    //----------------------------------------------------------------------------
-
-    int BasicTcpClient::getConnectedRawSocket(const string& srvName, int port)
+    int getRawConnectedClientSocket(const string& srvName, int port, SocketType sType)
     {
-      ManagedSocket s{ManagedSocket::SocketType::TCP};
+      ManagedSocket s{sType};
 
       cout << "\tClient: waiting to connect" << endl;
       s.connect(srvName, port);
@@ -362,6 +357,6 @@ namespace Sloppy
       return tmp;
     }
 
-
   }
+
 }

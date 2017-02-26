@@ -26,16 +26,76 @@ namespace Sloppy
 {
   namespace Net
   {
+    //*********************************************************************
+    //
+    // Common methods for client and serer
+    //
+    //*********************************************************************
     const string CryptoClientServer::MagicPhrase{"LetMeInPlease"};
 
-    pair<CryptoClientServer::RequestResponse, ManagedBuffer> CryptoClientServer::CryptoServer::handleRequest(const ManagedBuffer& reqData)
+    bool CryptoClientServer::encryptAndWrite(const ManagedMemory& msg)
     {
+      sodium->increment(symNonce);
+      sessionKey.setAccess(SodiumSecureMemAccess::RO);
+      ManagedBuffer cipher = sodium->crypto_secretbox_easy(msg, symNonce, sessionKey);
+      sessionKey.setAccess(SodiumSecureMemAccess::NoAccess);
+      if (!(cipher.isValid()))
+      {
+        cerr << "CryptoClientServer: error when encrypting response to peer! No data sent!" << endl;
+        return false;
+      }
+      return write_framed_MB(cipher);
+    }
+
+    //----------------------------------------------------------------------------
+
+    pair<PreemptiveReadResult, ManagedBuffer> CryptoClientServer::readAndDecrypt(size_t timeout_ms)
+    {
+      PreemptiveReadResult rr;
+      ManagedBuffer cipher;
+      tie(rr, cipher) = preemptiveRead_framed_MB(timeout_ms);
+
+      if (rr != PreemptiveReadResult::Complete)
+      {
+        cerr << "CryptoClientServer: error while waiting for data (interrupted, incomplete, timeout or error)" << endl;
+        return make_pair(rr, ManagedBuffer{});
+      }
+
+      // decrypt the data
+      sodium->increment(symNonce);
+      sessionKey.setAccess(SodiumSecureMemAccess::RO);
+      auto plain = sodium->crypto_secretbox_open_easy(cipher, symNonce, sessionKey);
+      sessionKey.setAccess(SodiumSecureMemAccess::NoAccess);
+
+      // quit if the MAC was invalid
+      if (!(plain.isValid()))
+      {
+        cerr << "CryptoClientServer: received invalid / corrupted data from peer ==> error!" << endl;
+        return make_pair(PreemptiveReadResult::Error, ManagedBuffer{});
+      }
+
+      return make_pair(rr, std::move(plain));
+    }
+
+
+
+
+
+    //*********************************************************************
+    //
+    // The __SERVER__
+    //
+    //*********************************************************************
+
+    pair<CryptoClientServer::RequestResponse, ManagedBuffer> CryptoServer::handleRequest(const ManagedBuffer& reqData)
+    {
+      // dummy response, this should be overriden by derived classes
       return make_pair(RequestResponse::QuitWithoutSending, ManagedBuffer{});
     }
 
     //----------------------------------------------------------------------------
 
-    void CryptoClientServer::CryptoServer::doTheWork()
+    void CryptoServer::doTheWork()
     {
       bool authSuccess = doAuthProcess();
       if (!authSuccess)
@@ -50,9 +110,9 @@ namespace Sloppy
       {
         // wait (infinitely) for the next request and
         // terminate upon external request
+        ManagedBuffer req;
         PreemptiveReadResult rr;
-        ManagedBuffer cipher;
-        tie(rr, cipher) = preemptiveRead_framed_MB(0);
+        tie(rr, req) = readAndDecrypt(0);
 
         if (rr == PreemptiveReadResult::Interrupted)
         {
@@ -65,47 +125,25 @@ namespace Sloppy
           break;
         }
 
-        cout << "ServerWorker: received request, " << cipher.getSize() << " bytes" << endl;
-
-        // decrypt the request
-        sodium->increment(symNonce);
-        sessionKey.setAccess(SodiumSecureMemAccess::RO);
-        ManagedBuffer plain = sodium->crypto_secretbox_open_easy(cipher, symNonce, sessionKey);
-        sessionKey.setAccess(SodiumSecureMemAccess::NoAccess);
-
-        // quit if the MAC was invalid
-        if (!(plain.isValid()))
-        {
-          cerr << "ServerWorker: received invalid / corrupted data from client ==> terminating!" << endl;
-          break;
-        }
+        cout << "ServerWorker: received request, " << req.getSize() << " bytes" << endl;
 
         // forward the valid request to the request handler
         RequestResponse respCode;
         ManagedBuffer data;
-        tie(respCode, data) = handleRequest(plain);
+        tie(respCode, data) = handleRequest(req);
 
         // decide what to do based on the response code
         if (respCode == RequestResponse::ContinueWithoutSending) continue;
         if (respCode == RequestResponse::QuitWithoutSending) break;
 
         // send the response
-        sodium->increment(symNonce);
-        sessionKey.setAccess(SodiumSecureMemAccess::RO);
-        cipher = sodium->crypto_secretbox_easy(data, symNonce, sessionKey);
-        sessionKey.setAccess(SodiumSecureMemAccess::NoAccess);
-        if (!(cipher.isValid()))
-        {
-          cerr << "ServerWorker: error when encrypting response to client ==> terminating!" << endl;
-          break;
-        }
-        if (!(write_framed_MB(cipher)))
+        if (!(encryptAndWrite(data)))
         {
           cerr << "ServerWorker: error when sending response to client ==> terminating!" << endl;
           break;
         }
 
-        cout << "ServerWorker: sent response, " << cipher.getSize() << " bytes" << endl;
+        cout << "ServerWorker: sent response, " << data.getSize() << " unencrypted bytes" << endl;
 
         if (respCode == RequestResponse::SendAndQuit) break;
       }
@@ -115,7 +153,7 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    bool CryptoClientServer::CryptoServer::authStep1()
+    bool CryptoServer::authStep1()
     {
       // Step 1: wait for the client to open with "LetMeInPlease"
       PreemptiveReadResult rr;
@@ -135,7 +173,7 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    bool CryptoClientServer::CryptoServer::authStep2()
+    bool CryptoServer::authStep2()
     {
       // Step 2a: wait for public key and challenge
       PreemptiveReadResult rr;
@@ -143,20 +181,16 @@ namespace Sloppy
       tie(rr, data) = preemptiveRead_framed(AuthStepTimeout_ms);
       if (rr != PreemptiveReadResult::Complete) return false;
       MessageDissector d{data};
-      ManagedBuffer challengeFromClient;
-      string _clientPubKey;
       try
       {
-        _clientPubKey = d.getString();
-        challengeFromClient = d.getManagedBuffer();
+        if (!(peerPubKey.fillFromString(d.getString()))) return false;;
+        challengeFromPeer = d.getManagedBuffer();
       }
       catch (...)
       {
         return false;
       }
-      if (_clientPubKey.size() != crypto_box_PUBLICKEYBYTES) return false;
-      clientPubKey.fillFromString(_clientPubKey);
-      if (challengeFromClient.getSize() != ChallengeSize) return false;
+      if (challengeFromPeer.getSize() != ChallengeSize) return false;
 
       // Step 2b: send our public key, sign/encrypt the client's challenge,
       // append the used nonce and send our own challenge
@@ -165,14 +199,14 @@ namespace Sloppy
 
       sodium->randombytes_buf(asymNonce);
       sk.setAccess(SodiumSecureMemAccess::RO);
-      ManagedBuffer cipher = sodium->crypto_box_easy(challengeFromClient, asymNonce, clientPubKey, sk);
+      ManagedBuffer cipher = sodium->crypto_box_easy(challengeFromPeer, asymNonce, peerPubKey, sk);
       sk.setAccess(SodiumSecureMemAccess::NoAccess);
       b.addManagedMemory(cipher);
 
       b.addManagedMemory(asymNonce);
 
-      sodium->randombytes_buf(challengeForClient);
-      b.addManagedMemory(challengeForClient);
+      sodium->randombytes_buf(challengeForPeer);
+      b.addManagedMemory(challengeForPeer);
 
       bool isOkay = write_framed((const string&)b.getDataAsRef());
       if (!isOkay) return false;
@@ -183,7 +217,7 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    bool CryptoClientServer::CryptoServer::authStep3()
+    bool CryptoServer::authStep3()
     {
       // Step 3a: wait for encrypted/signed challenge, symmetric nonce and
       // public DH parameter from the client
@@ -216,23 +250,23 @@ namespace Sloppy
 
       sodium->increment(asymNonce);
       sk.setAccess(SodiumSecureMemAccess::RO);
-      SodiumSecureMemory returnedChallenge = sodium->crypto_box_open_easy(cipherChallenge, asymNonce, clientPubKey, sk);
+      SodiumSecureMemory returnedChallenge = sodium->crypto_box_open_easy(cipherChallenge, asymNonce, peerPubKey, sk);
       sk.setAccess(SodiumSecureMemAccess::NoAccess);
       if (!(returnedChallenge.isValid())) return false;
       cout << "ServerWorker: encrypted cipher has valid signature" << endl;
 
-      if (!(sodium->memcmp(returnedChallenge, challengeForClient))) return false;
+      if (!(sodium->memcmp(returnedChallenge, challengeForPeer))) return false;
       cout << "ServerWorker: returned cipher from client matches source" << endl;
 
       // the client has proven that it actually controls the private key. check if the
       // client to be accepted
-      if (!(isClientAcceptable(clientPubKey))) return false;
+      if (!(isPeerAcceptable(peerPubKey))) return false;
       cout << "ServerWorker: client's public key accepted" << endl;
 
       // derive the session key from the DH parameter
       sodium->increment(asymNonce);
       sk.setAccess(SodiumSecureMemAccess::RO);
-      SodiumSecureMemory pubDh = sodium->crypto_box_open_easy(signedPubDHKey, asymNonce, clientPubKey, sk);
+      SodiumSecureMemory pubDh = sodium->crypto_box_open_easy(signedPubDHKey, asymNonce, peerPubKey, sk);
       sk.setAccess(SodiumSecureMemAccess::NoAccess);
       if (!(pubDh.isValid())) return false;
       cout << "ServerWorker: client's public DH key has valid signature" << endl;
@@ -250,7 +284,7 @@ namespace Sloppy
       //
       sodium->increment(asymNonce);
       sk.setAccess(SodiumSecureMemAccess::RO);
-      ManagedBuffer signedDH = sodium->crypto_box_easy(dhEx.getMyPublicKey(), asymNonce, clientPubKey, sk);
+      ManagedBuffer signedDH = sodium->crypto_box_easy(dhEx.getMyPublicKey(), asymNonce, peerPubKey, sk);
       sk.setAccess(SodiumSecureMemAccess::NoAccess);
       bool isOk = write_framed(signedDH.copyToString());
       if (!isOk) return false;
@@ -262,7 +296,7 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    bool CryptoClientServer::CryptoServer::doAuthProcess()
+    bool CryptoServer::doAuthProcess()
     {
       if (!(authStep1())) return false;
       if (!(authStep2())) return false;
@@ -274,24 +308,18 @@ namespace Sloppy
       return true;
     }
 
-    //----------------------------------------------------------------------------
 
-    void CryptoClientServer::CryptoClient::doTheWork()
-    {
-      bool authSuccess = doAuthProcess();
-      if (!authSuccess)
-      {
-        cout << "\t\t\tClient: authentication failed!!" << endl;
-        closeSocket();
-        return;   // unconditionally quit if anything goes wrong
-      }
 
-      this_thread::sleep_for(chrono::seconds{2});
-    }
 
-    //----------------------------------------------------------------------------
 
-    void CryptoClientServer::CryptoClient::setExpectedServerKey(const CryptoClientServer::PubKey& srvPubKey)
+
+    //*********************************************************************
+    //
+    // The __CLIENT__
+    //
+    //*********************************************************************
+
+    void CryptoClient::setExpectedServerKey(const CryptoClientServer::PubKey& srvPubKey)
     {
       expectedServerKey = PubKey::asCopy(srvPubKey);
       hasExpectedServerKey = true;
@@ -299,7 +327,7 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    bool CryptoClientServer::CryptoClient::doAuthProcess()
+    bool CryptoClient::doAuthProcess()
     {
       if (!(authStep1())) return false;
       if (!(authStep2())) return false;
@@ -313,7 +341,7 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    bool CryptoClientServer::CryptoClient::authStep1()
+    bool CryptoClient::authStep1()
     {
       // Step 1: present the magic words and wait for an "OK"
       bool isOk = write(MagicPhrase);
@@ -335,14 +363,13 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    bool CryptoClientServer::CryptoClient::authStep2()
+    bool CryptoClient::authStep2()
     {
       // Step 2a: transmit our public key and a challenge for the server
       MessageBuilder b;
-      b.addString(pk.copyToString());
-      ManagedBuffer challenge{ChallengeSize};
-      sodium->randombytes_buf(challenge);
-      b.addManagedMemory(challenge);
+      b.addManagedMemory(pk);
+      sodium->randombytes_buf(challengeForPeer);
+      b.addManagedMemory(challengeForPeer);
       bool isOk = write_framed((const string&)b.getDataAsRef());
       if (!isOk) return false;
 
@@ -359,10 +386,10 @@ namespace Sloppy
       {
         MessageDissector d{data};
 
-        if (!(srvPubKey.fillFromManagedMemory(d.getManagedBuffer()))) return false;;
+        if (!(peerPubKey.fillFromManagedMemory(d.getManagedBuffer()))) return false;;
         cipherChallenge = d.getManagedBuffer();
         if (!(asymNonce.fillFromManagedMemory(d.getManagedBuffer()))) return false;;
-        challengeFromServer = d.getManagedBuffer();
+        challengeFromPeer = d.getManagedBuffer();
       }
       catch (...)
       {
@@ -373,23 +400,23 @@ namespace Sloppy
       if (cipherChallenge.getSize() != (ChallengeSize + crypto_box_MACBYTES)) return false;
       cout << "\t\t\tClient: Signed and encrypted challenge has correct length" << endl;
 
-      if (challengeFromServer.getSize() != ChallengeSize) return false;
+      if (challengeFromPeer.getSize() != ChallengeSize) return false;
       cout << "\t\t\tClient: Challenge from server has correct length" << endl;
-      cout << "\t\t\tClient: Challenge from server is " << toBase64(challengeFromServer) << endl;
+      cout << "\t\t\tClient: Challenge from server is " << toBase64(challengeFromPeer) << endl;
 
       // check the encrypted challenge
       // THIS PROVES THAT THE SERVER ACTUALLY CONTROLS THE PRIVATE KEY
       sk.setAccess(SodiumSecureMemAccess::RO);
-      auto returnedChallenge = sodium->crypto_box_open_easy(cipherChallenge, asymNonce, srvPubKey, sk);
+      auto returnedChallenge = sodium->crypto_box_open_easy(cipherChallenge, asymNonce, peerPubKey, sk);
       sk.setAccess(SodiumSecureMemAccess::NoAccess);
       if (!(returnedChallenge.isValid())) return false;
       cout << "\t\t\tClient: returned challenge from server has valid signature" << endl;
 
-      if (!(sodium->memcmp(challenge, returnedChallenge))) return false;
+      if (!(sodium->memcmp(challengeForPeer, returnedChallenge))) return false;
       cout << "\t\t\tClient: returned challenge from server has correct content" << endl;
 
       // call the hook for authorizing the server's public key
-      if (!(isServerAcceptable(srvPubKey))) return false;
+      if (!(isPeerAcceptable(peerPubKey))) return false;
       cout << "\t\t\tClient: server's public key (==> identity!) accepted!" << endl;
 
       cout << "\t\t\tClient: AuthStep 2 okay" << endl;
@@ -398,14 +425,14 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    bool CryptoClientServer::CryptoClient::authStep3()
+    bool CryptoClient::authStep3()
     {
       // step 3a: send the encrypted and signed challenge from the server
       // back to the server; append an initial nonce for later symmetric
       // encryption and public DH parameter (signed by the client)
       sodium->increment(asymNonce);
       sk.setAccess(SodiumSecureMemAccess::RO);
-      ManagedBuffer cipherChallenge = sodium->crypto_box_easy(challengeFromServer, asymNonce, srvPubKey, sk);
+      ManagedBuffer cipherChallenge = sodium->crypto_box_easy(challengeFromPeer, asymNonce, peerPubKey, sk);
       sk.setAccess(SodiumSecureMemAccess::NoAccess);
 
       sodium->randombytes_buf(symNonce);
@@ -416,7 +443,7 @@ namespace Sloppy
 
       sodium->increment(asymNonce);
       sk.setAccess(SodiumSecureMemAccess::RO);
-      auto signedAndEncryptedDH = sodium->crypto_box_easy(dhEx.getMyPublicKey(), asymNonce, srvPubKey, sk);
+      auto signedAndEncryptedDH = sodium->crypto_box_easy(dhEx.getMyPublicKey(), asymNonce, peerPubKey, sk);
       sk.setAccess(SodiumSecureMemAccess::NoAccess);
       b.addManagedMemory(signedAndEncryptedDH);
 
@@ -438,7 +465,7 @@ namespace Sloppy
 
       sodium->increment(asymNonce);
       sk.setAccess(SodiumSecureMemAccess::RO);
-      string _pubDh = sodium->crypto_box_open_easy(data, asymNonce, srvPubKey, sk);
+      string _pubDh = sodium->crypto_box_open_easy(data, asymNonce, peerPubKey, sk);
       sk.setAccess(SodiumSecureMemAccess::NoAccess);
       if (_pubDh.empty()) return false;
       cout << "\t\t\tClient: server's signed DH key has valid signature" << endl;
@@ -456,7 +483,7 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    bool CryptoClientServer::CryptoClient::cmpServerKeys(const PubKey& srvPubKey) const
+    bool CryptoClient::cmpServerKeys(const PubKey& srvPubKey) const
     {
       if (!hasExpectedServerKey) return false;
 
@@ -472,50 +499,6 @@ namespace Sloppy
     }
 
     //----------------------------------------------------------------------------
-
-    bool CryptoClientServer::CryptoClient::encryptAndWrite(const ManagedMemory& msg)
-    {
-      sodium->increment(symNonce);
-      sessionKey.setAccess(SodiumSecureMemAccess::RO);
-      ManagedBuffer cipher = sodium->crypto_secretbox_easy(msg, symNonce, sessionKey);
-      sessionKey.setAccess(SodiumSecureMemAccess::NoAccess);
-      if (!(cipher.isValid()))
-      {
-        cerr << "Cryptoclient: error when encrypting response to server! No data sent!" << endl;
-        return false;
-      }
-      return write_framed_MB(cipher);
-    }
-
-    //----------------------------------------------------------------------------
-
-    pair<AbstractWorker::PreemptiveReadResult, ManagedBuffer> CryptoClientServer::CryptoClient::readAndDecrypt(size_t timeout_ms)
-    {
-      PreemptiveReadResult rr;
-      ManagedBuffer cipher;
-      tie(rr, cipher) = preemptiveRead_framed_MB(timeout_ms);
-
-      if (rr != PreemptiveReadResult::Complete)
-      {
-        cerr << "Cryptoclient: error while waiting for data (interrupted, incomplete, timeout or error)" << endl;
-        return make_pair(rr, ManagedBuffer{});
-      }
-
-      // decrypt the data
-      sodium->increment(symNonce);
-      sessionKey.setAccess(SodiumSecureMemAccess::RO);
-      auto plain = sodium->crypto_secretbox_open_easy(cipher, symNonce, sessionKey);
-      sessionKey.setAccess(SodiumSecureMemAccess::NoAccess);
-
-      // quit if the MAC was invalid
-      if (!(plain.isValid()))
-      {
-        cerr << "Cryptoclient: received invalid / corrupted data from server ==> error!" << endl;
-        return make_pair(PreemptiveReadResult::Error, ManagedBuffer{});
-      }
-
-      return make_pair(rr, std::move(plain));
-    }
 
   }
 }

@@ -40,7 +40,7 @@ TEST(TcpClientServer, HelloWorld)
     {
       while(true)
       {
-        AbstractWorker::PreemptiveReadResult rr;
+        PreemptiveReadResult rr;
         string data;
         tie(rr, data) = preemptiveRead_framed(1000);
 
@@ -91,11 +91,11 @@ TEST(TcpClientServer, HelloWorld)
   };
 
   // prepare a simple client
-  class SimpleClient : public BasicTcpClient
+  class SimpleClient : public AbstractWorker
   {
   public:
     SimpleClient()
-      :BasicTcpClient("localhost", 11111) {}
+      :AbstractWorker{getRawConnectedClientSocket("localhost", 11111)} {}
 
     virtual void doTheWork() override
     {
@@ -104,7 +104,7 @@ TEST(TcpClientServer, HelloWorld)
       {
         ASSERT_TRUE(write_framed("Hello"));
 
-        AbstractWorker::PreemptiveReadResult rr;
+        PreemptiveReadResult rr;
         string response;
         tie(rr, response) = preemptiveRead_framed(100);
 

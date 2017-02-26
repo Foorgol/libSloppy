@@ -34,8 +34,8 @@ namespace Sloppy
 {
   namespace Net
   {
-    class CryptoClientServer
-    {      
+    class CryptoClientServer : public AbstractWorker
+    {
     public:
       // the whole concepts relies on sodium's DH function to
       // return shared secrets of the same size we need for
@@ -57,125 +57,113 @@ namespace Sloppy
         ContinueWithoutSending
       };
 
-      class CryptoServer : public AbstractWorker
+      CryptoClientServer(int _fd, const PubKey& _pk, const SecKey& _sk)
+        :AbstractWorker{_fd}, pk{PubKey::asCopy(_pk)}, sk{SecKey::asCopy(_sk)},
+          sodium{SodiumLib::getInstance()}, challengeForPeer{ChallengeSize},
+          challengeFromPeer{ChallengeSize},
+          dhEx{true},    // THIS IS JUST A PLACEHOLDER AND NEEDS TO BE RE-SET BY THE CLIENT / SERVER
+          handshakeComplete{false}
       {
-      public:
-        CryptoServer(PubKey& _pk, SecKey& _sk, int _fd, sockaddr_in sa)
-          :AbstractWorker{_fd}, pk{PubKey::asCopy(_pk)}, sk{SecKey::asCopy(_sk)},
-           sodium{SodiumLib::getInstance()}, challengeForClient{ChallengeSize},
-           dhEx{false}, handshakeComplete{false}
-        {
-          sk.setAccess(SodiumSecureMemAccess::NoAccess);
-        }
+        sk.setAccess(SodiumSecureMemAccess::NoAccess);
+        bzero(peerPubKey.get(), peerPubKey.getSize());
+      }
 
-        //
-        // Hooks to be overriden by deriving classes
-        //
+      CryptoClientServer(ManagedSocket s, const PubKey& _pk, const SecKey& _sk)
+        :CryptoClientServer{s.releaseDescriptor(), _pk, _sk}{}
 
-        // this one should be overridden if client
-        // identities shall be checked
-        virtual bool isClientAcceptable(const PubKey& k) const { return true; }
-        virtual pair<RequestResponse, ManagedBuffer> handleRequest(const ManagedBuffer& reqData);
+      PubKey getPublicKey() const { return PubKey::asCopy(pk); }
+      bool isAuthenticated() const { return handshakeComplete; }
 
+      // this one should be overridden if peer identities (client / server)
+      // shall be checked
+      virtual bool isPeerAcceptable(const PubKey& k) const { return true; }
 
-        //
-        // Other functions / helpers
-        //
-        virtual void doTheWork() override final;
+      bool encryptAndWrite(const ManagedMemory& msg);
+      pair<PreemptiveReadResult, ManagedBuffer> readAndDecrypt(size_t timeout_ms);
 
-        PubKey getPublicKey() const { return PubKey::asCopy(pk); }
+    protected:
+      SodiumLib::AsymCrypto_PublicKey pk;
+      SodiumLib::AsymCrypto_SecretKey sk;
+      SodiumLib* const sodium;
 
-        bool isAuthenticated() const { return handshakeComplete; }
+      ManagedBuffer challengeForPeer;
+      ManagedBuffer challengeFromPeer;
 
-      private:
-        SodiumLib* sodium;
-        SodiumLib::AsymCrypto_PublicKey pk;
-        SodiumLib::AsymCrypto_SecretKey sk;
+      PubKey peerPubKey;
 
-        ManagedBuffer challengeForClient;
-        PubKey clientPubKey;
+      AsymNonce asymNonce;
 
-        AsymNonce asymNonce;
+      SymNonce symNonce;
+      SymKey sessionKey;
 
-        SymNonce symNonce;
-        SymKey sessionKey;
+      DiffieHellmannExchanger dhEx;
 
-        DiffieHellmannExchanger dhEx;
+      bool handshakeComplete;
 
-        bool handshakeComplete;
-
-        bool authStep1();
-        bool authStep2();
-        bool authStep3();
-        bool doAuthProcess();
-      };
-
-      //----------------------------------------------------------------------------
-
-      class CryptoClient : public BasicTcpClient
-      {
-      public:
-        CryptoClient(PubKey& _pk, SecKey& _sk, const string& _srvName, int _port)
-          :BasicTcpClient{_srvName, _port}, pk{PubKey::asCopy(_pk)},
-            sk{SecKey::asCopy(_sk)}, sodium{SodiumLib::getInstance()},
-            hasExpectedServerKey{false}, challengeFromServer{},
-            dhEx{true}, handshakeComplete{false}
-        {
-          sk.setAccess(SodiumSecureMemAccess::NoAccess);
-
-          // invalidate the placeholder for the server's public key
-          bzero(expectedServerKey.get(), expectedServerKey.getSize());
-          bzero(srvPubKey.get(), srvPubKey.getSize());
-        }
-
-        virtual void doTheWork() override;
-
-        void setExpectedServerKey(const PubKey& srvPubKey);
-
-        bool cmpServerKeys(const PubKey& srvPubKey) const;
-
-        bool doAuthProcess();
-
-        // this one should be overriden by derived classes if they
-        // want to perform more sophisticated checks
-        virtual bool isServerAcceptable(const PubKey& k) const
-        {
-          return cmpServerKeys(k);
-        }
-
-        bool isAuthenticated() const { return handshakeComplete; }
-
-      protected:
-        bool encryptAndWrite(const ManagedMemory& msg);
-        pair<PreemptiveReadResult, ManagedBuffer> readAndDecrypt(size_t timeout_ms);
-        SodiumLib* const sodium;
-
-      private:
-        PubKey pk;
-        SecKey sk;
-        PubKey expectedServerKey;
-        bool hasExpectedServerKey;
-
-        PubKey srvPubKey;
-        ManagedBuffer challengeFromServer;
-        AsymNonce asymNonce;
-
-        SymNonce symNonce;
-        SymKey sessionKey;
-
-        DiffieHellmannExchanger dhEx;
-
-        bool handshakeComplete;
-
-        bool authStep1();
-        bool authStep2();
-        bool authStep3();
-      };
-
-    private:
       static const string MagicPhrase;
       static constexpr size_t AuthStepTimeout_ms = 1000;
       static constexpr size_t ChallengeSize = 32;
+    };
+
+    //----------------------------------------------------------------------------
+
+    class CryptoServer : public CryptoClientServer
+    {
+    public:
+      CryptoServer(PubKey& _pk, SecKey& _sk, int _fd)
+        :CryptoClientServer{_fd, _pk, _sk}
+      {
+        dhEx = DiffieHellmannExchanger{false};
+      }
+
+      // this one should be overridden by derived classes
+      virtual pair<RequestResponse, ManagedBuffer> handleRequest(const ManagedBuffer& reqData);
+
+      //
+      // Other functions / helpers
+      //
+      virtual void doTheWork() override final;
+
+    private:
+      bool authStep1();
+      bool authStep2();
+      bool authStep3();
+      bool doAuthProcess();
+    };
+
+    //----------------------------------------------------------------------------
+
+    class CryptoClient : public CryptoClientServer
+    {
+    public:
+      CryptoClient(PubKey& _pk, SecKey& _sk, const string& _srvName, int _port)
+        :CryptoClientServer{getRawConnectedClientSocket(_srvName, _port), _pk, _sk},
+          hasExpectedServerKey{false}
+      {
+        // invalidate the placeholder for the server's public key
+        bzero(expectedServerKey.get(), expectedServerKey.getSize());
+      }
+
+      void setExpectedServerKey(const PubKey& srvPubKey);
+
+      bool cmpServerKeys(const PubKey& srvPubKey) const;
+
+      bool doAuthProcess();
+
+      // this one should be overriden by derived classes if they
+      // want to perform more sophisticated checks
+      virtual bool isPeerAcceptable(const PubKey& k) const override
+      {
+        return cmpServerKeys(k);
+      }
+
+    private:
+      PubKey expectedServerKey;
+      bool hasExpectedServerKey;
+
+      bool authStep1();
+      bool authStep2();
+      bool authStep3();
     };
   }
 }

@@ -28,16 +28,15 @@ namespace Sloppy
 {
   namespace Net
   {
+    enum class SocketType
+    {
+      TCP,
+      UDP
+    };
 
     class ManagedSocket : public ManagedFileDescriptor
     {
     public:
-      enum class SocketType
-      {
-        TCP,
-        UDP
-      };
-
       explicit ManagedSocket(SocketType t)
         :ManagedFileDescriptor{socket(AF_INET, (t == SocketType::UDP) ? SOCK_DGRAM : SOCK_STREAM, 0)}{}
 

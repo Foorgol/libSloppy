@@ -97,6 +97,8 @@ namespace Sloppy
       ByteString getByteString();
       vector<MessageDissector> getMessageList();
 
+      size_t getSize() const { return data.size(); }
+
     private:
       ByteString data;
       size_t offset;

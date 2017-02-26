@@ -33,11 +33,11 @@ TEST(CryptoClientServerDemo, HelloWorld)
 {
   // prepare a server worker class that waits for a
   // data from the client and responds with a copy of that data
-  class SrvWorker : public CryptoClientServer::CryptoServer
+  class SrvWorker : public CryptoServer
   {
   public:
-    SrvWorker(SodiumLib::AsymCrypto_PublicKey& _pk, SodiumLib::AsymCrypto_SecretKey& _sk, int _fd, sockaddr_in sa)
-      :Net::CryptoClientServer::CryptoServer(_pk, _sk, _fd, sa) {}
+    SrvWorker(SodiumLib::AsymCrypto_PublicKey& _pk, SodiumLib::AsymCrypto_SecretKey& _sk, int _fd)
+      :CryptoServer(_pk, _sk, _fd) {}
 
     virtual pair<CryptoClientServer::RequestResponse, ManagedBuffer> handleRequest(const ManagedBuffer& reqData) override
     {
@@ -64,7 +64,7 @@ TEST(CryptoClientServerDemo, HelloWorld)
 
     virtual unique_ptr<AbstractWorker> getNewWorker(int _fd, sockaddr_in _clientAddress) override
     {
-      return make_unique<SrvWorker>(pk, sk, _fd, _clientAddress);
+      return make_unique<SrvWorker>(pk, sk, _fd);
     }
 
   private:
@@ -74,27 +74,36 @@ TEST(CryptoClientServerDemo, HelloWorld)
   };
 
   // prepare a simple client
-  class SimpleClient : public Net::CryptoClientServer::CryptoClient
+  class SimpleClient : public CryptoClient
   {
   public:
     SimpleClient(SodiumLib::AsymCrypto_PublicKey& _pk, SodiumLib::AsymCrypto_SecretKey& _sk)
-      :Net::CryptoClientServer::CryptoClient(_pk, _sk, "localhost", 11111) {}
+      :CryptoClient(_pk, _sk, "localhost", 11112) {}
 
-    void pingpong(size_t nBytes)
+    void pingpong(size_t nDWords)
     {
-      ManagedBuffer out{nBytes};
-      sodium->randombytes_buf(out);
+      MessageBuilder msg;
+      for (size_t i = 0; i < nDWords; ++i)
+      {
+        msg.addUI64(i);
+      }
 
-      ASSERT_TRUE(encryptAndWrite(out));
-      cout << "Pingpong: " << out.getSize() << " unencrypted Bytes sent to server" << endl;
+      ManagedBuffer mb{msg.getSize()};
+      memcpy(mb.get_uc(), msg.ucPtr(), msg.getSize());
+      ASSERT_TRUE(encryptAndWrite(mb));
+      cout << "Pingpong: " << msg.getSize() << " unencrypted Bytes sent to server" << endl;
 
       ManagedBuffer returnCopy;
       PreemptiveReadResult rr;
       tie(rr, returnCopy) = readAndDecrypt(5000);
-
-      ASSERT_TRUE(rr == PreemptiveReadResult::Complete);
-      ASSERT_TRUE(returnCopy.isValid());
-      ASSERT_TRUE(sodium->memcmp(out, returnCopy));
+      MessageDissector d{returnCopy};
+      ASSERT_EQ(msg.getSize(), returnCopy.getSize());
+      ASSERT_EQ(msg.getSize(), d.getSize());
+      for (size_t i = 0; i < nDWords; ++i)
+      {
+        ASSERT_EQ(i, d.getUI64());
+      }
+      cout << "Pingpong: successfully checked " << nDWords << " 8-byte numbers" << endl;
     }
 
   };
@@ -106,9 +115,9 @@ TEST(CryptoClientServerDemo, HelloWorld)
   // create a factory
   SrvWorkerFactory f;
 
-  // prep a server wrapper on localhost:11111
+  // prep a server wrapper on localhost:11112
   // and run it in a dedicated thread
-  TcpServerWrapper wrp{"localhost", 11111, 5};
+  TcpServerWrapper wrp{"localhost", 11112, 5};
   thread tWrapper{[&](){ wrp.mainLoop(f); }};
 
   // instanciate a client and send a few
@@ -123,7 +132,7 @@ TEST(CryptoClientServerDemo, HelloWorld)
   ASSERT_TRUE(c.doAuthProcess());
   for (int i=0; i < 10; ++i)
   {
-    c.pingpong(10000000);
+    c.pingpong(200000);
     cout << "Client: finished pingpong-iteration #" << i << endl;
   }
   c.closeSocket();

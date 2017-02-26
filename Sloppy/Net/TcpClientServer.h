@@ -30,6 +30,14 @@ namespace Sloppy
 {
   namespace Net
   {
+    enum class PreemptiveReadResult
+    {
+      Complete,  // all requested data has been read
+      Timeout,   // a timeout occured and the returned data is incomplete
+      Interrupted, // the parent requested to QUIT or TERMINATE
+      Error      // an IOError occured
+    };
+
     class AbstractWorker
     {
     public:
@@ -66,14 +74,6 @@ namespace Sloppy
       void closeSocket() { socket.close(); }
 
     protected:
-      enum class PreemptiveReadResult
-      {
-        Complete,  // all requested data has been read
-        Timeout,   // a timeout occured and the returned data is incomplete
-        Interrupted, // the parent requested to QUIT or TERMINATE
-        Error      // an IOError occured
-      };
-
       PreemptiveReadResult preemptiveRead(char * buf, size_t nBytes, size_t timeout_ms);
 
       pair<PreemptiveReadResult, string> preemptiveRead(size_t nBytes, size_t timeout_ms);
@@ -127,17 +127,7 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    class BasicTcpClient : public AbstractWorker
-    {
-    public:
-      BasicTcpClient(const string& _srvName, int _port);
-
-      static int getConnectedRawSocket(const string& srvName, int port);
-
-    private:
-      string srvName;
-      int port;
-    };
+    int getRawConnectedClientSocket(const string& srvName, int port, SocketType sType = SocketType::TCP);
 
   }
 }

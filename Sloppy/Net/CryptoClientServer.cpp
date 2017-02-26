@@ -130,7 +130,15 @@ namespace Sloppy
         // forward the valid request to the request handler
         RequestResponse respCode;
         ManagedBuffer data;
+        try
+        {
         tie(respCode, data) = handleRequest(req);
+        }
+        catch (...)
+        {
+          cerr << "ServerWorker: request handler caused unexpected exception. Terminating!" << endl;
+          break;
+        }
 
         // decide what to do based on the response code
         if (respCode == RequestResponse::ContinueWithoutSending) continue;

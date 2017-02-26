@@ -144,6 +144,13 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
+    bool AbstractWorker::write(const char* buf, size_t len)
+    {
+      socket.blockingWrite(buf, len);
+    }
+
+    //----------------------------------------------------------------------------
+
     pair<PreemptiveReadResult, string> AbstractWorker::preemptiveRead_framed(size_t timeout_ms)
     {
       PreemptiveReadResult rr;
@@ -207,6 +214,24 @@ namespace Sloppy
       bool isOk = write(sLen);
       if (!isOk) return false;
       return write(data);
+    }
+
+    //----------------------------------------------------------------------------
+
+    bool AbstractWorker::write_framed(const char* buf, size_t len)
+    {
+      if ((len >> 32) >= 1)
+      {
+        throw std::invalid_argument("Cannot send more that 2^32 bytes of framed data!");
+      }
+
+      uint32_t byteCount = (len & 0xffffffff);
+      uint32_t netByteCount = htonl(byteCount);
+      string sLen{(char *)&netByteCount, 4};
+
+      bool isOk = write(sLen);
+      if (!isOk) return false;
+      return write(buf, len);
     }
 
     //----------------------------------------------------------------------------

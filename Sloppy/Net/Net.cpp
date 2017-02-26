@@ -167,6 +167,16 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
+    ManagedBuffer MessageBuilder::get() const
+    {
+      ManagedBuffer result{getSize()};
+      memcpy(result.get_c(), (char *)data.c_str(), getSize());
+
+      return result;
+    }
+
+    //----------------------------------------------------------------------------
+
     string MessageDissector::getString()
     {
       // get the string length

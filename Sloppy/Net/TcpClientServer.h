@@ -83,8 +83,10 @@ namespace Sloppy
 
       bool write(const string& data);
       bool write(const ManagedMemory& data);
+      bool write(const char* buf, size_t len);
       bool write_framed(const string& data);
       bool write_framed_MB(const ManagedMemory& data);
+      bool write_framed(const char* buf, size_t len);
 
 
       // this one has to be overriden by the specific worker

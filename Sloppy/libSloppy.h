@@ -204,6 +204,7 @@ namespace Sloppy
 
     bool blockingWrite(const string& data);
     bool blockingWrite(const ManagedMemory& data);
+    bool blockingWrite(const char* ptr, size_t len);
 
     string blockingRead(size_t minLen, size_t maxLen = 0, size_t timeout_ms = 0);
     ManagedBuffer blockingRead_MB(size_t expectedLen, size_t timeout_ms = 0);
@@ -221,8 +222,6 @@ namespace Sloppy
     atomic<State> st;
     char* readBuf;
 
-  private:
-    bool blockingWrite(const char* ptr, size_t len);
   };
 }
 

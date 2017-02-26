@@ -64,6 +64,7 @@ namespace Sloppy
 
       const uint8_t* ucPtr() const { return data.c_str(); }
       const char* charPtr() const { return (char *)data.c_str(); }
+      ManagedBuffer get() const;
       size_t getSize() const { return data.size(); }
 
       void clear() { data.clear(); }
@@ -134,6 +135,10 @@ namespace Sloppy
         :MessageDissector{bs}, msgType{static_cast<TypeEnum>(getInt())} {}
       TypedMessageDissector(const ManagedMemory& mm)
         :MessageDissector{mm}, msgType{static_cast<TypeEnum>(getInt())} {}
+
+      // fake-construct an empty dissector to indicate errors to the caller
+      TypedMessageDissector(TypeEnum t)
+        :MessageDissector{""}, msgType{t} {}
 
       TypeEnum getType() const { return msgType; }
 

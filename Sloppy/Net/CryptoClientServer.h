@@ -136,13 +136,16 @@ namespace Sloppy
     class CryptoClient : public CryptoClientServer
     {
     public:
-      CryptoClient(PubKey& _pk, SecKey& _sk, const string& _srvName, int _port)
-        :CryptoClientServer{getRawConnectedClientSocket(_srvName, _port), _pk, _sk},
+      CryptoClient(PubKey& _pk, SecKey& _sk, int _fd)
+        :CryptoClientServer{_fd, _pk, _sk},
           hasExpectedServerKey{false}
       {
         // invalidate the placeholder for the server's public key
         bzero(expectedServerKey.get(), expectedServerKey.getSize());
       }
+
+      CryptoClient(PubKey& _pk, SecKey& _sk, const string& _srvName, int _port)
+        :CryptoClient{_pk, _sk, getRawConnectedClientSocket(_srvName, _port)} {}
 
       void setExpectedServerKey(const PubKey& srvPubKey);
 

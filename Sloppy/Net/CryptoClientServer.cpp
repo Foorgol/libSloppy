@@ -87,10 +87,10 @@ namespace Sloppy
     //
     //*********************************************************************
 
-    pair<CryptoClientServer::RequestResponse, ManagedBuffer> CryptoServer::handleRequest(const ManagedBuffer& reqData)
+    pair<CryptoClientServer::ResponseReaction, ManagedBuffer> CryptoServer::handleRequest(const ManagedBuffer& reqData)
     {
       // dummy response, this should be overriden by derived classes
-      return make_pair(RequestResponse::QuitWithoutSending, ManagedBuffer{});
+      return make_pair(ResponseReaction::QuitWithoutSending, ManagedBuffer{});
     }
 
     //----------------------------------------------------------------------------
@@ -128,11 +128,13 @@ namespace Sloppy
         cout << "ServerWorker: received request, " << req.getSize() << " bytes" << endl;
 
         // forward the valid request to the request handler
-        RequestResponse respCode;
+        ResponseReaction respCode;
         ManagedBuffer data;
         try
         {
-        tie(respCode, data) = handleRequest(req);
+          //tie(respCode, data) = handleRequest(req);
+          tie(respCode, data) = handleRequest(req);
+          cout << "ServerWorker: handler returned " << data.getSize() << " bytes of unencrypted data" << endl;
         }
         catch (...)
         {
@@ -141,8 +143,8 @@ namespace Sloppy
         }
 
         // decide what to do based on the response code
-        if (respCode == RequestResponse::ContinueWithoutSending) continue;
-        if (respCode == RequestResponse::QuitWithoutSending) break;
+        if (respCode == ResponseReaction::ContinueWithoutSending) continue;
+        if (respCode == ResponseReaction::QuitWithoutSending) break;
 
         // send the response
         if (!(encryptAndWrite(data)))
@@ -153,7 +155,7 @@ namespace Sloppy
 
         cout << "ServerWorker: sent response, " << data.getSize() << " unencrypted bytes" << endl;
 
-        if (respCode == RequestResponse::SendAndQuit) break;
+        if (respCode == ResponseReaction::SendAndQuit) break;
       }
       cout << "ServerWorker: left main request-response-loop" << endl;
       closeSocket();

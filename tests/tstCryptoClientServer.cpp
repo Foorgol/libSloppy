@@ -39,11 +39,9 @@ TEST(CryptoClientServerDemo, HelloWorld)
     SrvWorker(SodiumLib::AsymCrypto_PublicKey& _pk, SodiumLib::AsymCrypto_SecretKey& _sk, int _fd)
       :CryptoServer(_pk, _sk, _fd) {}
 
-    virtual pair<CryptoClientServer::RequestResponse, ManagedBuffer> handleRequest(const ManagedBuffer& reqData) override
+    virtual pair<CryptoClientServer::ResponseReaction, ManagedBuffer> handleRequest(const ManagedBuffer& reqData) override
     {
-      ManagedBuffer returnCopy = ManagedBuffer::asCopy(reqData);
-
-      return make_pair(CryptoClientServer::RequestResponse::SendAndContinue, std::move(returnCopy));
+      return make_pair(ResponseReaction::SendAndContinue, ManagedBuffer::asCopy(reqData));
     }
   };
 

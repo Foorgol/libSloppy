@@ -49,7 +49,7 @@ namespace Sloppy
       using SymKey = SodiumLib::SecretBoxKeyType;
       using SymNonce = SodiumLib::SecretBoxNonceType;
 
-      enum class RequestResponse
+      enum class ResponseReaction
       {
         SendAndContinue,
         SendAndQuit,
@@ -70,6 +70,8 @@ namespace Sloppy
 
       CryptoClientServer(ManagedSocket s, const PubKey& _pk, const SecKey& _sk)
         :CryptoClientServer{s.releaseDescriptor(), _pk, _sk}{}
+
+      virtual ~CryptoClientServer() {}
 
       PubKey getPublicKey() const { return PubKey::asCopy(pk); }
       bool isAuthenticated() const { return handshakeComplete; }
@@ -116,8 +118,10 @@ namespace Sloppy
         dhEx = DiffieHellmannExchanger{false};
       }
 
+      virtual ~CryptoServer() {}
+
       // this one should be overridden by derived classes
-      virtual pair<RequestResponse, ManagedBuffer> handleRequest(const ManagedBuffer& reqData);
+      virtual pair<ResponseReaction, ManagedBuffer> handleRequest(const ManagedBuffer& reqData);
 
       //
       // Other functions / helpers
@@ -146,6 +150,8 @@ namespace Sloppy
 
       CryptoClient(PubKey& _pk, SecKey& _sk, const string& _srvName, int _port)
         :CryptoClient{_pk, _sk, getRawConnectedClientSocket(_srvName, _port)} {}
+
+      virtual ~CryptoClient() {}
 
       void setExpectedServerKey(const PubKey& srvPubKey);
 

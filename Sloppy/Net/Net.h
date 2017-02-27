@@ -58,6 +58,7 @@ namespace Sloppy
       void addManagedMemory(const ManagedMemory& mem);
       void addByteString(const ByteString& bs);
       void addMessageList(const vector<MessageBuilder>& msgList);
+      void rawPoke(const char* src, size_t srcLen, size_t dstOffset);
 
       const ByteString& getDataAsRef() const { return data; }
       ByteString getData() const { return data; }
@@ -116,6 +117,13 @@ namespace Sloppy
         :MessageBuilder{}, msgType{_msgType}
       {
         addInt(static_cast<int>(msgType));
+      }
+
+      void rewriteType(const TypeEnum& newType)
+      {
+        uint32_t networkOrder = htonl(static_cast<uint32_t>(newType));
+        rawPoke((char *)&networkOrder, 4, 0);
+        msgType = newType;
       }
 
     private:

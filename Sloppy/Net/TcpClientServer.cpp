@@ -146,7 +146,7 @@ namespace Sloppy
 
     bool AbstractWorker::write(const char* buf, size_t len)
     {
-      socket.blockingWrite(buf, len);
+      return socket.blockingWrite(buf, len);
     }
 
     //----------------------------------------------------------------------------
@@ -347,6 +347,7 @@ namespace Sloppy
           }
         }
       } while (!isStopRequested);
+      cout << "Wrapper: left accept-loop! " << workerThreads.size() << " threads still running" << endl;
 
       // we were requested to finish, so we kindly ask all our
       // worker threads to finish as well
@@ -357,13 +358,17 @@ namespace Sloppy
         ++itWorkerObject;
       }
 
-
       // and now we cross our fingers, hope for the best
       // and join all started worker threads
       for (thread& t : workerThreads) t.join();
+      cout << "Wrapper: all worker threads joined!" << endl;
 
-      // the worker objects will be automatically destroyed / freed
-      // when the workerObjects container is destroyed
+      // delete all thread instances
+      workerThreads.clear();
+      cout << "Wrapper: all worker threads destroyed" << endl;
+
+      // the worker objects will be destroyed automatically
+      // when we leave this scope
     }
 
     //----------------------------------------------------------------------------

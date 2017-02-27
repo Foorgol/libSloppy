@@ -171,4 +171,10 @@ TEST(NetFuncs, TypedMessages)
   MyDis d{msg.getDataAsRef()};
   ASSERT_EQ(MsgTypes::T2, d.getType());
   ASSERT_EQ("SomeData", d.getString());
+
+  msg.rewriteType(MsgTypes::T3);
+  d = MyDis{msg.getDataAsRef()};
+  ASSERT_EQ(MsgTypes::T3, d.getType());
+  ASSERT_EQ("SomeData", d.getString());
+
 }

@@ -167,6 +167,14 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
+    void MessageBuilder::rawPoke(const char* src, size_t srcLen, size_t dstOffset)
+    {
+      if ((dstOffset + srcLen) > data.size()) throw InvalidMessageAccess{};
+      memcpy((char *)data.c_str() + dstOffset, src, srcLen);
+    }
+
+    //----------------------------------------------------------------------------
+
     ManagedBuffer MessageBuilder::get() const
     {
       ManagedBuffer result{getSize()};

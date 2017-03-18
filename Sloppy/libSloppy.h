@@ -25,6 +25,9 @@
 
 using namespace std;
 
+// a forward declaration
+namespace boost { namespace filesystem { class path; }}
+
 namespace Sloppy
 {
   using StringList = vector<string>;
@@ -94,6 +97,9 @@ namespace Sloppy
     return strArg(s, string{buf});
   }
 
+  // find all files in a directors including sub-folders
+  StringList getAllFilesInDirTree(const string& baseDir, bool includeDirNameInList=false);
+  void getAllFilesInDirTree_Recursion(const boost::filesystem::path& basePath, StringList& resultList, bool includeDirNameInList);
 }
 
 #endif

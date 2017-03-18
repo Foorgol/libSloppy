@@ -20,8 +20,11 @@
 #include <cstdio>
 
 #include <boost/algorithm/string.hpp>
+#include <boost/filesystem.hpp>
 
 #include "libSloppy.h"
+
+namespace bfs = boost::filesystem;
 
 namespace Sloppy
 {
@@ -222,6 +225,37 @@ namespace Sloppy
     fmt += "f";
 
     return strArg<double>(s, arg, fmt);
+  }
+
+  //----------------------------------------------------------------------------
+
+  StringList getAllFilesInDirTree(const string& baseDir, bool includeDirNameInList)
+  {
+    bfs::path root{baseDir};
+    if (!(bfs::exists(root))) return StringList{};
+
+    StringList result;
+    getAllFilesInDirTree_Recursion(root, result, includeDirNameInList);
+
+    return result;
+  }
+
+  //----------------------------------------------------------------------------
+
+  void getAllFilesInDirTree_Recursion(const bfs::path & basePath, StringList& resultList, bool includeDirNameInList)
+  {
+
+    for (bfs::directory_iterator it{basePath}; it != bfs::directory_iterator{}; ++it)
+    {
+      if (bfs::is_directory(it->status()))
+      {
+        getAllFilesInDirTree_Recursion(it->path(), resultList, includeDirNameInList);
+
+        if (!includeDirNameInList) continue;
+      }
+
+      resultList.push_back(it->path().native());
+    }
   }
 
   //----------------------------------------------------------------------------

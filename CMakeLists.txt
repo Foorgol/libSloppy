@@ -34,6 +34,7 @@ set(LIB_SOURCES
     Sloppy/HTML/BasicElements.cpp
     Sloppy/HTML/Table.cpp
     Sloppy/HTML/Bootstrap.cpp
+    Sloppy/TemplateProcessor/TemplateSys.cpp
 )
 
 add_library(${PROJECT_NAME} SHARED ${LIB_SOURCES})
@@ -90,6 +91,7 @@ set(LIB_SOURCES_TST
     tests/tstHTML.cpp
     tests/tstCrypto.cpp
     tests/tstStringFunc.cpp
+    tests/tstBetterTemplateSys.cpp
 )
 
 find_package(GTest)

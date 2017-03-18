@@ -80,6 +80,20 @@ namespace Sloppy
 
   // get a slice of a string delimited by two indices
   string getStringSlice(const string& s, size_t idxStart, size_t idxEnd);
+
+  // an 'arg'-functions a little bit like in QString
+  int strArg(string& s, const string& arg);
+  int strArg(string& s, int arg, int minLen = 0, char fillChar = '0');
+  int strArg(string& s, double arg, int numDigits = 6);
+  template<typename T>
+  int strArg(string& s, T arg, const string& fmt)
+  {
+    char buf[100];
+    snprintf(buf, 100, fmt.c_str(), arg);
+
+    return strArg(s, string{buf});
+  }
+
 }
 
 #endif

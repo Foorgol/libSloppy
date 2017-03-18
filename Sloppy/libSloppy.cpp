@@ -17,6 +17,7 @@
  */
 
 #include <regex>
+#include <cstdio>
 
 #include <boost/algorithm/string.hpp>
 
@@ -166,6 +167,65 @@ namespace Sloppy
   }
 
   //----------------------------------------------------------------------------
+
+  int strArg(string& s, const string& arg)
+  {
+    constexpr int NotFound = 999999;
+    int minArg = NotFound;
+
+    // determine the lowest argument index
+    regex re{R"(%(\d+))"};
+    sregex_iterator begin{s.begin(), s.end(), re};
+    for (auto it = begin; it != sregex_iterator{}; ++it)
+    {
+      int argIdx = stoi((*it)[1]);
+      if (argIdx < 0) continue;
+      if (argIdx < minArg) minArg = argIdx;
+    }
+
+    // search / replace the argument with the lowest index
+    if (minArg != NotFound)
+    {
+      string key = "%" + to_string(minArg);
+      return replaceString_All(s, key, arg);
+    }
+
+    return 0;
+  }
+
+  //----------------------------------------------------------------------------
+
+  int strArg(string& s, int arg, int minLen, char fillChar)
+  {
+    // make the standard case easy and fast:
+    // convert to string, replace, done
+    string sArg = to_string(arg);
+    if (sArg.size() >= minLen) return strArg(s, sArg);
+
+    // if we don't meet the minimum length, apply
+    // manual padding and consider the '-' character
+    if (arg < 0) --minLen;
+    sArg = to_string(abs(arg));
+    int cnt = minLen - sArg.size();
+    sArg = string(cnt, fillChar) + sArg;
+    if (arg < 0) sArg = "-" + sArg;
+
+    return strArg(s, sArg);
+  }
+
+  //----------------------------------------------------------------------------
+
+  int strArg(string& s, double arg, int numDigits)
+  {
+    string fmt = "%";
+    if (numDigits >=0) fmt += "." + to_string(numDigits);
+    fmt += "f";
+
+    return strArg<double>(s, arg, fmt);
+  }
+
+  //----------------------------------------------------------------------------
+
 
 
   //----------------------------------------------------------------------------

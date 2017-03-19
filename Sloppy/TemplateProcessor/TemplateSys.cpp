@@ -37,7 +37,8 @@ namespace Sloppy
       :reToken{R"(\{\{\s*([^\}\{]+)\s*\}\})"},
         reFor{R"(for ([\w|.|:]+)\s*:\s*([\w|.|:]+))"},
         reIf{R"(if (!?)\s*([\w|.|:]+))"},
-        reVar{R"([\w|.|:]+)"}
+        reVar{R"([\w|.|:]+)"},
+        reInclude{R"(include ([\w|.|:|/]+))"}
     {
     }
 
@@ -233,6 +234,15 @@ namespace Sloppy
           sti.listName = sm[2];
         }
 
+        if (tt == TokenType::IncludeCmd)
+        {
+          smatch sm;
+          regex_match(token, sm, reInclude);
+
+          sti.t = SyntaxTreeItemType::IncludeCmd;
+          sti.varName = sm[1];
+        }
+
         // store the new item and adjust the levels, if necessary
         tree.push_back(sti);
         updateLinks();
@@ -296,6 +306,10 @@ namespace Sloppy
       if (rc == 1) return make_tuple(TokenType::StartFor, true);
       if (rc < 0) return make_tuple(TokenType::StartFor, false);
 
+      rc = isValid_include(token);
+      if (rc == 1) return make_tuple(TokenType::IncludeCmd, true);
+      if (rc < 0) return make_tuple(TokenType::IncludeCmd, false);
+
       // if no keyword match, it must be a valid variable
       return make_tuple(TokenType::Variable, isValid_var(token));
     }
@@ -328,6 +342,10 @@ namespace Sloppy
 
         case TokenType::EndFor:
           strArg(msg, "endfor");
+          break;
+
+        case TokenType::IncludeCmd:
+          strArg(msg, "include");
           break;
 
         default:
@@ -397,6 +415,18 @@ namespace Sloppy
       // okay, it's an "for". In this case, the token
       // must match the regular expression for fors
       return (regex_match(token, reFor)) ? 1 : -1;
+    }
+
+    //----------------------------------------------------------------------------
+
+    int SyntaxTree::isValid_include(const string& token) const
+    {
+      // check if the token starts with "include"
+      if (token.substr(0, 7) != "include") return 0;
+
+      // okay, it's an "include". In this case, the token
+      // must match the regular expression for include
+      return (regex_match(token, reInclude)) ? 1 : -1;
     }
 
     //----------------------------------------------------------------------------

@@ -59,6 +59,13 @@ public:
     return item.varName == varName;
   }
 
+  bool checkTreeItem_Include(const SyntaxTreeItem& item, const string& fName)
+  {
+    if (item.t != SyntaxTreeItemType::IncludeCmd) return false;
+
+    return (item.varName == fName);
+  }
+
   bool checkTreeItem_if(const SyntaxTreeItem& item, const string& varName, bool isInverted)
   {
     if (item.t != SyntaxTreeItemType::Condition) return false;
@@ -120,7 +127,7 @@ TEST(BetterTemplateSys, ctor)
 
 //----------------------------------------------------------------------------
 
-TEST_F(SyntaxTreeFixture, SyntaxTree1)
+TEST_F(SyntaxTreeFixture, SyntaxTree_Basic_If)
 {
   constexpr size_t noLink = SyntaxTree::InvalidIndex;
 
@@ -203,7 +210,7 @@ TEST_F(SyntaxTreeFixture, SyntaxTree1)
 
 //----------------------------------------------------------------------------
 
-TEST_F(SyntaxTreeFixture, SyntaxTree2)
+TEST_F(SyntaxTreeFixture, SyntaxTree_For)
 {
   constexpr size_t noLink = SyntaxTree::InvalidIndex;
 
@@ -214,7 +221,6 @@ TEST_F(SyntaxTreeFixture, SyntaxTree2)
   ASSERT_TRUE(parse_checkError_compareCount(s, tree, err, 1, false));
 
   SyntaxTreeItem i = tree[0];
-  ASSERT_TRUE(checkTreeItem(i, SyntaxTreeItemType::ForLoop));
   ASSERT_TRUE(checkTreeItem_for(i, "var", "list"));
   ASSERT_TRUE(checkTreeItem_Links(i, noLink, noLink, noLink));
 
@@ -249,4 +255,20 @@ TEST_F(SyntaxTreeFixture, SyntaxTree2)
   i = tree[6];
   ASSERT_TRUE(checkTreeItem_static(i, s, " hi"));
   ASSERT_TRUE(checkTreeItem_Links(i, noLink, noLink, noLink));
+}
+
+//----------------------------------------------------------------------------
+
+TEST_F(SyntaxTreeFixture, SyntaxTree_Include)
+{
+  constexpr size_t noLink = SyntaxTree::InvalidIndex;
+
+  // a simple include
+  string s = "{{ include otherFile.txt }}";
+  vector<SyntaxTreeItem> tree;
+  SyntaxTreeError err;
+  ASSERT_TRUE(parse_checkError_compareCount(s, tree, err, 1, false));
+
+  SyntaxTreeItem i = tree[0];
+  ASSERT_TRUE(checkTreeItem_Include(i, "otherFile.txt"));
 }

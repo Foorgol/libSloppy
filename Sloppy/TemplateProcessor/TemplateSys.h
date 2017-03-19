@@ -48,7 +48,8 @@ namespace Sloppy
       StartIf,
       EndIf,
       StartFor,
-      EndFor
+      EndFor,
+      IncludeCmd
     };
 
     enum class SyntaxSectionType
@@ -127,6 +128,7 @@ namespace Sloppy
       regex reFor;
       regex reIf;
       regex reVar;
+      regex reInclude;
 
       tuple<TokenType, bool> checkToken(const string& token) const;
 
@@ -135,6 +137,7 @@ namespace Sloppy
       int isValid_if(const string& token) const;
       int isValid_endfor(const string& token) const;
       int isValid_for(const string& token) const;
+      int isValid_include(const string& token) const;
       bool isValid_var(const string& token) const;
     };
 

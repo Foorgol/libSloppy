@@ -143,15 +143,20 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    class RawTemplate
+    class Template
     {
     public:
-      explicit RawTemplate(istream& inData);
-      explicit RawTemplate(const string& inData);
-      static unique_ptr<RawTemplate> fromFile(const string& fName);
+      explicit Template(istream& inData);
+      explicit Template(const string& inData);
+      static unique_ptr<Template> fromFile(const string& fName);
+
+      SyntaxTreeError parse();
+      bool isSyntaxOkay() { return syntaxOkay; }
 
     protected:
-      string data;
+      string rawData;
+      SyntaxTree st;
+      bool syntaxOkay;
     };
 
     //----------------------------------------------------------------------------
@@ -162,7 +167,7 @@ namespace Sloppy
       explicit TemplateStore(const string& rootDir, const StringList& extList);
 
     private:
-      unordered_map<string, RawTemplate> rawData;
+      unordered_map<string, Template> docs;
     };
   }
 }

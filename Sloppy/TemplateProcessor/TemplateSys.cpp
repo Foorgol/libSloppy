@@ -437,29 +437,41 @@ namespace Sloppy
     }
 
     //----------------------------------------------------------------------------
+    //----------------------------------------------------------------------------
+    //----------------------------------------------------------------------------
 
-    RawTemplate::RawTemplate(istream& inData)
+    Template::Template(istream& inData)
     // copy the complete stream until EOF into
     // an internal buffer
-      :data{std::istreambuf_iterator<char>{inData}, {}}
+      :rawData{std::istreambuf_iterator<char>{inData}, {}}, syntaxOkay{false}
     {
     }
 
     //----------------------------------------------------------------------------
 
-    RawTemplate::RawTemplate(const string& inData)
-      :data{inData}
+    Template::Template(const string& inData)
+      :rawData{inData}, syntaxOkay{false}
     {
     }
 
     //----------------------------------------------------------------------------
 
-    unique_ptr<RawTemplate> RawTemplate::fromFile(const string& fName)
+    unique_ptr<Template> Template::fromFile(const string& fName)
     {
       ifstream f{fName, ios::binary};
       if (!f) return nullptr;
 
-      return make_unique<RawTemplate>(f);
+      return make_unique<Template>(f);
+    }
+
+    //----------------------------------------------------------------------------
+
+    SyntaxTreeError Template::parse()
+    {
+      auto err = st.parse(rawData);
+      syntaxOkay = !(err.isError());
+
+      return err;
     }
 
     //----------------------------------------------------------------------------
@@ -526,12 +538,21 @@ namespace Sloppy
           continue;
         }
 
+        // parse the file and make sure it's syntactically correct
+        Template t{f};
+        auto err = t.parse();
+        if (!(t.isSyntaxOkay()))
+        {
+          cerr << "TemplateStore: error parsing " << p << ": " << err.str() << "\n";
+          continue;
+        }
+
         string relPath = bfs::path{p}.lexically_relative(rootPath).native();
-        rawData.emplace(relPath, RawTemplate{f});
+        docs.emplace(relPath, t);
       }
 
       // finally, we should have at least one template
-      if (rawData.empty())
+      if (docs.empty())
       {
         throw std::invalid_argument("TemplateStore could not read/parse any file!");
       }

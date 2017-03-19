@@ -1,1 +1,5 @@
 Hello
+This is a variable: {{ x }} and this as well {{y}}.
+
+{{include /inc/i1.txt }}
+

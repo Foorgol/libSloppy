@@ -23,6 +23,7 @@
 #include <unordered_map>
 #include <memory>
 #include <vector>
+#include <regex>
 
 #include "../libSloppy.h"
 
@@ -32,6 +33,113 @@ namespace Sloppy
 {
   namespace TemplateSystem
   {
+    enum class SyntaxTreeItemType
+    {
+      Static,
+      Variable,
+      ForLoop,
+      Condition,
+      IncludeCmd
+    };
+
+    enum class TokenType
+    {
+      Variable,
+      StartIf,
+      EndIf,
+      StartFor,
+      EndFor
+    };
+
+    enum class SyntaxSectionType
+    {
+      Root,
+      ForLoop,
+      Condition
+    };
+
+    struct SyntaxTreeItem
+    {
+      SyntaxTreeItemType t;
+      string varName;
+      string listName;
+      bool invertCondition;
+
+      size_t idxNextSibling;
+      size_t idxFirstChild;
+      size_t idxParent;   // is redundant, but makes traversal in both direction easier
+
+      size_t idxFirstChar;
+      size_t idxLastChar;
+    };
+
+    struct SyntaxTreeError
+    {
+      size_t line;
+      size_t idxFirstChar;
+      size_t idxLastChar;
+      string msg;
+
+      SyntaxTreeError(const sregex_iterator::value_type& tokenMatch, const string& _msg)
+        :SyntaxTreeError{_msg}
+      {
+        updatePosition(tokenMatch);
+      }
+
+      SyntaxTreeError()
+        :idxFirstChar{0}, idxLastChar{0}, msg{} {}
+
+      explicit SyntaxTreeError(const string& _msg)
+        :idxFirstChar{0}, idxLastChar{0}, msg{_msg} {}
+
+      bool isError() { return (!(msg.empty())); }
+
+      void updatePosition(const sregex_iterator::value_type& tokenMatch)
+      {
+        idxFirstChar = tokenMatch.position();
+        idxLastChar = idxFirstChar + tokenMatch.size() - 1;
+      }
+
+      string str()
+      {
+        string s = "Template parsing error at position %1: ";
+        strArg(s, (int) idxFirstChar);
+        s += msg;
+        return s;
+      }
+    };
+
+    class SyntaxTree
+    {
+    public:
+      static constexpr size_t InvalidIndex = (1 << 31);
+      explicit SyntaxTree();
+      SyntaxTreeError parse(const string& s);
+      vector<SyntaxTreeItem> getTree() const { return tree; }
+
+    private:
+      vector<SyntaxTreeItem> tree;
+
+      // store a few regex objects in the class although we need them only
+      // in the recursive syntax parser. This avoids the expensive re-instantiation
+      // of the regexs each time we enter the recursion loop
+      regex reToken;
+      regex reFor;
+      regex reIf;
+      regex reVar;
+
+      tuple<TokenType, bool> checkToken(const string& token) const;
+
+      tuple<TokenType, SyntaxTreeError> doSyntaxCheck(const string& token, SyntaxSectionType secType) const;
+      int isValid_endif(const string& token) const;
+      int isValid_if(const string& token) const;
+      int isValid_endfor(const string& token) const;
+      int isValid_for(const string& token) const;
+      bool isValid_var(const string& token) const;
+    };
+
+    //----------------------------------------------------------------------------
+
     class RawTemplate
     {
     public:

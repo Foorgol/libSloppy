@@ -26,6 +26,7 @@
 #include <regex>
 
 #include "../libSloppy.h"
+#include "../json/json-forwards.h"
 
 using namespace std;
 
@@ -64,6 +65,7 @@ namespace Sloppy
       SyntaxTreeItemType t;
       string varName;
       string listName;
+      string staticText;
       bool invertCondition;
 
       size_t idxNextSibling;
@@ -73,6 +75,7 @@ namespace Sloppy
       size_t idxFirstChar;
       size_t idxLastChar;
     };
+    using SyntaxTreeItemList = vector<SyntaxTreeItem>;
 
     struct SyntaxTreeError
     {
@@ -116,10 +119,13 @@ namespace Sloppy
       static constexpr size_t InvalidIndex = (1 << 31);
       explicit SyntaxTree();
       SyntaxTreeError parse(const string& s);
-      vector<SyntaxTreeItem> getTree() const { return tree; }
+      SyntaxTreeItemList getTree() const { return tree; }
+      const SyntaxTreeItemList& getTreeAsRef() const { return tree; }
+
+      StringList getIncludes() const;
 
     private:
-      vector<SyntaxTreeItem> tree;
+      SyntaxTreeItemList tree;
 
       // store a few regex objects in the class although we need them only
       // in the recursive syntax parser. This avoids the expensive re-instantiation
@@ -153,6 +159,10 @@ namespace Sloppy
       SyntaxTreeError parse();
       bool isSyntaxOkay() { return syntaxOkay; }
 
+      StringList getIncludes() const;
+
+      SyntaxTreeItemList getTreeAsRef() const { return st.getTreeAsRef(); }
+
     protected:
       string rawData;
       SyntaxTree st;
@@ -165,9 +175,17 @@ namespace Sloppy
     {
     public:
       explicit TemplateStore(const string& rootDir, const StringList& extList);
+      void setLang(const string& lang = "") { langCode = lang; }
+
+      string get(const string& tName, const Json::Value& dic);
 
     private:
       unordered_map<string, Template> docs;
+      string langCode;
+      string getLocalizedTemplateName(const string& docName) const;
+      string getTemplate_Recursive(const string& tName, const Json::Value& dic, StringList& visitedTemplates) const;
+
+      string getSyntaxSubtree(const SyntaxTreeItemList& tree, size_t idxFirstItem, const Json::Value& dic, StringList& visitedTemplates) const;
     };
   }
 }

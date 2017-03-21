@@ -26,6 +26,7 @@
 
 #include "TemplateSys.h"
 #include "../libSloppy.h"
+#include "../json/json.h"
 
 namespace bfs = boost::filesystem;
 
@@ -159,6 +160,8 @@ namespace Sloppy
           sti.t = SyntaxTreeItemType::Static;
           sti.idxFirstChar = curSectionStart;
           sti.idxLastChar = sm.position() - 1;
+          size_t len = sti.idxLastChar - sti.idxFirstChar + 1;
+          sti.staticText = s.substr(sti.idxFirstChar, len);
           tree.push_back(sti);
           updateLinks();
         }
@@ -279,11 +282,28 @@ namespace Sloppy
         sti.t = SyntaxTreeItemType::Static;
         sti.idxFirstChar = curSectionStart;
         sti.idxLastChar = s.size() - 1;
+        size_t len = sti.idxLastChar - sti.idxFirstChar + 1;
+        sti.staticText = s.substr(sti.idxFirstChar, len);
         tree.push_back(sti);
         updateLinks();
       }
 
       return SyntaxTreeError{};
+    }
+
+    //----------------------------------------------------------------------------
+
+    StringList SyntaxTree::getIncludes() const
+    {
+      StringList result;
+
+      for (const SyntaxTreeItem& sti : tree)
+      {
+        if (sti.t != SyntaxTreeItemType::IncludeCmd) continue;
+        result.push_back(sti.varName);
+      }
+
+      return result;
     }
 
     //----------------------------------------------------------------------------
@@ -475,10 +495,20 @@ namespace Sloppy
     }
 
     //----------------------------------------------------------------------------
+
+    StringList Template::getIncludes() const
+    {
+      if (!syntaxOkay) return StringList{};
+
+      return st.getIncludes();
+    }
+
+    //----------------------------------------------------------------------------
     //----------------------------------------------------------------------------
     //----------------------------------------------------------------------------
 
     TemplateStore::TemplateStore(const string& rootDir, const StringList& extList)
+      :langCode{}
     {
       bfs::path rootPath{rootDir};
       if (!(bfs::exists(rootPath)))
@@ -557,6 +587,164 @@ namespace Sloppy
         throw std::invalid_argument("TemplateStore could not read/parse any file!");
       }
     }
+
+    //----------------------------------------------------------------------------
+
+    string TemplateStore::get(const string& tName, const Json::Value& dic)
+    {
+      StringList visited;
+
+      return getTemplate_Recursive(tName, dic, visited);
+    }
+
+    //----------------------------------------------------------------------------
+
+    string TemplateStore::getLocalizedTemplateName(const string& docName) const
+    {
+      // remove a trailing '/' if any
+      string d{docName};
+      if (d[0] == '/') d = d.substr(1);
+
+      // does the document exist at all?
+      if (docs.find(d) == docs.end()) return string{};
+
+      // if no language is set, we use the default version
+      if (langCode.empty()) return d;
+
+      // prepend the docName with the language code and see
+      // if such a localized version exists
+      string localName = langCode + "/" + d;
+      return (docs.find(localName) == docs.end()) ? d : localName;
+    }
+
+    //----------------------------------------------------------------------------
+
+    string TemplateStore::getTemplate_Recursive(const string& tName, const Json::Value& dic, StringList& visitedTemplates) const
+    {
+      string localTemplate = getLocalizedTemplateName(tName);
+      if (localTemplate.empty())
+      {
+        throw std::invalid_argument("TemplateStore: non-existing template requested!");
+      }
+
+      // have we used this template before? are we in a circular include dependency?
+      if (isInVector<string>(visitedTemplates, localTemplate))
+      {
+        throw std::runtime_error("TemplateStore: circular include-dependency in templates!");
+      }
+
+      // take a note that we're now processing this particular template
+      visitedTemplates.push_back(localTemplate);
+
+      // iterate over the elements of the syntax tree
+      auto it = docs.find(localTemplate);  // this template is guaranteed to exist, that was checked above
+      auto allTreeItems = it->second.getTreeAsRef();
+      if (allTreeItems.empty())
+      {
+        return string{};
+      }
+
+      string result = getSyntaxSubtree(allTreeItems, 0, dic, visitedTemplates);
+
+      // remove our "tag" from the stack of visited templates.
+      // if we would not do this, it wouldn't be possible to include a template
+      // more than once in the same document or more than once from different, unrelated
+      // documents
+      visitedTemplates.pop_back();
+
+      return result;
+    }
+
+    //----------------------------------------------------------------------------
+
+    string TemplateStore::getSyntaxSubtree(const SyntaxTreeItemList& tree, size_t idxFirstItem, const Json::Value& dic, StringList& visitedTemplates) const
+    {
+      string result;
+
+      // iterate over all child in this branch.
+      // the end is indicated by a child index of "invalid"
+      size_t curIdx{idxFirstItem};
+      while (curIdx != SyntaxTree::InvalidIndex)
+      {
+        const SyntaxTreeItem& sti = tree.at(curIdx);
+
+        // handler for static text
+        if (sti.t == SyntaxTreeItemType::Static)
+        {
+          result += sti.staticText;
+        }
+
+        // handler for variables
+        if (sti.t == SyntaxTreeItemType::Variable)
+        {
+          result += dic.get(sti.varName, "").asString();
+        }
+
+        // handler for include commands
+        if (sti.t == SyntaxTreeItemType::IncludeCmd)
+        {
+          result += getTemplate_Recursive(sti.varName, dic, visitedTemplates);
+        }
+
+        // handler for if-conditions
+        if (sti.t == SyntaxTreeItemType::Condition)
+        {
+          // default: condition is NOT true
+          bool cond = false;
+
+          const Json::Value& val = dic[sti.varName];
+
+          // only parse non-empty values. all empty values or non-existing variables
+          // will be treated as "false" (see default)
+          if (!(val.empty()))
+          {
+            // handle numeric values
+            if (val.isConvertibleTo(Json::ValueType::booleanValue))
+            {
+              cond = val.asBool();
+            } else {
+
+              // this provides a simple interpreter for textual boolean expressions
+              string s = val.asString();
+              if (isInVector<string>({"yes", "true", "on", "YES", "TRUE", "ON"}, s))
+              {
+                cond = true;
+              }
+
+              // explicitly check for valid "false"-expressions, do not simply trust
+              // the "default false" here
+              if (!(isInVector<string>({"no", "false", "off", "NO", "FALSE", "OFF"}, s)))
+              {
+                throw std::runtime_error("TemplateStore: unparseable condition value: " + s);
+              }
+            }
+          }
+
+          if (sti.invertCondition) cond = !cond;
+
+          // if the condition is true and the if-statement has actual
+          // child items, make a recursive call to parse the subtree
+          if (cond && (sti.idxFirstChild != SyntaxTree::InvalidIndex))
+          {
+            result += getSyntaxSubtree(tree, sti.idxFirstChild, dic, visitedTemplates);
+          }
+        }
+
+        // handler for for loops
+        if (sti.t == SyntaxTreeItemType::ForLoop)
+        {
+          throw std::runtime_error("For-loops are not yet implemented!");
+        }
+
+        // move on to the next sibling in this branch
+        curIdx = sti.idxNextSibling;
+      }
+
+      return result;
+    }
+
+    //----------------------------------------------------------------------------
+
 
 
   }

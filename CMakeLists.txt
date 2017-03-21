@@ -35,6 +35,7 @@ set(LIB_SOURCES
     Sloppy/HTML/Table.cpp
     Sloppy/HTML/Bootstrap.cpp
     Sloppy/TemplateProcessor/TemplateSys.cpp
+    Sloppy/jsoncpp.cpp
 )
 
 add_library(${PROJECT_NAME} SHARED ${LIB_SOURCES})

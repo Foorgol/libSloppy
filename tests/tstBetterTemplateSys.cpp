@@ -21,6 +21,7 @@
 #include <gtest/gtest.h>
 
 #include "../Sloppy/TemplateProcessor/TemplateSys.h"
+#include "../Sloppy/json/json.h"
 #include "BasicTestClass.h"
 
 using namespace Sloppy::TemplateSystem;
@@ -271,4 +272,53 @@ TEST_F(SyntaxTreeFixture, SyntaxTree_Include)
 
   SyntaxTreeItem i = tree[0];
   ASSERT_TRUE(checkTreeItem_Include(i, "otherFile.txt"));
+}
+
+//----------------------------------------------------------------------------
+
+TEST(BetterTemplateSys, SimpleGet)
+{
+  TemplateStore ts{"../tests/sampleTemplateStore", {"txt", "html"}};
+
+  // prepare a json structure with target values
+  Json::Value val;
+  val["x"] = "***X***";
+  val["y"] = 42;
+
+  string s = ts.get("t1.txt", val);
+  string sExpected = "Hello\nThis is a variable: ***X*** and this as well 42.";
+  sExpected += "\n\n***included***\n\n\n";
+
+  ASSERT_EQ(sExpected, s);
+}
+
+//----------------------------------------------------------------------------
+
+TEST(BetterTemplateSys, GetWithIf)
+{
+  TemplateStore ts{"../tests/sampleTemplateStore", {"txt", "html"}};
+
+  // prepare a json structure with target values
+  // start with an empty list
+  Json::Value val;
+
+  string s = ts.get("ifTest.txt", val);
+  string sExpected = "Intro\n\nOutro\n";
+  ASSERT_EQ(sExpected, s);
+}
+
+//----------------------------------------------------------------------------
+
+TEST(BetterTemplateSys, RecursiveInclude_MultiInclude)
+{
+  TemplateStore ts{"../tests/sampleTemplateStore", {"txt", "html"}};
+
+  Json::Value val;
+  ASSERT_THROW(ts.get("recursion1.txt", val), std::runtime_error);
+  ASSERT_THROW(ts.get("recursion2a.txt", val), std::runtime_error);
+
+  string s = ts.get("multiInclude.txt", val);
+  string sExpected = "***included***\n\n";
+  sExpected += sExpected;
+  ASSERT_EQ(sExpected, s);
 }

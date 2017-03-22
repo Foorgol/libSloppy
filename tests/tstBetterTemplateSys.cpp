@@ -322,3 +322,49 @@ TEST(BetterTemplateSys, RecursiveInclude_MultiInclude)
   sExpected += sExpected;
   ASSERT_EQ(sExpected, s);
 }
+
+//----------------------------------------------------------------------------
+
+TEST(BetterTemplateSys, Subkeys)
+{
+  TemplateStore ts{"../tests/sampleTemplateStore", {"txt", "html"}};
+
+  Json::Value val;
+  val["normal"] = "abc123";
+  val["one"]["two"] = 2;
+
+  string s = ts.get("subkeys.txt", val);
+  string sExpected = "abc123\n2\n\n\n";
+  ASSERT_EQ(sExpected, s);
+}
+
+//----------------------------------------------------------------------------
+
+TEST(BetterTemplateSys, Loops)
+{
+  TemplateStore ts{"../tests/sampleTemplateStore", {"txt", "html"}};
+
+  Json::Value dic;
+  Json::Value li{Json::arrayValue};
+  li.append("one");
+  li.append("two");
+  li.append("three");
+  dic["list1"] = li;
+
+  li = Json::Value{Json::arrayValue};
+  for (int i=0; i < 3 ; ++i)
+  {
+    Json::Value dataSet{Json::objectValue};
+    dataSet["key"] =  "k" + to_string(i);
+    dataSet["val"] =  "v" + to_string(i);
+    li.append(dataSet);
+  }
+  dic["list2"] = li;
+
+  string s = ts.get("forTest.txt", dic);
+  string sExpected = "header\n\n\nxy\n\n\n  * one\n\n";
+  sExpected += "  * two\n\n  * three\n\n\n\n\n  * k0 ==> v0\n\n";
+  sExpected += "  * k1 ==> v1\n\n  * k2 ==> v2\n\nfooter\n";
+  ASSERT_EQ(sExpected, s);
+
+}

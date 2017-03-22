@@ -185,7 +185,8 @@ namespace Sloppy
       string getLocalizedTemplateName(const string& docName) const;
       string getTemplate_Recursive(const string& tName, const Json::Value& dic, StringList& visitedTemplates) const;
 
-      string getSyntaxSubtree(const SyntaxTreeItemList& tree, size_t idxFirstItem, const Json::Value& dic, StringList& visitedTemplates) const;
+      string getSyntaxSubtree(const SyntaxTreeItemList& tree, size_t idxFirstItem, const Json::Value& dic, unordered_map<string, const Json::Value&>& localScopeVars,
+                              StringList& visitedTemplates) const;
     };
   }
 }

@@ -644,7 +644,11 @@ namespace Sloppy
         return string{};
       }
 
-      string result = getSyntaxSubtree(allTreeItems, 0, dic, visitedTemplates);
+      // prepare a hash that maps "local for variables" to the
+      // associated JSON-subtree
+      unordered_map<string, const Json::Value&> localScopeVars;
+
+      string result = getSyntaxSubtree(allTreeItems, 0, dic, localScopeVars, visitedTemplates);
 
       // remove our "tag" from the stack of visited templates.
       // if we would not do this, it wouldn't be possible to include a template
@@ -657,7 +661,8 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    string TemplateStore::getSyntaxSubtree(const SyntaxTreeItemList& tree, size_t idxFirstItem, const Json::Value& dic, StringList& visitedTemplates) const
+    string TemplateStore::getSyntaxSubtree(const SyntaxTreeItemList& tree, size_t idxFirstItem, const Json::Value& dic,
+                                           unordered_map<string, const Json::Value&>& localScopeVars, StringList& visitedTemplates) const
     {
       string result;
 
@@ -668,25 +673,62 @@ namespace Sloppy
       {
         const SyntaxTreeItem& sti = tree.at(curIdx);
 
+        //
         // handler for static text
+        //
         if (sti.t == SyntaxTreeItemType::Static)
         {
           result += sti.staticText;
         }
 
+        //
         // handler for variables
+        //
         if (sti.t == SyntaxTreeItemType::Variable)
         {
-          result += dic.get(sti.varName, "").asString();
+          // is the name of the form "first.second"?
+          string first{};
+          string second{};
+          size_t idxDot = sti.varName.find('.');
+          if (idxDot == string::npos)
+          {
+            first = sti.varName;
+          } else {
+            // split at the dot
+            if (idxDot > 0) first = sti.varName.substr(0, idxDot);
+            second = sti.varName.substr(idxDot + 1);
+          }
+          if (first.empty())
+          {
+            throw std::runtime_error("TemplateStore: invalid variable name: " + sti.varName);
+          }
+
+          // does "first" reference a "local variable"? if yes,
+          // proceed with the local variable, otherwise pick the value
+          // directly from dic
+          auto it = localScopeVars.find(first);
+          const Json::Value& var = (it != localScopeVars.end()) ? it->second : dic[first];
+
+          // use "second" as a subscript, if existing
+          if (second.empty())
+          {
+            result += var.asString();
+          } else {
+            result += var[second].asString();
+          }
         }
 
+        //
         // handler for include commands
+        //
         if (sti.t == SyntaxTreeItemType::IncludeCmd)
         {
           result += getTemplate_Recursive(sti.varName, dic, visitedTemplates);
         }
 
+        //
         // handler for if-conditions
+        //
         if (sti.t == SyntaxTreeItemType::Condition)
         {
           // default: condition is NOT true
@@ -726,14 +768,32 @@ namespace Sloppy
           // child items, make a recursive call to parse the subtree
           if (cond && (sti.idxFirstChild != SyntaxTree::InvalidIndex))
           {
-            result += getSyntaxSubtree(tree, sti.idxFirstChild, dic, visitedTemplates);
+            result += getSyntaxSubtree(tree, sti.idxFirstChild, dic, localScopeVars, visitedTemplates);
           }
         }
 
-        // handler for for loops
+        //
+        // handler for for-loops
+        //
         if (sti.t == SyntaxTreeItemType::ForLoop)
         {
-          throw std::runtime_error("For-loops are not yet implemented!");
+          // only process loops if there any items within the loop
+          if (sti.idxFirstChild != SyntaxTree::InvalidIndex)
+          {
+            // does the list exist at all? And is it an array?
+            const Json::Value& list = dic[sti.listName];
+            if ((!(list.empty())) && (list.isArray()))
+            {
+              // iterate over the array contents
+              for (int idx=0; idx < list.size(); ++idx)
+              {
+                const Json::Value& subList = list[idx];
+                localScopeVars.emplace(sti.varName, subList);
+                result += getSyntaxSubtree(tree, sti.idxFirstChild, dic, localScopeVars, visitedTemplates);
+                localScopeVars.erase(sti.varName);
+              }
+            }
+          }
         }
 
         // move on to the next sibling in this branch

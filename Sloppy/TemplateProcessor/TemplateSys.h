@@ -27,6 +27,7 @@
 
 #include "../libSloppy.h"
 #include "../json/json-forwards.h"
+#include "../ConfigFileParser/ConfigFileParser.h"
 
 using namespace std;
 
@@ -176,12 +177,16 @@ namespace Sloppy
     public:
       explicit TemplateStore(const string& rootDir, const StringList& extList);
       void setLang(const string& lang = "") { langCode = lang; }
+      bool setStringlist(const string& slPath);
 
       string get(const string& tName, const Json::Value& dic);
+
+      string getString(const string& sName, bool* isOk = nullptr, const string& langOverride="") const;
 
     private:
       unordered_map<string, Template> docs;
       string langCode;
+      unique_ptr<ConfigFileParser::Parser> strList;
       string getLocalizedTemplateName(const string& docName) const;
       string getTemplate_Recursive(const string& tName, const Json::Value& dic, StringList& visitedTemplates) const;
 

@@ -1,0 +1,16 @@
+header
+{{ for x : empty_for_list }}
+abc
+{{ endfor }}
+
+x{{ for x : list1 }}{{ endfor }}y
+
+{{ for x : list1 }}
+  * {{ x }}
+{{ endfor }}
+
+
+{{ for x : list2 }}
+  * {{ x.key }} ==> {{ x.val }}
+{{ endfor }}
+footer

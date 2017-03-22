@@ -590,11 +590,53 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
+    bool TemplateStore::setStringlist(const string& slPath)
+    {
+      auto sl = ConfigFileParser::Parser::readFromFile(slPath);
+      if (sl == nullptr) return false;
+      strList = std::move(sl);
+
+      return true;
+    }
+
+    //----------------------------------------------------------------------------
+
     string TemplateStore::get(const string& tName, const Json::Value& dic)
     {
       StringList visited;
 
       return getTemplate_Recursive(tName, dic, visited);
+    }
+
+    //----------------------------------------------------------------------------
+
+    string TemplateStore::getString(const string& sName, bool* isOk, const string& langOverride) const
+    {
+      // if no stringlist is loaded, we can't return any strings
+      if (strList == nullptr)
+      {
+        assignIfNotNull<bool>(isOk, false);
+        return string{};
+      }
+
+      // determine which language to use
+      string section = (langOverride.empty()) ? langCode : langOverride;
+
+      // try to get the localized string first
+      if (strList->hasKey(section, sName))
+      {
+        return strList->getValue(section, sName, isOk);
+      }
+
+      // try the default language / the default string second
+      if (strList->hasKey(sName))
+      {
+        return strList->getValue(sName, isOk);
+      }
+
+      // the string is not in the list
+      assignIfNotNull<bool>(isOk, false);
+      return string{};
     }
 
     //----------------------------------------------------------------------------
@@ -686,35 +728,49 @@ namespace Sloppy
         //
         if (sti.t == SyntaxTreeItemType::Variable)
         {
-          // is the name of the form "first.second"?
-          string first{};
-          string second{};
-          size_t idxDot = sti.varName.find('.');
-          if (idxDot == string::npos)
+          // does the name start with "::"? then we try
+          // to look up the string from our string list,
+          // if any
+          if (sti.varName.substr(0, 2) == "::")
           {
-            first = sti.varName;
+            string var = sti.varName.substr(2);
+            if (!(var.empty()))
+            {
+              bool isOk;
+              string val = getString(var, &isOk);
+              result += isOk ? val : "???";
+            }
           } else {
-            // split at the dot
-            if (idxDot > 0) first = sti.varName.substr(0, idxDot);
-            second = sti.varName.substr(idxDot + 1);
-          }
-          if (first.empty())
-          {
-            throw std::runtime_error("TemplateStore: invalid variable name: " + sti.varName);
-          }
+            // is the name of the form "first.second"?
+            string first{};
+            string second{};
+            size_t idxDot = sti.varName.find('.');
+            if (idxDot == string::npos)
+            {
+              first = sti.varName;
+            } else {
+              // split at the dot
+              if (idxDot > 0) first = sti.varName.substr(0, idxDot);
+              second = sti.varName.substr(idxDot + 1);
+            }
+            if (first.empty())
+            {
+              throw std::runtime_error("TemplateStore: invalid variable name: " + sti.varName);
+            }
 
-          // does "first" reference a "local variable"? if yes,
-          // proceed with the local variable, otherwise pick the value
-          // directly from dic
-          auto it = localScopeVars.find(first);
-          const Json::Value& var = (it != localScopeVars.end()) ? it->second : dic[first];
+            // does "first" reference a "local variable"? if yes,
+            // proceed with the local variable, otherwise pick the value
+            // directly from dic
+            auto it = localScopeVars.find(first);
+            const Json::Value& var = (it != localScopeVars.end()) ? it->second : dic[first];
 
-          // use "second" as a subscript, if existing
-          if (second.empty())
-          {
-            result += var.asString();
-          } else {
-            result += var[second].asString();
+            // use "second" as a subscript, if existing
+            if (second.empty())
+            {
+              result += var.asString();
+            } else {
+              result += var[second].asString();
+            }
           }
         }
 

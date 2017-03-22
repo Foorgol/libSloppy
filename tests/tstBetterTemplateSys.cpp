@@ -368,3 +368,35 @@ TEST(BetterTemplateSys, Loops)
   ASSERT_EQ(sExpected, s);
 
 }
+
+//----------------------------------------------------------------------------
+
+TEST(BetterTemplateSys, StringList)
+{
+  TemplateStore ts{"../tests/sampleTemplateStore", {"txt", "html"}};
+
+  ASSERT_TRUE(ts.setStringlist("../tests/sampleTemplateStore/stringlist.lst"));
+
+  // get a few strings directly from the template store
+  bool isOk;
+  string s = ts.getString("s1", &isOk);
+  ASSERT_TRUE(isOk);
+  ASSERT_EQ("some string", s);
+
+  s = ts.getString("s1", &isOk, "de");
+  ASSERT_TRUE(isOk);
+  ASSERT_EQ("eine Zeichenkette", s);
+
+  s = ts.getString("sfkjsdf", &isOk, "de");
+  ASSERT_FALSE(isOk);
+  ASSERT_EQ("", s);
+
+  s = "nonempty";
+  s = ts.getString("lkjo", &isOk);
+  ASSERT_FALSE(isOk);
+  ASSERT_EQ("", s);
+
+  Json::Value dic;
+  s = ts.get("stringlist.txt", dic);
+  ASSERT_EQ("some other string\n", s);
+}

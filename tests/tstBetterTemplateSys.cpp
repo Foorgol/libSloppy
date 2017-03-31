@@ -303,7 +303,7 @@ TEST(BetterTemplateSys, GetWithIf)
   Json::Value val;
 
   string s = ts.get("ifTest.txt", val);
-  string sExpected = "Intro\n\nOutro\n";
+  string sExpected = "Intro\nOutro\n";
   ASSERT_EQ(sExpected, s);
 }
 
@@ -362,9 +362,9 @@ TEST(BetterTemplateSys, Loops)
   dic["list2"] = li;
 
   string s = ts.get("forTest.txt", dic);
-  string sExpected = "header\n\n\nxy\n\n\n  * one\n\n";
-  sExpected += "  * two\n\n  * three\n\n\n\n\n  * k0 ==> v0\n\n";
-  sExpected += "  * k1 ==> v1\n\n  * k2 ==> v2\n\nfooter\n";
+  string sExpected = "header\n\nxy\n\n  * one\n";
+  sExpected += "  * two\n  * three\n\n\n  * k0 ==> v0\n";
+  sExpected += "  * k1 ==> v1\n  * k2 ==> v2\nfooter\n";
   ASSERT_EQ(sExpected, s);
 
 }
@@ -399,4 +399,43 @@ TEST(BetterTemplateSys, StringList)
   Json::Value dic;
   s = ts.get("stringlist.txt", dic);
   ASSERT_EQ("some other string\n", s);
+}
+
+//----------------------------------------------------------------------------
+
+TEST(BetterTemplateSys, NestedFor)
+{
+  TemplateStore ts{"../tests/sampleTemplateStore", {"txt", "html"}};
+
+  Json::Value dic;
+  Json::Value outer{Json::arrayValue};
+
+  Json::Value inner{Json::objectValue};
+  inner["major"] = "a";
+  Json::Value sub{Json::arrayValue};
+  sub[0] = 0;
+  sub[1] = 1;
+  sub[2] = 2;
+  inner["subs"] = sub;
+  outer.append(inner);
+
+  inner = Json::Value{Json::objectValue};
+  inner["major"] = "b";
+  sub = Json::Value{Json::arrayValue};
+  sub[0] = 3;
+  sub[1] = 4;
+  sub[2] = 5;
+  inner["subs"] = sub;
+  outer.append(inner);
+
+  dic["list1"] = outer;
+  cout << dic.toStyledString() << endl;
+
+  string s = ts.get("nestedFor.txt", dic);
+  cout << s;
+  string sExpected = "header\n  * Major value: a\n  * Sub-values:\n    - 0\n    - 1\n    - 2\n";
+  sExpected += "  * Major value: b\n  * Sub-values:\n    - 3\n    - 4\n    - 5\n";
+  sExpected += "footer\n";
+  ASSERT_EQ(sExpected, s);
+
 }

@@ -1,0 +1,9 @@
+header
+{{ for x : list1 }}
+  * Major value: {{ x.major }}
+  * Sub-values:
+{{ for y : x.subs }}
+    - {{ y }}
+{{ endfor }}
+{{ endfor }}
+footer

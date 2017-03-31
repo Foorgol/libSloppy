@@ -192,6 +192,7 @@ namespace Sloppy
 
       string getSyntaxSubtree(const SyntaxTreeItemList& tree, size_t idxFirstItem, const Json::Value& dic, unordered_map<string, const Json::Value&>& localScopeVars,
                               StringList& visitedTemplates) const;
+      const Json::Value& resolveVariable(const string& varName, const Json::Value& dic, unordered_map<string, const Json::Value&>& localScopeVars) const;
     };
   }
 }

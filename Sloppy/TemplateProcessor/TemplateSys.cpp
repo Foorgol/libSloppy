@@ -192,6 +192,35 @@ namespace Sloppy
         // at this point we can safely process the token
         //
 
+        // we start with a special hack: if this token is
+        // not a variable and not an "include" AND if this token
+        // is followed by "\n" AND if this token started on a new
+        // line, then we skip the subsequent "\n" to avoid
+        // a flood of newlines that a caused by non-printable
+        // control tokens such as "if" or "for"
+        bool skipNewLineChar = false;
+        if ((tt != TokenType::Variable) && (tt != TokenType::IncludeCmd))
+        {
+          bool startsOnNewLine = false;
+          if (sm.position() == 0)
+          {
+            startsOnNewLine = true;
+          } else {
+            startsOnNewLine = (s[sm.position() - 1] == '\n');
+          }
+
+          bool endsWithNewLine = false;
+          size_t next = sm.position() + sm.str().size();
+          if (next >= s.size())
+          {
+            endsWithNewLine = true;
+          } else {
+            endsWithNewLine = (s[next] == '\n');
+          }
+
+          skipNewLineChar = startsOnNewLine && endsWithNewLine;
+        }
+
         // if this is only an end-token, we don't have to create
         // a new tree item. we just go one level up and process
         // the next item
@@ -202,6 +231,7 @@ namespace Sloppy
           // set the start of the next section to one
           // character after the closing bracket of the token
           curSectionStart = sm.position() + sm.str().size();
+          if (skipNewLineChar) ++curSectionStart;
 
           continue;
         }
@@ -254,6 +284,7 @@ namespace Sloppy
         // set the start of the next section to one
         // character after the closing bracket of the token
         curSectionStart = sm.position() + sm.str().size();
+        if (skipNewLineChar) ++curSectionStart;
       }
 
       // after we have processed all tokens, we MUST be back at root
@@ -741,36 +772,7 @@ namespace Sloppy
               result += isOk ? val : "???";
             }
           } else {
-            // is the name of the form "first.second"?
-            string first{};
-            string second{};
-            size_t idxDot = sti.varName.find('.');
-            if (idxDot == string::npos)
-            {
-              first = sti.varName;
-            } else {
-              // split at the dot
-              if (idxDot > 0) first = sti.varName.substr(0, idxDot);
-              second = sti.varName.substr(idxDot + 1);
-            }
-            if (first.empty())
-            {
-              throw std::runtime_error("TemplateStore: invalid variable name: " + sti.varName);
-            }
-
-            // does "first" reference a "local variable"? if yes,
-            // proceed with the local variable, otherwise pick the value
-            // directly from dic
-            auto it = localScopeVars.find(first);
-            const Json::Value& var = (it != localScopeVars.end()) ? it->second : dic[first];
-
-            // use "second" as a subscript, if existing
-            if (second.empty())
-            {
-              result += var.asString();
-            } else {
-              result += var[second].asString();
-            }
+            result += resolveVariable(sti.varName, dic, localScopeVars).asString();
           }
         }
 
@@ -790,7 +792,7 @@ namespace Sloppy
           // default: condition is NOT true
           bool cond = false;
 
-          const Json::Value& val = dic[sti.varName];
+          const Json::Value& val = resolveVariable(sti.varName, dic, localScopeVars);
 
           // only parse non-empty values. all empty values or non-existing variables
           // will be treated as "false" (see default)
@@ -837,7 +839,7 @@ namespace Sloppy
           if (sti.idxFirstChild != SyntaxTree::InvalidIndex)
           {
             // does the list exist at all? And is it an array?
-            const Json::Value& list = dic[sti.listName];
+            const Json::Value& list = resolveVariable(sti.listName, dic, localScopeVars);
             if ((!(list.empty())) && (list.isArray()))
             {
               // iterate over the array contents
@@ -857,6 +859,42 @@ namespace Sloppy
       }
 
       return result;
+    }
+
+    //----------------------------------------------------------------------------
+
+    const Json::Value&TemplateStore::resolveVariable(const string& varName, const Json::Value& dic, unordered_map<string, const Json::Value&>& localScopeVars) const
+    {
+      // is the name of the form "first.second"?
+      string first{};
+      string second{};
+      size_t idxDot = varName.find('.');
+      if (idxDot == string::npos)
+      {
+        first = varName;
+      } else {
+        // split at the dot
+        if (idxDot > 0) first = varName.substr(0, idxDot);
+        second = varName.substr(idxDot + 1);
+      }
+      if (first.empty())
+      {
+        throw std::runtime_error("TemplateStore: invalid variable name: " + varName);
+      }
+
+      // does "first" reference a "local variable"? if yes,
+      // proceed with the local variable, otherwise pick the value
+      // directly from dic
+      auto it = localScopeVars.find(first);
+      const Json::Value& var = (it != localScopeVars.end()) ? it->second : dic[first];
+
+      // use "second" as a subscript, if existing
+      if (!(second.empty()))
+      {
+        return var[second];
+      }
+
+      return var;
     }
 
     //----------------------------------------------------------------------------

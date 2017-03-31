@@ -30,6 +30,8 @@ namespace Sloppy
 {
   namespace Net
   {
+    class MessageBuilder;
+
     enum class PreemptiveReadResult
     {
       Complete,  // all requested data has been read
@@ -84,9 +86,11 @@ namespace Sloppy
       bool write(const string& data);
       bool write(const ManagedMemory& data);
       bool write(const char* buf, size_t len);
+      bool write(const MessageBuilder& mb) { return write(mb.get()); }
       bool write_framed(const string& data);
       bool write_framed_MB(const ManagedMemory& data);
       bool write_framed(const char* buf, size_t len);
+      bool write_framed(const MessageBuilder& mb) { return write_framed_MB(mb.get()); }
 
 
       // this one has to be overriden by the specific worker

@@ -171,9 +171,17 @@ namespace Sloppy
       tie(rr, data) = preemptiveRead(MagicPhrase.size(), AuthStepTimeout_ms);
       if (rr != PreemptiveReadResult::Complete) return false;
       cout << "ServerWorker: AU1, phrase complete" << endl;
-      if (data != "LetMeInPlease") return false;
+      if (data != MagicPhrase) return false;
       cout << "ServerWorker: AU1, phrase coorrect" << endl;
-      bool isOkay = write("OK");
+
+      // the server responds with the protocol version
+      // followed by "OK"
+      MessageBuilder m;
+      m.addByte(ProtoVersionMajor);
+      m.addByte(ProtoVersionMinor);
+      m.addByte(ProtoVersionPatch);
+      m.addString("OK");
+      bool isOkay = write(m);
       if (!isOkay) return false;
       cout << "ServerWorker: AU1, reponse sent" << endl;
 
@@ -360,11 +368,15 @@ namespace Sloppy
 
       PreemptiveReadResult rr;
       string data;
-      tie(rr, data) = preemptiveRead(2, AuthStepTimeout_ms);
+      tie(rr, data) = preemptiveRead(3 + 8 + 2, AuthStepTimeout_ms);
       if (rr != PreemptiveReadResult::Complete) return false;
       cout << "\t\t\tClient: Server response complete" << endl;
 
-      if (data != "OK") return false;
+      MessageDissector md{data};
+      if (md.getByte() != ProtoVersionMajor) return false;
+      if (md.getByte() != ProtoVersionMinor) return false;
+      if (md.getByte() != ProtoVersionPatch) return false;
+      if (md.getString() != "OK") return false;
       cout << "\t\t\tClient: Server response correct" << endl;
 
       cout << "\t\t\tClient: AuthStep 1 okay" << endl;

@@ -105,6 +105,9 @@ namespace Sloppy
       static const string MagicPhrase;
       static constexpr size_t AuthStepTimeout_ms = 1000;
       static constexpr size_t ChallengeSize = 32;
+      static constexpr uint8_t ProtoVersionMajor = 0;
+      static constexpr uint8_t ProtoVersionMinor = 1;
+      static constexpr uint8_t ProtoVersionPatch = 0;
     };
 
     //----------------------------------------------------------------------------

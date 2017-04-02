@@ -294,7 +294,7 @@ namespace Sloppy
       cout << "ServerWorker: client's public DH key has valid size" << endl;
 
       sessionKey = dhEx.getSharedSecret(pubDHKey);
-      cout << "ServerWorker: session key is " << toBase64(sessionKey) << endl;
+      //cout << "ServerWorker: session key is " << toBase64(sessionKey) << endl;
       sessionKey.setAccess(SodiumSecureMemAccess::NoAccess);
 
       //
@@ -495,7 +495,7 @@ namespace Sloppy
       SodiumLib::DH_PublicKey pubDH;
       if (!(pubDH.fillFromString(_pubDh))) return false;
       sessionKey = dhEx.getSharedSecret(pubDH);
-      cout << "\t\t\tClient: session key is " << toBase64(sessionKey) << endl;
+      //cout << "\t\t\tClient: session key is " << toBase64(sessionKey) << endl;
       sessionKey.setAccess(SodiumSecureMemAccess::NoAccess);
 
       cout << "\t\t\tClient: AuthStep 3 okay" << endl;

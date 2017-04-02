@@ -429,7 +429,7 @@ TEST(BetterTemplateSys, NestedFor)
   outer.append(inner);
 
   dic["list1"] = outer;
-  cout << dic.toStyledString() << endl;
+  //cout << dic.toStyledString() << endl;
 
   string s = ts.get("nestedFor.txt", dic);
   cout << s;

@@ -408,7 +408,7 @@ namespace Sloppy
   constexpr int ManagedFileDescriptor::DefaultReadWait_ms;
 
   ManagedFileDescriptor::ManagedFileDescriptor(int _fd)
-    :fd{_fd}, readBuf{nullptr}, st{State::Idle}
+    :fd{_fd}, fdMutex{}, st{State::Idle}, readBuf{nullptr}
   {
     if (fd < 0)
     {

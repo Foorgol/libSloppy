@@ -1312,8 +1312,8 @@ TEST(Sodium, DiffieHellmann)
   ASSERT_TRUE(shared2.isValid());
   ASSERT_TRUE(sodium->memcmp(shared1, shared2));
 
-  cout << "Shared secret is: " << toBase64(shared1) << endl;
-  cout << "Shared secret length is: " << shared1.getSize() * 8 << " bit" << endl;
+  //cout << "Shared secret is: " << toBase64(shared1) << endl;
+  //cout << "Shared secret length is: " << shared1.getSize() * 8 << " bit" << endl;
 
   // tamper with a public key
   auto pkServ = s.getMyPublicKey();
@@ -1321,7 +1321,7 @@ TEST(Sodium, DiffieHellmann)
   ptr[2] += 1;
   shared1 = c.getSharedSecret(pkServ);
   ASSERT_FALSE(sodium->memcmp(shared1, shared2));
-  cout << "Wrong shared secret is: " << toBase64(shared1) << endl;
+  //cout << "Wrong shared secret is: " << toBase64(shared1) << endl;
 
   ptr[2] -= 1;
   shared1 = c.getSharedSecret(pkServ);

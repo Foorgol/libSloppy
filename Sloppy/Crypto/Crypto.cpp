@@ -88,45 +88,143 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    // Taken from https://stackoverflow.com/a/34571089
-    string toBase64(const string& rawData)
+    size_t calc_base64_encSize(size_t rawSize)
     {
-      using uchar = unsigned char;
+      // in Base64, every 6 "raw bit" become one "out byte"
+      // ==> 33% overhead
+      //
+      // and: we're padding to multiples of four bytes output size
+      return ceil(rawSize / 3.0) * 4;
+    }
 
-      string out;
+    //----------------------------------------------------------------------------
 
-      int val = 0;
-      int valb = -6;
+    size_t calc_base64_rawSize(size_t encSize, size_t paddingChars)
+    {
+      if ((encSize % 4) != 0) return 0; // error, padding not correct
+      if (paddingChars > 2) return 0;  // can be either 0, 1 or 2
 
-      for (uchar c : rawData)
-      {
-        val = (val<<8) + c;
-        valb += 8;
+      // four encoded bytes become three raw bytes
+      size_t result = 3 * encSize / 4;
 
-        while (valb>=0) {
-          out.push_back("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"[(val>>valb)&0x3F]);
-          valb -= 6;
-        }
-      }
+      result -= paddingChars;
 
-      if (valb>-6)
-      {
-        out.push_back("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"[((val<<8)>>(valb+8))&0x3F]);
-      }
+      return result;
+    }
 
-      while (out.size()%4) out.push_back('=');
+    //----------------------------------------------------------------------------
 
-      return out;
+    size_t calc_base64_rawSize(const string& b64Data)
+    {
+      return calc_base64_rawSize((unsigned char *)b64Data.c_str(), b64Data.size());
+    }
+
+    //----------------------------------------------------------------------------
+
+    size_t calc_base64_rawSize(const ManagedMemory& encData)
+    {
+      return calc_base64_rawSize(encData.get_uc(), encData.getSize());
+    }
+
+    //----------------------------------------------------------------------------
+
+    size_t calc_base64_rawSize(unsigned char* src, size_t srcLen)
+    {
+      if (srcLen < 4) return 0; // error, need at least four bytes
+
+      size_t paddingChars = 0;
+      size_t lastIdx = srcLen - 1;
+      if (src[lastIdx - 1] == '=') paddingChars = 2;
+      else if (src[lastIdx] == '=') paddingChars = 1;
+
+      return calc_base64_rawSize(srcLen, paddingChars);
     }
 
     //----------------------------------------------------------------------------
 
     // Taken from https://stackoverflow.com/a/34571089
-    string fromBase64(const string& b64Data)
+    bool toBase64(unsigned char* src, size_t srcLen, unsigned char* dst, size_t maxDstLen)
     {
       using uchar = unsigned char;
 
-      string out;
+      if (maxDstLen < calc_base64_encSize(srcLen)) return false;
+
+      int val = 0;
+      int valb = -6;
+
+      uchar* curSrcChar = src;
+      uchar* curDstChar = dst;
+      while (curSrcChar < (src + srcLen))
+      {
+        uchar c = *curSrcChar;
+
+        val = (val<<8) + c;
+        valb += 8;
+
+        while (valb>=0) {
+          *curDstChar = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"[(val>>valb)&0x3F];
+          ++curDstChar;
+          valb -= 6;
+        }
+
+        ++curSrcChar;
+      }
+
+      if (valb>-6)
+      {
+        *curDstChar = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"[((val<<8)>>(valb+8))&0x3F];
+        ++curDstChar;
+      }
+
+      while ((curDstChar - dst) % 4)
+      {
+        *curDstChar = '=';
+        ++curDstChar;
+      }
+
+      return true;
+    }
+
+    //----------------------------------------------------------------------------
+
+    string toBase64(const string &rawData)
+    {
+      string result;
+      result.resize(calc_base64_encSize(rawData.size()));
+
+      bool isOkay = toBase64((unsigned char *)rawData.c_str(), rawData.size(), (unsigned char *)result.c_str(), result.size());
+
+      return isOkay ? result : string{};
+    }
+
+    //----------------------------------------------------------------------------
+
+    string toBase64(const ManagedMemory& rawData)
+    {
+      string result;
+      result.resize(calc_base64_encSize(rawData.getSize()));
+
+      bool isOkay = toBase64(rawData.get_uc(), rawData.getSize(), (unsigned char *)result.c_str(), result.size());
+
+      return isOkay ? result : string{};
+    }
+
+    //----------------------------------------------------------------------------
+
+    bool toBase64(const ManagedMemory& src, const ManagedMemory& dst)
+    {
+      return toBase64(src.get_uc(), src.getSize(), dst.get_uc(), dst.getSize());
+    }
+
+    //----------------------------------------------------------------------------
+
+    // Taken from https://stackoverflow.com/a/34571089
+    bool fromBase64(unsigned char* src, size_t srcLen, unsigned char* dst, size_t maxDstLen)
+    {
+      using uchar = unsigned char;
+
+      size_t dstLen = calc_base64_rawSize(src, srcLen);
+      if (maxDstLen < dstLen) return false;
 
       vector<int> T(256,-1);
       for (int i=0; i<64; i++) T["ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"[i]] = i;
@@ -134,8 +232,12 @@ namespace Sloppy
       int val = 0;
       int valb =- 8;
 
-      for (uchar c : b64Data)
+      uchar* curSrcChar = src;
+      uchar* curDstChar = dst;
+      while (curSrcChar < (src + srcLen))
       {
+        uchar c = *curSrcChar;
+
         if (T[c] == -1) break;
 
         val = (val<<6) + T[c];
@@ -143,12 +245,37 @@ namespace Sloppy
 
         if (valb>=0)
         {
-          out.push_back(char((val>>valb)&0xFF));
+          *curDstChar = char((val>>valb)&0xFF);
+          ++curDstChar;
           valb -= 8;
         }
+
+        ++curSrcChar;
       }
 
-      return out;
+      return true;
+
+    }
+
+    //----------------------------------------------------------------------------
+
+    string fromBase64(const string& b64Data)
+    {
+      size_t rawSize = calc_base64_rawSize(b64Data);
+      string result;
+      result.resize(rawSize);
+
+      bool isOkay = fromBase64((unsigned char *)b64Data.c_str(), b64Data.size(),
+                               (unsigned char *)result.c_str(), result.size());
+
+      return isOkay ? result : string{};
+    }
+
+    //----------------------------------------------------------------------------
+
+    bool fromBase64(const ManagedMemory& src, const ManagedMemory& dst)
+    {
+      return fromBase64(src.get_uc(), src.getSize(), dst.get_uc(), dst.getSize());
     }
 
     //----------------------------------------------------------------------------
@@ -289,7 +416,6 @@ namespace Sloppy
         sprintf(buf+i*2, "%02x", digest[i]);
       return string(buf);
     }
-
 
   }
 }

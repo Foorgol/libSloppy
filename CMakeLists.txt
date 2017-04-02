@@ -2,6 +2,8 @@ project(Sloppy)
 cmake_minimum_required(VERSION 2.8)
 aux_source_directory(. SRC_LIST)
 
+set(BUILD_TESTS 1)
+
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmakeModules/")
 
 find_package(Threads REQUIRED)
@@ -11,6 +13,9 @@ find_package(Boost REQUIRED COMPONENTS log log_setup thread date_time filesystem
 include_directories(${Boost_INCLUDE_DIRS})
 set(LIBS ${LIBS} ${Boost_LIBRARIES})
 add_definitions(-DBOOST_LOG_DYN_LINK=1)  # linking fails if this is not set
+
+# add the dynamic object loader lib
+set(LIBS ${LIBS} dl)
 
 # detect if we are on windows, because for windows
 # we have to use special code for timegm()
@@ -30,12 +35,17 @@ set(LIB_SOURCES
     Sloppy/TemplateProcessor/Template.cpp
     Sloppy/TemplateProcessor/TemplateCollection.cpp
     Sloppy/Crypto/Crypto.cpp
+    Sloppy/Crypto/Sodium.cpp
     Sloppy/HTML/StyledElement.cpp
     Sloppy/HTML/BasicElements.cpp
     Sloppy/HTML/Table.cpp
     Sloppy/HTML/Bootstrap.cpp
     Sloppy/TemplateProcessor/TemplateSys.cpp
     Sloppy/jsoncpp.cpp
+    Sloppy/Net/ManagedSocket.cpp
+    Sloppy/Net/Net.cpp
+    Sloppy/Net/TcpClientServer.cpp
+    Sloppy/Net/CryptoClientServer.cpp
 )
 
 add_library(${PROJECT_NAME} SHARED ${LIB_SOURCES})
@@ -93,9 +103,17 @@ set(LIB_SOURCES_TST
     tests/tstCrypto.cpp
     tests/tstStringFunc.cpp
     tests/tstBetterTemplateSys.cpp
+    tests/tstSodium.cpp
+    tests/tstManagedMemory.cpp
+    tests/tstManagedFileDescriptor.cpp
+    tests/tstTcpClientServer.cpp
+    tests/tstNetFunc.cpp
+    tests/tstCryptoClientServer.cpp
+    tests/tstPasswordProtectedSecret.cpp
 )
 
 find_package(GTest)
+message("Google Test found: ${GTEST_FOUND}")
 
 if (GTEST_FOUND AND BUILD_TESTS)
     include_directories(${GTEST_INCLUDE_DIRS})

@@ -20,6 +20,7 @@
 
 #include <gtest/gtest.h>
 
+#include "../Sloppy/libSloppy.h"
 #include "../Sloppy/Crypto/Crypto.h"
 
 using namespace Sloppy::Crypto;
@@ -35,4 +36,72 @@ TEST(Crypto, GenRandomString)
 
   cout << "Random string 1: " << s1 << endl;
   cout << "Random string 2: " << s2 << endl;
+}
+
+//----------------------------------------------------------------------------
+
+TEST(Crypto, Base64Enc)
+{
+  string src__0Padding{"Winter is coming!!"};
+  string b64_expected__0Padding{"V2ludGVyIGlzIGNvbWluZyEh"};
+
+  string src__1Padding{"42"};
+  string b64_expected__1Padding{"NDI="};
+
+  string src__2Padding{"The quick brown fox jumps over the lazy dog"};
+  string b64_expected__2Padding{"VGhlIHF1aWNrIGJyb3duIGZveCBqdW1wcyBvdmVyIHRoZSBsYXp5IGRvZw=="};
+
+  vector<pair<string, string>> tstStrings = {
+    {src__0Padding, b64_expected__0Padding},
+    {src__1Padding, b64_expected__1Padding},
+    {src__2Padding, b64_expected__2Padding}
+  };
+
+  for (pair<string, string>& stringSet : tstStrings)
+  {
+    string src = stringSet.first;
+    string b64_expected = stringSet.second;
+
+    //
+    // encode to base64
+    //
+
+    // string --> base64-string
+    string b64 = toBase64(src);
+    ASSERT_EQ(b64_expected, b64);
+
+    // buffer --> base64-string
+    Sloppy::ManagedBuffer buf{src};
+    b64 = toBase64(buf);
+    ASSERT_EQ(b64_expected, b64);
+
+    // buffer --> base64-buffer
+    Sloppy::ManagedBuffer buf2{b64.size()};
+    ASSERT_TRUE(toBase64(buf, buf2));
+    ASSERT_EQ(b64_expected, buf2.copyToString());
+
+    // buffer --> base64-buffer, too small
+    buf2 = Sloppy::ManagedBuffer{b64.size() - 1};
+    ASSERT_FALSE(toBase64(buf, buf2));
+
+    //
+    // decode from base64
+    //
+
+    // base64-string --> string
+    string s = fromBase64(b64_expected);
+    ASSERT_EQ(src, s);
+
+    // base64-buffer --> buffer
+    buf = Sloppy::ManagedBuffer{b64_expected};
+    buf2 = Sloppy::ManagedBuffer{src.size()};
+    ASSERT_TRUE(fromBase64(buf, buf2));
+    ASSERT_EQ(src, buf2.copyToString());
+
+
+    // test length calculations
+    ASSERT_EQ(b64_expected.size(), calc_base64_encSize(src.size()));
+    ASSERT_EQ(src.size(), calc_base64_rawSize(b64_expected));
+  }
+
 }

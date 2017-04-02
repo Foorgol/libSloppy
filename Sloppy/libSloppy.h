@@ -111,11 +111,11 @@ namespace Sloppy
 
     virtual void shrink(size_t newSize) = 0;
 
+    virtual void releaseMemory() = 0;
+
   protected:
     void* rawPtr;
     size_t len;
-
-    virtual void releaseMemory() = 0;
   };
 
   //----------------------------------------------------------------------------
@@ -142,7 +142,6 @@ namespace Sloppy
     // size change
     virtual void shrink(size_t newSize) override;
 
-  protected:
     virtual void releaseMemory() override;
   };
 

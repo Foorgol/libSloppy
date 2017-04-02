@@ -143,6 +143,8 @@ namespace Sloppy
     void MessageBuilder::addManagedMemory(const ManagedMemory& mem)
     {
       addUI64(mem.getSize());
+      if (mem.getSize() == 0) return;
+
       data += ByteString{mem.get_uc(), mem.getSize()};
     }
 
@@ -269,6 +271,8 @@ namespace Sloppy
     {
       assertSufficientData(8);
       size_t len = getUI64();
+
+      if (len == 0) return ManagedBuffer{};
 
       assertSufficientData(len);
       ManagedBuffer result{len};

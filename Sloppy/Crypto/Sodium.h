@@ -32,6 +32,10 @@ using namespace std;
 
 namespace Sloppy
 {
+  namespace Net {
+    class MessageBuilder;
+  }
+
   namespace Crypto
   {
     // forward declaration
@@ -142,12 +146,13 @@ namespace Sloppy
       // comparison of SodiumSecureMemory contents
       bool operator == (const SodiumSecureMemory& other) const;
 
+      void releaseMemory() override;
+
     protected:
       SodiumSecureMemType type;
       SodiumLib* lib;
       SodiumSecureMemAccess curProtection;
 
-      void releaseMemory() override;
     };
 
     //----------------------------------------------------------------------------
@@ -625,6 +630,9 @@ namespace Sloppy
       bool crypto_pwhash_str_verify(const ManagedMemory& pw, const string& hashResult, PasswdHashAlgo algo = PasswdHashAlgo::Argon2);
       bool crypto_pwhash_str_verify(const string& pw, const string& hashResult, PasswdHashAlgo algo = PasswdHashAlgo::Argon2);
 
+      // converts password hash strength and algorithm into values for opslimit and memlimit
+      pair<unsigned long long, size_t> pwHashConfigToValues(PasswdHashStrength strength, PasswdHashAlgo algo);
+
       // Diffie-Hellmann key exchange
       using DH_PublicKey = SodiumKey<SodiumKeyType::Public, crypto_scalarmult_BYTES>;
       using DH_SecretKey = SodiumKey<SodiumKeyType::Secret, crypto_scalarmult_SCALARBYTES>;
@@ -681,9 +689,6 @@ namespace Sloppy
                                                             unsigned long long, const unsigned char *, const unsigned char *),
                                              size_t tagSize, const string& cipher, const ManagedMemory& nonce,
                                                               const ManagedMemory& key, const string& ad = string{});
-
-      // converts password hash strength and algorithm into values for opslimit and memlimit
-      pair<unsigned long long, size_t> pwHashConfigToValues(PasswdHashStrength strength, PasswdHashAlgo algo);
     };
 
     // a template class that provides nonce handling for "crypto boxes"
@@ -804,6 +809,61 @@ namespace Sloppy
       SodiumLib* lib;
       SodiumLib::DH_SecretKey sk;
       SodiumLib::DH_PublicKey pk;
+    };
+
+    // a class that encapsulates a secret (e.g., a symmetric key)
+    // in a password protected container.
+    //
+    // the password can be changed without changing the
+    // secret itself.
+    class PasswordProtectedSecret
+    {
+    public:
+      // exceptions
+      class PasswordHashingError{};
+      class MalformedEncryptedData{};
+      class NoPasswordSet{};
+      class WrongPassword{};
+
+      // constructor for a new, empty secret
+      PasswordProtectedSecret(SodiumLib::PasswdHashStrength pwStrength = SodiumLib::PasswdHashStrength::Moderate,
+                              SodiumLib::PasswdHashAlgo pwAlgo = SodiumLib::PasswdHashAlgo::Argon2);
+
+      // constructor for an existing, encrypted secret
+      PasswordProtectedSecret(const string& data, bool isBase64=false);
+
+      // access functions
+      bool setSecret(const ManagedMemory& sec);
+      bool setSecret(const string& sec);
+      string getSecretAsString();
+      SodiumSecureMemory getSecret(SodiumSecureMemType memType = SodiumSecureMemType::Locked);
+
+      // password handling
+      bool changePassword(const string& oldPw, const string& newPw,
+                          SodiumLib::PasswdHashStrength pwStrength = SodiumLib::PasswdHashStrength::Moderate,
+                          SodiumLib::PasswdHashAlgo pwAlgo = SodiumLib::PasswdHashAlgo::Argon2);
+      bool setPassword(const string& pw);
+
+      // boolean queries
+      bool hasContent() const { return cipher.isValid(); }
+      bool isValidPassword(const string& pw);
+      bool hasPassword() const { return pwClear.isValid(); }
+
+      // getters for the encrypted data including hashing parameters
+      string asString(bool useBase64 = false) const;
+
+    protected:
+      Net::MessageBuilder hashConfigToBin() const;
+
+    private:
+      SodiumLib* lib;
+      SodiumLib::PwHashData hashConfig;
+      ManagedBuffer cipher;
+      SodiumLib::SecretBoxNonceType nonce;
+      SodiumSecureMemory pwClear;
+      SodiumLib::SecretBoxKeyType symKey;
+
+      void password2SymKey(const string& pw);
     };
 
   }

@@ -2,6 +2,8 @@ project(Sloppy)
 cmake_minimum_required(VERSION 2.8)
 aux_source_directory(. SRC_LIST)
 
+set(BUILD_TESTS 1)
+
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmakeModules/")
 
 find_package(Threads REQUIRED)
@@ -103,9 +105,11 @@ set(LIB_SOURCES_TST
     tests/tstTcpClientServer.cpp
     tests/tstNetFunc.cpp
     tests/tstCryptoClientServer.cpp
+    tests/tstPasswordProtectedSecret.cpp
 )
 
 find_package(GTest)
+message("Google Test found: ${GTEST_FOUND}")
 
 if (GTEST_FOUND AND BUILD_TESTS)
     include_directories(${GTEST_INCLUDE_DIRS})

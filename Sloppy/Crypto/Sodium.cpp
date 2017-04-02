@@ -24,6 +24,8 @@
 #include <sodium.h>
 
 #include "Sodium.h"
+#include "../Net/Net.h"
+#include "Crypto.h"
 
 namespace Sloppy
 {
@@ -1967,7 +1969,7 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    SodiumSecureMemory SodiumLib::crypto_pwhash(const ManagedMemory& pw, size_t hashLen, SodiumLib::PwHashData& hDat, SodiumSecureMemType memType)
+    SodiumSecureMemory SodiumLib::crypto_pwhash(const ManagedMemory& pw, size_t hashLen, PwHashData& hDat, SodiumSecureMemType memType)
     {
       if (!(pw.isValid())) return SodiumSecureMemory{};
       if (hashLen == 0) return SodiumSecureMemory{};
@@ -2375,6 +2377,275 @@ namespace Sloppy
 
       return result;
     }
+
+    //----------------------------------------------------------------------------
+    //----------------------------------------------------------------------------
+    //----------------------------------------------------------------------------
+
+    PasswordProtectedSecret::PasswordProtectedSecret(SodiumLib::PasswdHashStrength pwStrength, SodiumLib::PasswdHashAlgo pwAlgo)
+      :lib{SodiumLib::getInstance()}
+    {
+      // initialize the hash configuration
+      tie(hashConfig.opslimit, hashConfig.memlimit) = lib->pwHashConfigToValues(pwStrength, pwAlgo);
+      hashConfig.algo = pwAlgo;
+      lib->randombytes_buf(hashConfig.salt);
+
+      // set an initial nonce although this will never be used.
+      // but if don't do this now, a subsequent call to asString()
+      // would produce a malformed string
+      lib->randombytes_buf(nonce);
+    }
+
+    //----------------------------------------------------------------------------
+
+    PasswordProtectedSecret::PasswordProtectedSecret(const string& data, bool isBase64)
+      :lib{SodiumLib::getInstance()}
+    {
+      if (data.empty())
+      {
+        throw invalid_argument("Empty encrypted data for PasswordProtectedSecret ctor!");
+      }
+
+      string rawData = isBase64 ? fromBase64(data) : data;
+
+      // read the hash config from the raw data. The following code throws
+      // if the data was malformed
+      try
+      {
+        Net::MessageDissector md{rawData};
+
+        // determine the algo type
+        uint8_t algoId = md.getByte();
+        if (algoId == 0)
+        {
+          hashConfig.algo = SodiumLib::PasswdHashAlgo::Argon2;
+        } else {
+          hashConfig.algo = SodiumLib::PasswdHashAlgo::Scrypt;
+        }
+
+        // get memlimit and opslimit
+        static_assert(sizeof(unsigned long long) == sizeof(size_t), "Invalid size of unsigned long long!");
+        hashConfig.memlimit = md.getUI64();
+        hashConfig.opslimit = md.getUI64();
+
+        // read the salt
+        hashConfig.salt = md.getManagedBuffer();
+
+        // what remains are the cipher and nonce
+        cipher = md.getManagedBuffer();
+
+        ManagedBuffer _nonce = md.getManagedBuffer();
+        if (!(nonce.fillFromManagedMemory(_nonce)))
+        {
+          throw std::invalid_argument("Invalid nonce in ctor of PasswordProtectedSecret!");
+        }
+      }
+      catch (...)
+      {
+        throw MalformedEncryptedData{};
+      }
+    }
+
+    //----------------------------------------------------------------------------
+
+    bool PasswordProtectedSecret::setSecret(const ManagedMemory& sec)
+    {
+      if (!(sec.isValid()))
+      {
+        cipher.releaseMemory();
+        return true;
+      }
+
+      if (!(pwClear.isValid())) return false;
+
+      // prepare a fresh random nonce for
+      // each symmetric encryption step
+      lib->randombytes_buf(nonce);
+
+      // do the encryption
+      symKey.setAccess(SodiumSecureMemAccess::RO);
+      ManagedBuffer _cipher = lib->crypto_secretbox_easy(sec, nonce, symKey);
+      symKey.setAccess(SodiumSecureMemAccess::NoAccess);
+
+      // only store the result if the encryption was successful
+      if (!(_cipher.isValid())) return false;
+      cipher = std::move(_cipher);
+
+      return true;
+    }
+
+    //----------------------------------------------------------------------------
+
+    bool PasswordProtectedSecret::setSecret(const string& sec)
+    {
+      // we are lazy and copy the input data over into a
+      // managed memory. this consumes more memory and time but we avoid
+      // some typing
+      ManagedBuffer tmp{sec};
+      return setSecret(tmp);
+    }
+
+    //----------------------------------------------------------------------------
+
+    string PasswordProtectedSecret::getSecretAsString()
+    {
+      SodiumSecureMemory sec = getSecret(SodiumSecureMemType::Normal);
+
+      return (sec.isValid() ? sec.copyToString() : string{});
+    }
+
+    //----------------------------------------------------------------------------
+
+    SodiumSecureMemory PasswordProtectedSecret::getSecret(SodiumSecureMemType memType)
+    {
+      // is a decryption key available?
+      if (!(pwClear.isValid()))
+      {
+        throw NoPasswordSet{};
+      }
+
+      // do we have any content at all?
+      if (!(cipher.isValid()))
+      {
+        return SodiumSecureMemory{};
+      }
+
+      // decrypt and throw an exception if things fail
+      symKey.setAccess(SodiumSecureMemAccess::RO);
+      SodiumSecureMemory sec = lib->crypto_secretbox_open_easy__secure(cipher, nonce, symKey, memType);
+      symKey.setAccess(SodiumSecureMemAccess::NoAccess);
+
+      if (!(sec.isValid()))
+      {
+        throw WrongPassword{};
+      }
+
+      return sec;
+    }
+
+    //----------------------------------------------------------------------------
+
+    bool PasswordProtectedSecret::changePassword(const string& oldPw, const string& newPw, SodiumLib::PasswdHashStrength pwStrength, SodiumLib::PasswdHashAlgo pwAlgo)
+    {      
+      // the new password should not be empty
+      if (newPw.empty()) return false;
+
+      // check the validity of the old pw. this includes a check
+      // whether a password is stored at all
+      if (!(isValidPassword(oldPw))) return false;
+
+      // decrypt the secret and store it in a temporary memory
+      SodiumSecureMemory sec = getSecret(SodiumSecureMemType::Normal);
+      if ((!(sec.isValid())) && (cipher.isValid())) return false;
+
+      // determine the updated hashing parameters
+      tie(hashConfig.opslimit, hashConfig.memlimit) = lib->pwHashConfigToValues(pwStrength, pwAlgo);
+      hashConfig.algo = pwAlgo;
+      lib->randombytes_buf(hashConfig.salt);
+
+      // re-store the secret
+      if (sec.isValid())
+      {
+        password2SymKey(newPw);
+        return setSecret(sec);
+      }
+
+      // we have no secret yet, so we just hash the new pw
+      password2SymKey(newPw);
+      cipher.releaseMemory();
+
+      return true;
+    }
+
+    //----------------------------------------------------------------------------
+
+    bool PasswordProtectedSecret::setPassword(const string& pw)
+    {
+      // this function is only intended for
+      // cases if there is no previously set password
+      if (pwClear.isValid()) return false;
+
+      if (pw.empty()) return false;
+
+      password2SymKey(pw);
+
+      // if we have content, try to decode it to check
+      // the password validity
+      if (cipher.isValid())
+      {
+        try
+        {
+          getSecret(SodiumSecureMemType::Normal);
+        }
+        catch (WrongPassword)
+        {
+          pwClear.releaseMemory();
+          return false;
+        }
+      }
+
+      return true;
+    }
+
+    //----------------------------------------------------------------------------
+
+    bool PasswordProtectedSecret::isValidPassword(const string& pw)
+    {
+      if (!(pwClear.isValid()))
+      {
+        throw NoPasswordSet{};
+      }
+
+      SodiumSecureMemory pwSec{pw, SodiumSecureMemType::Normal};
+      pwClear.setAccess(SodiumSecureMemAccess::RO);
+      bool isEqual = lib->memcmp(pwClear, pwSec);
+      pwClear.setAccess(SodiumSecureMemAccess::NoAccess);
+
+      return isEqual;
+    }
+
+    //----------------------------------------------------------------------------
+
+    string PasswordProtectedSecret::asString(bool useBase64) const
+    {
+      Net::MessageBuilder mb;
+
+      mb.addByte((hashConfig.algo == SodiumLib::PasswdHashAlgo::Argon2) ? 0 : 1);
+      mb.addUI64(hashConfig.memlimit);
+      mb.addUI64(hashConfig.opslimit);
+      mb.addManagedMemory(hashConfig.salt);  // also works for an empty salt
+      mb.addManagedMemory(cipher);  // also works for an empty cipher
+      mb.addManagedMemory(nonce);
+
+      // not very efficient... hmmmm...
+      string rawData = mb.get().copyToString();
+
+      return useBase64 ? toBase64(rawData) : rawData;
+    }
+
+    //----------------------------------------------------------------------------
+
+    void PasswordProtectedSecret::password2SymKey(const string& pw)
+    {
+      // convert the pw into a hash; the hash will be used as the secret key for
+      // encrypting the secret
+      SodiumLib::SecretBoxKeyType sk;
+      SodiumSecureMemory pwSecure{pw, SodiumSecureMemType::Normal};
+      sk = lib->crypto_pwhash(pwSecure, sk.getSize(), hashConfig, sk.getType());
+      if (!(sk.isValid()))
+      {
+        throw PasswordHashingError{};
+      }
+
+      symKey.setAccess(SodiumSecureMemAccess::RW);
+      symKey = std::move(sk);
+      symKey.setAccess(SodiumSecureMemAccess::NoAccess);
+
+      if (pwClear.isValid()) pwClear.setAccess(SodiumSecureMemAccess::RW);
+      pwClear = SodiumSecureMemory{pw, SodiumSecureMemType::Locked};
+      pwClear.setAccess(SodiumSecureMemAccess::NoAccess);
+    }
+
 
     //----------------------------------------------------------------------------
 

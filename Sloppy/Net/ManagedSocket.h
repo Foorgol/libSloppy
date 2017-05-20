@@ -20,6 +20,7 @@
 #define SLOPPY__MANAGED_SOCKET_H
 
 #include "../libSloppy.h"
+#include "../ManagedFileDescriptor.h"
 #include "Net.h"
 
 using namespace std;

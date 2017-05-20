@@ -17,12 +17,6 @@ add_definitions(-DBOOST_LOG_DYN_LINK=1)  # linking fails if this is not set
 # add the dynamic object loader lib
 set(LIBS ${LIBS} dl)
 
-# detect if we are on windows, because for windows
-# we have to use special code for timegm()
-IF (WIN32)
-  add_definitions(-DIS_WINDOWS_BUILD)
-ENDIF()
-
 set(LIB_SOURCES
     Sloppy/libSloppy.cpp
     Sloppy/DateTime/DateAndTime.cpp
@@ -46,6 +40,7 @@ set(LIB_SOURCES
     Sloppy/Net/Net.cpp
     Sloppy/Net/TcpClientServer.cpp
     Sloppy/Net/CryptoClientServer.cpp
+    Sloppy/ManagedFileDescriptor.cpp
 )
 
 add_library(${PROJECT_NAME} SHARED ${LIB_SOURCES})
@@ -58,7 +53,7 @@ set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD_REQUIRED ON)
 
 set(LIB_VERSION_MAJOR 0)
 set(LIB_VERSION_MINOR 2)
-set(LIB_VERSION_PATCH 0)
+set(LIB_VERSION_PATCH 1)
 set(LIB_VERSION_STRING ${LIB_VERSION_MAJOR}.${LIB_VERSION_MINOR}.${LIB_VERSION_PATCH})
 
 set_target_properties(${PROJECT_NAME} PROPERTIES VERSION ${LIB_VERSION_STRING}

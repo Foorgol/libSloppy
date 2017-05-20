@@ -31,10 +31,7 @@ using namespace std;
 
 // a special hack to substitute the missing timegm() call
 // under windows
-//
-// See the CMakeList.txt file for the definition of
-// IS_WINDOWS_BUILD
-#ifdef IS_WINDOWS_BUILD
+#ifdef WIN32
 #define timegm _mkgmtime
 #endif
 

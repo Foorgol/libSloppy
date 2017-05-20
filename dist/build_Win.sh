@@ -33,14 +33,14 @@ if [ $ACTUAL_DIR != $BUILD_DIR ]; then
 	exit 1
 fi
 
-#rm -rf *
+rm -rf *
 
 # download sources
-#wget $REPO_BASE_URL/$BUILD_VERSION.zip -O libSloppy-$BUILD_VERSION.zip
+wget $REPO_BASE_URL/$BUILD_VERSION.zip -O libSloppy-$BUILD_VERSION.zip
 
 # Unzip and build the lib
-#unzip libSloppy-$BUILD_VERSION.zip
-#mv libSloppy-$BUILD_VERSION libSloppy 
+unzip libSloppy-$BUILD_VERSION.zip
+mv libSloppy-$BUILD_VERSION libSloppy 
 cd libSloppy
 mkdir release
 cd release

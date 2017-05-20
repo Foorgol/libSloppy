@@ -36,12 +36,29 @@ set(LIB_SOURCES
     Sloppy/HTML/Bootstrap.cpp
     Sloppy/TemplateProcessor/TemplateSys.cpp
     Sloppy/jsoncpp.cpp
-    Sloppy/Net/ManagedSocket.cpp
     Sloppy/Net/Net.cpp
-    Sloppy/Net/TcpClientServer.cpp
-    Sloppy/Net/CryptoClientServer.cpp
-    Sloppy/ManagedFileDescriptor.cpp
 )
+
+#
+# add modules that do not compile
+# under windows
+#
+IF (NOT WIN32)
+  set(LIB_SOURCES ${LIB_SOURCES}
+      Sloppy/Net/TcpClientServer.cpp
+      Sloppy/Net/CryptoClientServer.cpp
+      Sloppy/ManagedFileDescriptor.cpp
+      Sloppy/Net/ManagedSocket.cpp
+      )
+ENDIF()
+
+#
+# add the Winsock lib when
+# building under windows
+#
+IF (WIN32)
+  set(LIBS ${LIBS} ws2_32.dll)
+ENDIF()
 
 add_library(${PROJECT_NAME} SHARED ${LIB_SOURCES})
 target_link_libraries(${PROJECT_NAME} ${LIBS})

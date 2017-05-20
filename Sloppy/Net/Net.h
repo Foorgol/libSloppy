@@ -20,7 +20,14 @@
 #define SLOPPY__NET_H
 
 #include <string>
+
+#ifndef WIN32
 #include <netdb.h>
+#endif
+
+#ifdef WIN32
+#include <winsock2.h>   // for htonl() etc.
+#endif
 
 #include "../libSloppy.h"
 
@@ -34,7 +41,9 @@ namespace Sloppy
 
     using ByteString = basic_string<uint8_t>;
 
+#ifndef WIN32
     sockaddr_in fillSockAddr(const string& hostName, int port);
+#endif
 
     //----------------------------------------------------------------------------
 

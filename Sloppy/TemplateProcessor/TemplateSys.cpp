@@ -563,7 +563,7 @@ namespace Sloppy
         while (it != allFiles.end())
         {
           bfs::path p{*it};
-          string ext = p.extension().native();
+          string ext = p.extension().string();
           if ((!(ext.empty())) && (ext[0] == '.'))
           {
             ext = ext.substr(1);
@@ -608,7 +608,7 @@ namespace Sloppy
           continue;
         }
 
-        string relPath = bfs::path{p}.lexically_relative(rootPath).native();
+        string relPath = bfs::path{p}.lexically_relative(rootPath).string();
         docs.emplace(relPath, t);
       }
 

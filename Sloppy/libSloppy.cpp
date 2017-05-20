@@ -255,7 +255,7 @@ namespace Sloppy
         if (!includeDirNameInList) continue;
       }
 
-      resultList.push_back(it->path().native());
+      resultList.push_back(it->path().string());
     }
   }
 

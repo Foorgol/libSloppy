@@ -26,6 +26,7 @@ namespace Sloppy
   namespace Net
   {
 
+#ifndef WIN32
     sockaddr_in fillSockAddr(const string& hostName, int port)
     {
       if ((port < 1) || (port > 65535))
@@ -52,6 +53,7 @@ namespace Sloppy
 
       return result;
     }
+#endif
 
     //----------------------------------------------------------------------------
 

@@ -56,6 +56,8 @@ ENDIF()
 # add the Winsock lib when
 # building under windows
 #
+# we need this for htonl() and the like
+#
 IF (WIN32)
   set(LIBS ${LIBS} ws2_32.dll)
 ENDIF()

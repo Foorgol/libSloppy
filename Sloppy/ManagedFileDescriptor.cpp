@@ -18,6 +18,8 @@
 
 #include <iostream>
 #include <cstdlib>
+#include <sys/select.h>
+#include <sys/time.h>
 #include <unistd.h>
 
 #include "ManagedFileDescriptor.h"

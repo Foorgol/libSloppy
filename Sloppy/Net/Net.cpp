@@ -317,6 +317,19 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
+    size_t MessageDissector::peekNextBufferSize()
+    {
+      // the next 64-bit integer
+      size_t result = getUI64();
+
+      // "rewind" the data stream
+      offset -= 8;
+
+      return result;
+    }
+
+    //----------------------------------------------------------------------------
+
     void MessageDissector::assertSufficientData(size_t n) const
     {
       if (offset >= data.size()) throw InvalidMessageAccess{};

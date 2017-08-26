@@ -27,6 +27,13 @@
 #include <thread>
 #include <cstring>
 
+// we include some special file functions for
+// non-Windows builds only
+#ifndef WIN32
+#include <sys/stat.h>
+#include <unistd.h>
+#endif
+
 using namespace std;
 
 // a forward declaration
@@ -104,6 +111,14 @@ namespace Sloppy
   // find all files in a directors including sub-folders
   StringList getAllFilesInDirTree(const string& baseDir, bool includeDirNameInList=false);
   void getAllFilesInDirTree_Recursion(const boost::filesystem::path& basePath, StringList& resultList, bool includeDirNameInList);
+
+  // we include some special file functions for
+  // non-Windows builds only
+#ifndef WIN32
+  string getCurrentWorkDir();
+  bool isFile(const string& fName);
+  bool isDirectory(const string& dirName);
+#endif
 
   //----------------------------------------------------------------------------
 

@@ -260,6 +260,39 @@ namespace Sloppy
   }
 
   //----------------------------------------------------------------------------
+
+#ifndef WIN32
+  string getCurrentWorkDir()
+  {
+    char buf[1000];
+    getcwd(buf, 1000);
+    return string{buf};
+  }
+#endif
+
+  //----------------------------------------------------------------------------
+
+#ifndef WIN32
+  bool isFile(const string& fName)
+  {
+    struct stat statBuf;
+    if (stat(fName.c_str(), &statBuf) != 0) return false;   // name doesn't exist
+    return (S_ISREG(statBuf.st_mode));
+  }
+#endif
+
+  //----------------------------------------------------------------------------
+
+#ifndef WIN32
+  bool isDirectory(const string& dirName)
+  {
+    struct stat statBuf;
+    if (stat(dirName.c_str(), &statBuf) != 0) return false;   // name doesn't exist
+    return (S_ISDIR(statBuf.st_mode));
+  }
+#endif
+
+  //----------------------------------------------------------------------------
   //----------------------------------------------------------------------------
   //----------------------------------------------------------------------------
 
@@ -402,6 +435,7 @@ namespace Sloppy
     if (rawPtr != nullptr) free(rawPtr);
     len = 0;
   }
+
 
   //----------------------------------------------------------------------------
 

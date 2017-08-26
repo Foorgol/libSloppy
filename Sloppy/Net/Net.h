@@ -110,6 +110,10 @@ namespace Sloppy
 
       size_t getSize() const { return data.size(); }
 
+      // assumes that the next field is preceded with a uint64_t size header
+      // returns the value of that size header
+      size_t peekNextBufferSize();
+
     private:
       ByteString data;
       size_t offset;

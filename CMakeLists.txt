@@ -124,6 +124,7 @@ set(LIB_SOURCES_TST
     tests/tstNetFunc.cpp
     tests/tstCryptoClientServer.cpp
     tests/tstPasswordProtectedSecret.cpp
+    tests/tstPosixFileFunc.cpp
 )
 
 find_package(GTest)
@@ -132,11 +133,18 @@ message("Google Test found: ${GTEST_FOUND}")
 if (GTEST_FOUND AND BUILD_TESTS)
     include_directories(${GTEST_INCLUDE_DIRS})
 
-    add_executable(${PROJECT_NAME}_Tests ${LIB_SOURCES} ${LIB_SOURCES_TST})
+    #add_executable(${PROJECT_NAME}_Tests ${LIB_SOURCES} ${LIB_SOURCES_TST})
+    add_executable(${PROJECT_NAME}_Tests ${LIB_SOURCES_TST})
     set_property(TARGET ${PROJECT_NAME}_Tests PROPERTY CXX_STANDARD 14)
     set_property(TARGET ${PROJECT_NAME}_Tests PROPERTY CXX_STANDARD_REQUIRED ON)
 
+    set_target_properties(${PROJECT_NAME}_Tests PROPERTIES
+      IMPORTED_LOCATION "${CMAKE_BINARY_DIR}/lib${PROJECT_NAME}.so"
+    )
+
+    set(LIBS ${LIBS} ${PROJECT_NAME})
     message("Using these libs: ${LIBS}")
+    message("Writing unit test binary to: ${CMAKE_BINARY_DIR}")
 
     target_link_libraries(${PROJECT_NAME}_Tests ${LIBS} ${GTEST_BOTH_LIBRARIES})
 endif (GTEST_FOUND AND BUILD_TESTS)

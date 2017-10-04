@@ -108,6 +108,11 @@ namespace Sloppy
     return strArg(s, string{buf});
   }
 
+  // simple and very strict checks for
+  // pure ints or doubles in strings
+  bool isInt(const string& s);
+  bool isDouble(const string& s);
+
   // find all files in a directors including sub-folders
   StringList getAllFilesInDirTree(const string& baseDir, bool includeDirNameInList=false);
   void getAllFilesInDirTree_Recursion(const boost::filesystem::path& basePath, StringList& resultList, bool includeDirNameInList);

@@ -436,6 +436,60 @@ namespace Sloppy
     len = 0;
   }
 
+  //----------------------------------------------------------------------------
+
+  bool isInt(const string& s)
+  {
+    //
+    // looks clumsy but I believe it's faster
+    // than lexical_cast or regex
+    //
+    // and stoi converts "5xy" to 5, for instance
+    //
+
+    if (s.empty()) return false;
+
+    const char* p = s.c_str();
+    bool isSigned = (*p == '-');
+    if (isSigned && (s.size() < 2)) return false;
+
+    if (isSigned) ++p;
+    while (true)
+    {
+      char c = *p;
+      if (c == 0) return true;
+      if ((c < '0') || (c > '9')) return false;
+      ++p;
+    }
+  }
+
+  //----------------------------------------------------------------------------
+
+  bool isDouble(const string& s)
+  {
+    //
+    // looks clumsy but I believe it's faster
+    // than lexical_cast or regex
+    //
+    // and stoi converts "5xy" to 5, for instance
+    //
+
+    if (s.empty()) return false;
+
+    const char* p = s.c_str();
+    bool isSigned = (*p == '-');
+    if (isSigned && (s.size() < 2)) return false;
+
+    if (isSigned) ++p;
+    while (true)
+    {
+      char c = *p;
+      if (c == 0) return true;
+      if (((c < '0') || (c > '9')) && (c != '.')) return false;
+      ++p;
+    }
+  }
+
 
   //----------------------------------------------------------------------------
 

@@ -274,8 +274,14 @@ namespace Sloppy
         // clear all old dynamic loader errors
         dlerror();
 
-        // try to load the library
-        void *handle = dlopen("libsodium.so", RTLD_LAZY);
+        // try to load the library; use different names for
+        // Windows and Linux
+        void *handle = nullptr;
+        for (const string& libName : {"libsodium.so", "libsodium-18.dll"})
+        {
+          handle = dlopen(libName.c_str(), RTLD_LAZY);
+          if (handle != nullptr) break;
+        }
 
         if (handle == nullptr)
         {

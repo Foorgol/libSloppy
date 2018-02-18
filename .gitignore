@@ -1,5 +1,6 @@
 debug
 release
+doc
 *~
 CMakeLists.txt.user
 tests/rawEmail.txt

@@ -18,6 +18,7 @@
 
 #include <iostream>
 #include <thread>
+#include <limits>
 
 #include <gtest/gtest.h>
 
@@ -453,15 +454,102 @@ TEST(Strings, ToUpperLower)
 
 //----------------------------------------------------------------------------
 
+TEST(Strings, ArgString)
+{
+  estring e{"abc % def %1 %a %% %2"};
+  e.arg("X");
+  ASSERT_EQ("abc % def X %a %% %2", e);
+
+  e.arg("Y");
+  ASSERT_EQ("abc % def X %a %% Y", e);
+
+  e.arg("Z");
+  ASSERT_EQ("abc % def X %a %% Y", e);
+}
 
 //----------------------------------------------------------------------------
 
+TEST(Strings, ArgNumber)
+{
+  estring e{"abc % def %1 %a %% %2"};
+  e.arg(-42);
+  ASSERT_EQ("abc % def -42 %a %% %2", e);
+
+  size_t st = SIZE_MAX;
+  string s = to_string(st);
+  e.arg(st);
+  ASSERT_EQ("abc % def -42 %a %% " + s, e);
+}
 
 //----------------------------------------------------------------------------
 
+TEST(Strings, ArgDouble)
+{
+  estring e{"abc %1 xyz %2 %4"};
+
+  e.arg(3.14159, 2);
+  ASSERT_EQ("abc 3.14 xyz %2 %4", e);
+
+  e.arg(3.14159, 0);
+  ASSERT_EQ("abc 3.14 xyz 3 %4", e);
+
+  e.arg(3.14159, 8);
+  ASSERT_EQ("abc 3.14 xyz 3 3.14159000", e);
+}
 
 //----------------------------------------------------------------------------
 
+TEST(Strings, IsInt)
+{
+  ASSERT_TRUE(estring{"1"}.isInt());
+  ASSERT_TRUE(estring{"42"}.isInt());
+  ASSERT_TRUE(estring{"-4"}.isInt());
+  ASSERT_FALSE(estring{""}.isInt());
+  ASSERT_FALSE(estring{"fsdf"}.isInt());
+  ASSERT_FALSE(estring{"-"}.isInt());
+  ASSERT_FALSE(estring{"2.3"}.isInt());
+  ASSERT_FALSE(estring{" "}.isInt());
+  ASSERT_FALSE(estring{" 2"}.isInt());
+  ASSERT_FALSE(estring{"2 "}.isInt());
+  ASSERT_FALSE(estring{"2 4 5"}.isInt());
+  ASSERT_FALSE(estring{"2.4"}.isInt());
+}
+
+//----------------------------------------------------------------------------
+
+TEST(Strings, IsDouble)
+{
+  ASSERT_TRUE(estring{"1"}.isDouble());
+  ASSERT_TRUE(estring{"42"}.isDouble());
+  ASSERT_TRUE(estring{"-4"}.isDouble());
+
+  ASSERT_TRUE(estring{"1."}.isDouble());
+  ASSERT_TRUE(estring{"42."}.isDouble());
+  ASSERT_TRUE(estring{"-4."}.isDouble());
+
+  ASSERT_TRUE(estring{"1.01"}.isDouble());
+  ASSERT_TRUE(estring{"42.01"}.isDouble());
+  ASSERT_TRUE(estring{"-4.9"}.isDouble());
+
+  ASSERT_TRUE(estring{".42"}.isDouble());
+  ASSERT_TRUE(estring{"-.88"}.isDouble());
+
+  ASSERT_FALSE(estring{""}.isDouble());
+  ASSERT_FALSE(estring{"."}.isDouble());
+  ASSERT_FALSE(estring{"-."}.isDouble());
+  ASSERT_FALSE(estring{"-"}.isDouble());
+  ASSERT_FALSE(estring{".-"}.isDouble());
+
+  ASSERT_FALSE(estring{"fsdf"}.isDouble());
+  ASSERT_FALSE(estring{"2.3."}.isDouble());
+  ASSERT_FALSE(estring{" "}.isDouble());
+  ASSERT_FALSE(estring{" 2.4.4"}.isDouble());
+  ASSERT_FALSE(estring{"2 "}.isDouble());
+  ASSERT_FALSE(estring{"2 4 5"}.isDouble());
+  ASSERT_FALSE(estring{"-2.4 "}.isDouble());
+}
+
+//----------------------------------------------------------------------------
 
 //----------------------------------------------------------------------------
 

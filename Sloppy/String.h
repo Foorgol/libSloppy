@@ -373,6 +373,80 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
+    /** \brief Replaces all occurence of "%n" with the lowest "n" with the provided string.
+     *
+     *  \note Unlike QString, this method modifies the string directly and does *not* return a copy!
+     */
+    void arg(const string& s   ///< the string to replace %1, %2, ... with
+             );
+
+    //----------------------------------------------------------------------------
+
+    /** \brief Replaces all occurence of "%n" with the lowest "n" with the integer.
+     *
+     *  \note Unlike QString, this method modifies the string directly and does *not* return a copy!
+     */
+    void arg(int i) { arg1<int>(i); }
+    void arg(long i) { arg1<long>(i); }
+    void arg(unsigned int i) { arg1<unsigned int>(i); }
+    void arg(size_t i) { arg1<size_t>(i); }
+    void arg(uint8_t i) { arg1<uint8_t>(i); }
+
+    //----------------------------------------------------------------------------
+
+    /** \brief Replaces all occurence of "%n" with the lowest "n" with the double value
+     *
+     *  \note Unlike QString, this method modifies the string directly and does *not* return a copy!
+     */
+    void arg(const double& d,       ///< the double to replace %1, %2, ... with
+             int numDigits,         ///< the number of digits after the comma
+             char fillChar='0'      ///< the character to use for right-filling the replacement string
+             );
+
+    //----------------------------------------------------------------------------
+
+    /** \brief Template function for replacing all occurence of "%n" with something that can be handled by to_string
+     *
+     *  \note Unlike QString, this method modifies the string directly and does *not* return a copy!
+     */
+    template <typename T>
+    void arg1(T& someNumber) { arg(to_string(someNumber)); }
+
+    //----------------------------------------------------------------------------
+
+    /** \brief Template function for replacing all occurence of "%n" with something that can be handled by `snprinft`
+     *
+     * \warning The length of the replacement string is limited to 100 chars incl. trailing 0-termination!
+     *
+     *  \note Unlike QString, this method modifies the string directly and does *not* return a copy!
+     */
+    template<typename T>
+    void arg2(const T& v, const string& fmt)
+    {
+      char buf[100];
+      snprintf(buf, 100, fmt.c_str(), v);
+      arg(string{buf});
+    }
+
+    //----------------------------------------------------------------------------
+
+    /** \brief Very strict checking whether the string contains an int and nothing else
+     *
+     *  This is more strict than simply calling `stoi` and checking for exceptions!
+     *
+     * \returns `true` if the string contains nothing but an int; `false` otherwise
+     */
+    bool isInt() const;
+
+    //----------------------------------------------------------------------------
+
+    /** \brief Very strict checking whether the string contains a double and nothing else
+     *
+     *  This is more strict than simply calling `stod` and checking for exceptions!
+     *
+     * \returns `true` if the string contains nothing but a double; `false` otherwise
+     */
+    bool isDouble() const;
   };
 }
 

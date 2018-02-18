@@ -19,6 +19,7 @@
 #include <stdexcept>
 #include <cctype>
 #include <algorithm>
+#include <regex>
 
 #include "String.h"
 
@@ -335,6 +336,93 @@ namespace Sloppy
     {
       replaceAll(umlaut.second, umlaut.first);
     }
+  }
+
+  //----------------------------------------------------------------------------
+
+  void estring::arg(const string& s)
+  {
+    constexpr int NotFound = 999999;
+    int minArg = NotFound;
+
+    // determine the lowest argument index
+    regex re{R"(%(\d+))"};
+    sregex_iterator begin{cbegin(), cend(), re};
+    for (auto it = begin; it != sregex_iterator{}; ++it)
+    {
+      int argIdx = stoi((*it)[1]);  // will never throw because we matched only "%<digit>"
+      if (argIdx < 0) continue;
+      if (argIdx < minArg) minArg = argIdx;
+    }
+
+    // search / replace the argument with the lowest index
+    if (minArg != NotFound)
+    {
+      string key = "%" + to_string(minArg);
+      replaceAll(key, s);
+    }
+  }
+
+  //----------------------------------------------------------------------------
+
+  void estring::arg(const double& d, int numDigits, char fillChar)
+  {
+    string fmt = "%";
+    if (numDigits >=0) fmt += "." + to_string(numDigits);
+    fmt += "f";
+
+    arg2<double>(d, fmt);
+  }
+
+  //----------------------------------------------------------------------------
+
+  bool estring::isInt() const
+  {
+    if (empty()) return false;
+
+    auto start = cbegin();
+
+    // check for signed numbers
+    if (operator [](0) == '-')
+    {
+      ++start;
+      if (size() < 2) return false;  // we need more than just '-'
+    }
+
+    // make sure that all characters are numbers
+    return all_of(start, cend(), [](const char& c) {
+      return isdigit(static_cast<unsigned int>(c));
+    });
+  }
+
+  //----------------------------------------------------------------------------
+
+  bool estring::isDouble() const
+  {
+    if (empty()) return false;
+
+    auto start = cbegin();
+
+    // check for signed numbers
+    if (operator [](0) == '-')
+    {
+      ++start;
+      if (size() < 2) return false;  // we need more than just '-'
+    }
+
+    // some special cases
+    if (*this == ".") return false;
+    if (*this == "-.") return false;
+    if (*this == ".-") return false;
+
+    // we may have exactly zero or one decimal points
+    auto nDots = count(cbegin(), cend(), '.');
+    if (nDots > 1) return false;
+
+    // make sure that all characters are numbers or dot
+    return all_of(start, cend(), [](const char& c) {
+      return (isdigit(static_cast<unsigned int>(c)) || (c == '.'));
+    });
   }
 
 

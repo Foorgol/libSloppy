@@ -251,14 +251,34 @@ namespace Sloppy
 
   bool estring::replaceAll(const string& key, const string& value)
   {
-    bool hadReplacement{false};
+    if (empty()) return false;
+    if (key.empty()) return false;
 
-    while (replaceFirst(key, value))
+    //
+    // the following implementation is faster than
+    // iteratively calling replaceFirst. The reason is
+    // that here we traverse the string only once while
+    // we would always start searching from the beginning
+    // if we would call replaceFirst again and again...
+    //
+
+    size_type idxFirst = find(key);
+    if (idxFirst == string::npos) return false;
+
+    while (idxFirst != string::npos)
     {
-      hadReplacement = true;
+      // replace key with value
+      replace(idxFirst, key.length(), value);
+
+      // the next starting point for the search
+      // is idxFirst + length of the inserted string
+      idxFirst += value.length();
+
+      // search for the next occurence
+      idxFirst = find(key, idxFirst);
     }
 
-    return hadReplacement;
+    return true;
   }
 
   //----------------------------------------------------------------------------
@@ -283,6 +303,38 @@ namespace Sloppy
 
     // insert the new string at the required position
     insert(idxFirst, s);
+  }
+
+  //----------------------------------------------------------------------------
+
+  void estring::toUpper()
+  {
+    // normal uppercase conversion
+    for_each(begin(), end(), [](char& c) {
+      c = toupper(static_cast<unsigned char>(c));
+    });
+
+    // additional conversions for multibyte UTF-8 characters
+    for (const pair<string, string>& umlaut : umlautTranslationTable)
+    {
+      replaceAll(umlaut.first, umlaut.second);
+    }
+  }
+
+  //----------------------------------------------------------------------------
+
+  void estring::toLower()
+  {
+    // normal lowercase conversion
+    for_each(begin(), end(), [](char& c) {
+      c = tolower(static_cast<unsigned char>(c));
+    });
+
+    // additional conversions for multibyte UTF-8 characters
+    for (const pair<string, string>& umlaut : umlautTranslationTable)
+    {
+      replaceAll(umlaut.second, umlaut.first);
+    }
   }
 
 

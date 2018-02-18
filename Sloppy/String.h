@@ -21,11 +21,37 @@
 
 #include <string>
 #include <vector>
+#include <tuple>
 
 using namespace std;
 
 namespace Sloppy
 {
+  /// a mapping between lowercase and uppercase UTF-8 characters
+  static const vector<pair<string, string>> umlautTranslationTable {
+    {"ä", "Ä"},
+    {"ö", "Ö"},
+    {"ü", "Ü"},
+
+    {"á", "Á"},
+    {"é", "É"},
+    {"í", "Í"},
+    {"ó", "Ó"},
+    {"ú", "Ú"},
+
+    {"à", "À"},
+    {"è", "È"},
+    {"ì", "Ì"},
+    {"ò", "Ò"},
+    {"ù", "Ù"},
+
+    {"â", "Â"},
+    {"ê", "Ê"},
+    {"î", "Î"},
+    {"ô", "Ô"},
+    {"û", "Û"},
+  };
+
   /** \brief An extend string class with some convenience functions
    *
    * This class is derived from std::string and can be used like std::string
@@ -325,6 +351,28 @@ namespace Sloppy
                            size_type idxLast,   ///< index of the last character to replace
                            const string& s      ///< the string to insert
                            );
+
+    //----------------------------------------------------------------------------
+
+    /** \brief Converts the string to upper case; the string is modified in place
+     *
+     *  Uses std::toupper()
+     *
+     */
+    void toUpper();
+
+
+    //----------------------------------------------------------------------------
+
+    /** \brief Converts the string to lower case; the string is modified in place
+     *
+     *  Uses std::tolower()
+     *
+     */
+    void toLower();
+
+    //----------------------------------------------------------------------------
+
   };
 }
 

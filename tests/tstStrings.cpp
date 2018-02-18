@@ -380,6 +380,15 @@ TEST(Strings, Replace)
   ASSERT_TRUE(e.replaceAll("ab", "DDD"));
   ASSERT_EQ("DDD def DDD xz ", e);
   ASSERT_FALSE(empty.replaceAll("sdf", "dkfj"));
+
+  // special case where the replacement string
+  // contains the pattern itself; note that we're
+  // not ending up in an endless loop here!
+  e = estring{"aaaaaaa"};
+  ASSERT_TRUE(e.replaceAll("aa", "a"));
+  ASSERT_EQ("aaaa", e);
+  ASSERT_TRUE(e.replaceAll("a", "aa"));
+  ASSERT_EQ("aaaaaaaa", e);
 }
 
 //----------------------------------------------------------------------------
@@ -430,6 +439,29 @@ TEST(Strings, ReplaceSection)
   ASSERT_EQ("0123456789", e);
 
 }
+
+//----------------------------------------------------------------------------
+
+TEST(Strings, ToUpperLower)
+{
+  estring e{"123abcöäüßáèô"};
+  e.toUpper();
+  ASSERT_EQ("123ABCÖÄÜßÁÈÔ", e);
+  e.toLower();
+  ASSERT_EQ("123abcöäüßáèô", e);
+}
+
+//----------------------------------------------------------------------------
+
+
+//----------------------------------------------------------------------------
+
+
+//----------------------------------------------------------------------------
+
+
+//----------------------------------------------------------------------------
+
 
 //----------------------------------------------------------------------------
 

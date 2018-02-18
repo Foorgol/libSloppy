@@ -38,6 +38,7 @@ set(LIB_SOURCES
     Sloppy/jsoncpp.cpp
     Sloppy/Net/Net.cpp
     Sloppy/Timer.cpp
+    Sloppy/String.cpp
 )
 
 #
@@ -127,6 +128,7 @@ set(LIB_SOURCES_TST
     tests/tstPasswordProtectedSecret.cpp
     tests/tstPosixFileFunc.cpp
     tests/tstTimer.cpp
+    tests/tstStrings.cpp
 )
 
 find_package(GTest)

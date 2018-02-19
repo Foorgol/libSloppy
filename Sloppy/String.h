@@ -447,6 +447,27 @@ namespace Sloppy
      * \returns `true` if the string contains nothing but a double; `false` otherwise
      */
     bool isDouble() const;
+
+    //----------------------------------------------------------------------------
+
+    /** \brief Splits the string into an array of strings using a custom delimiter
+     *
+     * \throws std::invalid_argument if the delimiter is empty
+     *
+     * \returns an array (possibly empty) with substrings
+     */
+    vector<estring> split(const string& delim,    ///< the delimiter used for the splitting
+                          bool keepEmptyParts,    ///< set to `true` to keep empty parts in the result list
+                          bool trimParts          ///< set to `true` to remove surrounding whitespaces from the parts
+                          ) const;
+
+    //----------------------------------------------------------------------------
+
+    /** \brief A simple inversion of empty()
+     *
+     * \returns `true` if the string is not empty
+     */
+    bool notEmpty() const { return !empty(); }
   };
 }
 

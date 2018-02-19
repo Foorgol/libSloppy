@@ -425,6 +425,61 @@ namespace Sloppy
     });
   }
 
+  //----------------------------------------------------------------------------
+
+  vector<estring> estring::split(const string& delim, bool keepEmptyParts, bool trimParts) const
+  {
+    vector<estring> result;
+    if (empty()) return result;
+
+    if (delim.empty())
+    {
+      throw std::invalid_argument("estring::split: called with empty delimiter string!");
+    }
+
+    // iterate over the string segments, delimiter by delimiter
+    size_t nextStartPos = 0;
+    while (nextStartPos < length())
+    {
+      size_t nextDelimPos = find(delim, nextStartPos);
+      if (nextDelimPos == string::npos) break;
+
+      estring s;
+      if (nextDelimPos > nextStartPos)
+      {
+        // there is content between two delimiters; extract
+        // the content
+        s = slice(nextStartPos, nextDelimPos - 1);
+        if (trimParts) s.trim();
+      }
+      // else: we have two directly subsequent delimiters (e.g., ",,")
+      // and thus we simply use an empty string
+
+      nextStartPos = nextDelimPos + delim.length();
+
+      if (s.empty() && !keepEmptyParts) continue;
+
+      result.push_back(s);
+    }
+
+    // the last section between the last delimiter and the string end
+    if (nextStartPos < length())
+    {
+      estring s = substr(nextStartPos);
+      if (trimParts) s.trim();
+      if (keepEmptyParts || s.notEmpty()) result.push_back(s);
+    }
+
+    // if the string terminated with a delimiter
+    // push an empty string
+    if ((nextStartPos == length()) && keepEmptyParts)
+    {
+      result.push_back(estring{});
+    }
+
+    return result;
+  }
+
 
 
 

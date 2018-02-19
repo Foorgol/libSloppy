@@ -551,5 +551,58 @@ TEST(Strings, IsDouble)
 
 //----------------------------------------------------------------------------
 
+TEST(Strings, Split)
+{
+  estring e{"1, 2, 3"};
+  vector<estring> v = e.split(",", true, true);
+  ASSERT_EQ(3, v.size());
+  ASSERT_EQ("1", v[0]);
+  ASSERT_EQ("2", v[1]);
+  ASSERT_EQ("3", v[2]);
+
+  v = e.split(",", true, false);
+  ASSERT_EQ(3, v.size());
+  ASSERT_EQ("1", v[0]);
+  ASSERT_EQ(" 2", v[1]);
+  ASSERT_EQ(" 3", v[2]);
+
+  e = estring{"1,,2"};
+  v = e.split(",", true, true);
+  ASSERT_EQ(3, v.size());
+  ASSERT_EQ("1", v[0]);
+  ASSERT_EQ("", v[1]);
+  ASSERT_EQ("2", v[2]);
+  v = e.split(",", false, true);
+  ASSERT_EQ(2, v.size());
+  ASSERT_EQ("1", v[0]);
+  ASSERT_EQ("2", v[1]);
+
+  e = estring{","};
+  v = e.split(",", true, true);
+  ASSERT_EQ(2, v.size());
+  ASSERT_EQ("", v[0]);
+  ASSERT_EQ("", v[1]);
+  v = e.split(",", false, true);
+  ASSERT_TRUE(v.empty());
+
+  e = estring{"1,"};
+  v = e.split(",", true, true);
+  ASSERT_EQ(2, v.size());
+  ASSERT_EQ("1", v[0]);
+  ASSERT_EQ("", v[1]);
+  v = e.split(",", false, true);
+  ASSERT_EQ(1, v.size());
+  ASSERT_EQ("1", v[0]);
+
+  e = estring{""};
+  v = e.split(",", true, true);
+  ASSERT_TRUE(v.empty());
+
+  e = estring{"abc"};
+  v = e.split(",", true, true);
+  ASSERT_EQ(1, v.size());
+  ASSERT_EQ("abc", v[0]);
+}
+
 //----------------------------------------------------------------------------
 

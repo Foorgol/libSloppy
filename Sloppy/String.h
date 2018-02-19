@@ -22,6 +22,7 @@
 #include <string>
 #include <vector>
 #include <tuple>
+#include <string_view>
 
 using namespace std;
 
@@ -468,6 +469,14 @@ namespace Sloppy
      * \returns `true` if the string is not empty
      */
     bool notEmpty() const { return !empty(); }
+
+    //----------------------------------------------------------------------------
+
+    /** \brief Returns a string_view for this string
+     *
+     * \returns a string_view for this string
+     */
+    string_view toStringView() const { return string_view{c_str(), size()}; }
   };
 }
 

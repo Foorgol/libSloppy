@@ -19,13 +19,13 @@
 #ifndef __LIBSLOPPY_SLOPPY_H
 #define __LIBSLOPPY_SLOPPY_H
 
-#include <string>
+//#include <string>
 #include <vector>
 #include <algorithm>
 #include <mutex>
 #include <atomic>
 #include <thread>
-#include <cstring>
+//#include <cstring>
 
 // we include some special file functions for
 // non-Windows builds only
@@ -34,6 +34,8 @@
 #include <unistd.h>
 #endif
 
+#include "String.h"
+
 using namespace std;
 
 // a forward declaration
@@ -41,18 +43,6 @@ namespace boost { namespace filesystem { class path; }}
 
 namespace Sloppy
 {
-  using StringList = vector<string>;
-
-  // split strings by delimiter string (easier to handle than Boost's function)
-  void stringSplitter(StringList& target, const string& src, const string& delim, bool trimStrings=false);
-
-  // replace substrings (similar to what Boost provides)
-  bool replaceString_First(string& src, const string& key, const string& value);
-  int replaceString_All(string& src, const string& key, const string& value);
-
-  // convert a list of strings into a comma-separated string
-  string commaSepStringFromStringList(const StringList& lst, const string& separator=", ");
-
   // assign a value to a pointed-to variable if
   // the pointer is not empty
   template<typename T>
@@ -88,30 +78,6 @@ namespace Sloppy
   // trim a string and make sure
   // it's not empty or too long
   bool trimAndCheckString(string& s, size_t maxLen = 0);
-
-  // replace a section in a string with another string
-  bool replaceStringSection(string& data, size_t startIdxToDelete, size_t endIdxToDelete, const string& replacement);
-
-  // get a slice of a string delimited by two indices
-  string getStringSlice(const string& s, size_t idxStart, size_t idxEnd);
-
-  // an 'arg'-functions a little bit like in QString
-  int strArg(string& s, const string& arg);
-  int strArg(string& s, int arg, int minLen = 0, char fillChar = '0');
-  int strArg(string& s, double arg, int numDigits = 6);
-  template<typename T>
-  int strArg(string& s, T arg, const string& fmt)
-  {
-    char buf[100];
-    snprintf(buf, 100, fmt.c_str(), arg);
-
-    return strArg(s, string{buf});
-  }
-
-  // simple and very strict checks for
-  // pure ints or doubles in strings
-  bool isInt(const string& s);
-  bool isDouble(const string& s);
 
   // find all files in a directors including sub-folders
   StringList getAllFilesInDirTree(const string& baseDir, bool includeDirNameInList=false);

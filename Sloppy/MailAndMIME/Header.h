@@ -24,6 +24,7 @@
 
 #include "../libSloppy.h"
 #include "MailAndMIME.h"
+#include "../String.h"
 
 using namespace std;
 
@@ -45,23 +46,23 @@ namespace Sloppy
 
       bool operator !=(const string& fName) const;
 
-      inline string getRawBody() const
+      inline estring getRawBody() const
       {
         return fieldBody_raw;
       }
 
-      inline string getBody() const
+      inline estring getBody() const
       {
         return fieldBody;
       }
 
     protected:
-      string fieldName;
-      string fieldBody_raw;
-      string fieldBody;
+      estring fieldName;
+      estring fieldBody_raw;
+      estring fieldBody;
 
     private:
-      string removeCommentsFromBody(const string& rawBody);
+      estring removeCommentsFromBody(const string& rawBody);
     };
 
     //----------------------------------------------------------------------------
@@ -70,9 +71,9 @@ namespace Sloppy
     {
     public:
       explicit Header() {}
-      explicit Header(const string& rawHeaderData);
+      explicit Header(const estring& rawHeaderData);
 
-      StringList getRawFieldBody(const string& fieldName) const;
+      vector<estring> getRawFieldBody(const string& fieldName) const;
       bool hasField(const string& fieldName) const;
       inline int getFieldCount() const
       {

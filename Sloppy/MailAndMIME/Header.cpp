@@ -21,6 +21,7 @@
 #include <boost/algorithm/string.hpp>
 
 #include "../libSloppy.h"
+
 #include "Header.h"
 
 namespace Sloppy
@@ -28,7 +29,7 @@ namespace Sloppy
   namespace RFC822
   {
 
-    Header::Header(const string& rawHeaderData)
+    Header::Header(const estring& rawHeaderData)
     {
       if (rawHeaderData.empty())
       {
@@ -46,8 +47,7 @@ namespace Sloppy
       // note: boost::split and <regex> don't work well here.
       // regex are complicated because we can't rely on the last
       // line ending with the delimiter token CRLF
-      StringList hdrLines;
-      stringSplitter(hdrLines, rawHeaderData, sCRLF);
+      vector<estring> hdrLines = rawHeaderData.split(sCRLF, true, false);
 
       // unfold header lines
       auto it = hdrLines.begin();
@@ -70,7 +70,7 @@ namespace Sloppy
       }
 
       // split header lines in field-name and field-body
-      for (const string& f : hdrLines)
+      for (const estring& f : hdrLines)
       {
         size_t colonPos = f.find(':');
         if (colonPos == string::npos)
@@ -78,8 +78,8 @@ namespace Sloppy
           throw MalformedHeader();   // every field needs a colon as delimiter
         }
 
-        string fieldName = f.substr(0, colonPos);
-        string fieldBody = f.substr(colonPos + 1, f.length() - colonPos);
+        estring fieldName = f.slice(0, colonPos - 1);
+        estring fieldBody = f.slice(colonPos + 1);
 
         fields.push_back(HeaderField{fieldName, fieldBody});
       }
@@ -87,7 +87,7 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    StringList Header::getRawFieldBody(const string& fieldName) const
+    vector<estring> Header::getRawFieldBody(const string& fieldName) const
     {
       StringList result;
       for_each(fields.begin(), fields.end(), [&](const HeaderField& f) {
@@ -174,7 +174,7 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    string HeaderField::removeCommentsFromBody(const string& rawBody)
+    estring HeaderField::removeCommentsFromBody(const string& rawBody)
     {
       // a little helper function that determines whether a character
       // in rawBody is escaped (preceded by '\') or not

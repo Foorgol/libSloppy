@@ -478,6 +478,9 @@ namespace Sloppy
      */
     string_view toStringView() const { return string_view{c_str(), size()}; }
   };
+
+  using StringList = vector<estring>;
+
 }
 
 #endif

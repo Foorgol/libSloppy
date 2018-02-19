@@ -18,26 +18,26 @@ add_definitions(-DBOOST_LOG_DYN_LINK=1)  # linking fails if this is not set
 set(LIBS ${LIBS} dl)
 
 set(LIB_SOURCES
-    Sloppy/libSloppy.cpp
+    #Sloppy/libSloppy.cpp
     Sloppy/DateTime/DateAndTime.cpp
     Sloppy/Logger/Logger.cpp
-    Sloppy/MailAndMIME/MailAndMIME.cpp
-    Sloppy/MailAndMIME/Message.cpp
-    Sloppy/MailAndMIME/Header.cpp
-    Sloppy/MailAndMIME/MIME_Message.cpp
-    Sloppy/ConfigFileParser/ConfigFileParser.cpp
-    Sloppy/TemplateProcessor/Template.cpp
-    Sloppy/TemplateProcessor/TemplateCollection.cpp
-    Sloppy/Crypto/Crypto.cpp
-    Sloppy/Crypto/Sodium.cpp
-    Sloppy/HTML/StyledElement.cpp
-    Sloppy/HTML/BasicElements.cpp
-    Sloppy/HTML/Table.cpp
-    Sloppy/HTML/Bootstrap.cpp
-    Sloppy/TemplateProcessor/TemplateSys.cpp
-    Sloppy/jsoncpp.cpp
-    Sloppy/Net/Net.cpp
-    Sloppy/Timer.cpp
+    #Sloppy/MailAndMIME/MailAndMIME.cpp
+    #Sloppy/MailAndMIME/Message.cpp
+    #Sloppy/MailAndMIME/Header.cpp
+    #Sloppy/MailAndMIME/MIME_Message.cpp
+    #Sloppy/ConfigFileParser/ConfigFileParser.cpp
+    #Sloppy/TemplateProcessor/Template.cpp
+    #Sloppy/TemplateProcessor/TemplateCollection.cpp
+    #Sloppy/Crypto/Crypto.cpp
+    #Sloppy/Crypto/Sodium.cpp
+    #Sloppy/HTML/StyledElement.cpp
+    #Sloppy/HTML/BasicElements.cpp
+    #Sloppy/HTML/Table.cpp
+    #Sloppy/HTML/Bootstrap.cpp
+    #Sloppy/TemplateProcessor/TemplateSys.cpp
+    #Sloppy/jsoncpp.cpp
+    #Sloppy/Net/Net.cpp
+    #Sloppy/Timer.cpp
     Sloppy/String.cpp
 )
 
@@ -47,10 +47,10 @@ set(LIB_SOURCES
 #
 IF (NOT WIN32)
   set(LIB_SOURCES ${LIB_SOURCES}
-      Sloppy/Net/TcpClientServer.cpp
-      Sloppy/Net/CryptoClientServer.cpp
-      Sloppy/ManagedFileDescriptor.cpp
-      Sloppy/Net/ManagedSocket.cpp
+      #Sloppy/Net/TcpClientServer.cpp
+      #Sloppy/Net/CryptoClientServer.cpp
+      #Sloppy/ManagedFileDescriptor.cpp
+      #Sloppy/Net/ManagedSocket.cpp
       )
 ENDIF()
 
@@ -107,27 +107,27 @@ set(LIB_SOURCES_TST
     tests/unitTestMain.cpp
     tests/BasicTestClass.cpp
     tests/tstDateTime.cpp
-    tests/tstTimestamps.cpp
-    tests/tstTimePeriods.cpp
-    tests/tstDatePeriods.cpp
-    tests/tstRFC822.cpp
-    tests/tstRFC2045.cpp
-    tests/tstConfigParser.cpp
-    tests/tstTemplateProcessor.cpp
-    tests/tstEmailPattern.cpp
-    tests/tstHTML.cpp
-    tests/tstCrypto.cpp
-    tests/tstStringFunc.cpp
-    tests/tstBetterTemplateSys.cpp
-    tests/tstSodium.cpp
-    tests/tstManagedMemory.cpp
-    tests/tstManagedFileDescriptor.cpp
-    tests/tstTcpClientServer.cpp
-    tests/tstNetFunc.cpp
-    tests/tstCryptoClientServer.cpp
-    tests/tstPasswordProtectedSecret.cpp
-    tests/tstPosixFileFunc.cpp
-    tests/tstTimer.cpp
+    #tests/tstTimestamps.cpp
+    #tests/tstTimePeriods.cpp
+    #tests/tstDatePeriods.cpp
+    #tests/tstRFC822.cpp
+    #tests/tstRFC2045.cpp
+    #tests/tstConfigParser.cpp
+    #tests/tstTemplateProcessor.cpp
+    #tests/tstEmailPattern.cpp
+    #tests/tstHTML.cpp
+    #tests/tstCrypto.cpp
+    #tests/tstStringFunc.cpp
+    #tests/tstBetterTemplateSys.cpp
+    #tests/tstSodium.cpp
+    #tests/tstManagedMemory.cpp
+    #tests/tstManagedFileDescriptor.cpp
+    #tests/tstTcpClientServer.cpp
+    #tests/tstNetFunc.cpp
+    #tests/tstCryptoClientServer.cpp
+    #tests/tstPasswordProtectedSecret.cpp
+    #tests/tstPosixFileFunc.cpp
+    #tests/tstTimer.cpp
     tests/tstStrings.cpp
 )
 

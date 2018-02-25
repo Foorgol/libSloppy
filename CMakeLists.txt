@@ -107,8 +107,9 @@ set(LIB_SOURCES_TST
     tests/unitTestMain.cpp
     tests/BasicTestClass.cpp
     tests/tstDateTime.cpp
-    #tests/tstTimestamps.cpp
-    #tests/tstTimePeriods.cpp
+    tests/tstTimestamps.cpp
+    tests/tstGenericPeriod.cpp
+    tests/tstTimePeriods.cpp
     #tests/tstDatePeriods.cpp
     #tests/tstRFC822.cpp
     #tests/tstRFC2045.cpp

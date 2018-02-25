@@ -127,6 +127,7 @@ TEST(Timestamps, testGetters)
   ASSERT_EQ("2000-01-01", lt.getISODate());
   ASSERT_EQ("08:03:02", lt.getTime());
   ASSERT_EQ("2000-01-01 08:03:02", lt.getTimestamp());
+  ASSERT_EQ(20000101, lt.getYMD());
 }
 
 //----------------------------------------------------------------------------
@@ -151,4 +152,29 @@ TEST(Timestamps, testLocalTimestampFromISODate)
   t = LocalTimestamp::fromISODate("2000-5-3", testZone);
   ASSERT_TRUE(t != nullptr);
   ASSERT_EQ("2000-05-03", t->getISODate());
+}
+
+//----------------------------------------------------------------------------
+
+TEST(Timestamps, CommonTimestampSetTime)
+{
+  CommonTimestamp cs{2018,2,24,12,0,0};
+
+  ASSERT_TRUE(cs.setTime(13,14,15));
+  ASSERT_EQ("13:14:15", cs.getTime());
+
+  ASSERT_FALSE(cs.setTime(13,14,62));
+  ASSERT_EQ("13:14:15", cs.getTime());
+
+  ASSERT_FALSE(cs.setTime(25,14,59));
+  ASSERT_EQ("13:14:15", cs.getTime());
+
+  ASSERT_FALSE(cs.setTime(-3,14,59));
+  ASSERT_EQ("13:14:15", cs.getTime());
+
+  ASSERT_TRUE(cs.setTime(0,0,0));
+  ASSERT_EQ("00:00:00", cs.getTime());
+
+  ASSERT_TRUE(cs.setTime(23,59,59));
+  ASSERT_EQ("23:59:59", cs.getTime());
 }

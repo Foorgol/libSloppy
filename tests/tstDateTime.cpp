@@ -127,23 +127,27 @@ TEST(CommonTimestamp, DateFromString)
 {
   using namespace boost::gregorian;
 
-  date d;
-  ASSERT_TRUE(parseDateString("01.02.2012", d, "%d.%m.%Y"));
+  date d = parseDateString("01.02.2012", "%d.%m.%Y");
+  ASSERT_FALSE(d.is_special());
   ASSERT_EQ(1, d.day());
   ASSERT_EQ(2, d.month());
   ASSERT_EQ(2012, d.year());
 
-  ASSERT_TRUE(parseDateString("2016-04-23", d));
+  d = parseDateString("2016-04-23");
+  ASSERT_FALSE(d.is_special());
   ASSERT_EQ(23, d.day());
   ASSERT_EQ(4, d.month());
   ASSERT_EQ(2016, d.year());
 
-  ASSERT_FALSE(parseDateString("01x02.2012", d, "%d.%m.%Y"));
+  d = parseDateString("01x02.2012", "%d.%m.%Y");
   ASSERT_TRUE(d.is_not_a_date());
 
-  ASSERT_FALSE(parseDateString("kjsfdgjkdfhg", d, "%d.%m.%Y"));
+  d = parseDateString("kjsfdgjkdfhg", "%d.%m.%Y");
   ASSERT_TRUE(d.is_not_a_date());
 
-  ASSERT_FALSE(parseDateString("2016.02.17", d, "%d.%m.%Y"));
+  d = parseDateString("2016.02.17", "%d.%m.%Y");
   ASSERT_TRUE(d.is_not_a_date());
 }
+
+//----------------------------------------------------------------------------
+

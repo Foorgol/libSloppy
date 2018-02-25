@@ -39,7 +39,7 @@ TEST(TimePeriods, TestConstruction)
   tp = TimePeriod{now};
   ASSERT_TRUE(tp.hasOpenEnd());
   ASSERT_EQ(now, tp.getStart());
-  ASSERT_EQ(nullptr, tp.getEnd());
+  ASSERT_FALSE(tp.getEnd().has_value());
 
   // create invalid period
   ASSERT_ANY_THROW(TimePeriod(now, beforeNow));
@@ -68,7 +68,7 @@ TEST(TimePeriods, TestRelations)
   TimePeriod op{s};
   ASSERT_TRUE(op.hasOpenEnd());
   ASSERT_EQ(s, op.getStart());
-  ASSERT_EQ(nullptr, op.getEnd());
+  ASSERT_FALSE(op.getEnd().has_value());
 
   // test relations for closed periods
   ASSERT_FALSE(cp.isInPeriod(before));

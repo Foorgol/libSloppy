@@ -21,11 +21,14 @@
 #include <cstring>
 #include <memory>
 
+#include <gsl/gsl>
+
 #include <boost/date_time/gregorian/gregorian.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/date_time/local_time/local_time.hpp>
 
 #include "DateAndTime.h"
+#include "../String.h"
 
 using namespace std;
 
@@ -35,16 +38,76 @@ using namespace std;
 #define timegm _mkgmtime
 #endif
 
+namespace boost
+{
+  namespace gregorian
+  {
+    date from_int(int ymd)
+    {
+      if ((ymd < 14000101) || (ymd > 99991231))
+      {
+        throw std::out_of_range("Invalid integer for initializing a boost::gregorian::date!");
+      }
+
+      unsigned short y = gsl::narrow_cast<unsigned short>(ymd / 10000);
+      unsigned short m = gsl::narrow_cast<unsigned short>((ymd % 10000) / 100);
+      unsigned short d = gsl::narrow_cast<unsigned short>(ymd % 100);
+
+      return date{y, m, d};
+    }
+
+  }
+}
+
 namespace Sloppy
 {
   namespace DateTime
   {
+    tuple<unsigned short, unsigned short, unsigned short> YearMonthDayFromInt(int ymd)
+    {
+      if (ymd < 100000101)
+      {
+        throw std::out_of_range("Invalid integer for conversion into year, month, day");
+      }
+
+      unsigned short y = gsl::narrow_cast<unsigned short>(ymd / 10000);
+      unsigned short m = gsl::narrow_cast<unsigned short>((ymd % 10000) / 100);
+      unsigned short d = gsl::narrow_cast<unsigned short>(ymd % 100);
+
+      return make_tuple(y, m, d);
+    }
+
+    //----------------------------------------------------------------------------
+
     CommonTimestamp::CommonTimestamp(int year, int month, int day, int hour, int min, int sec)
       :raw{}
     {
       using namespace boost;
 
-      gregorian::date d{(short unsigned)year, (short unsigned)month, (short unsigned)day};
+      if ((year < 1400) || (year > 9999))
+      {
+        throw std::out_of_range("Invalid year for initializing a boost::gregorian::date!");
+      }
+
+      // try to construct a date object
+      boost::gregorian::date d;
+      try
+      {
+        d = boost::gregorian::date {
+          gsl::narrow_cast<unsigned short>(year),
+          gsl::narrow_cast<unsigned short>(month),
+          gsl::narrow_cast<unsigned short>(day)
+        };
+      }
+      catch (...)
+      {
+        throw std::invalid_argument("Invalid date values!");
+      }
+
+      if (!isValidTime(hour, min, sec))
+      {
+        throw std::invalid_argument("Invalid time values!");
+      }
       posix_time::time_duration td{hour, min, sec, 0};
 
       raw = posix_time::ptime{d, td};
@@ -98,13 +161,13 @@ namespace Sloppy
     {
       using namespace boost;
 
-      gregorian::date dat = raw.date();
+      const gregorian::date& dat = raw.date();
 
-      int y = dat.year();
-      int m = dat.month();
-      int d = dat.day();
+      int result = dat.year() * 10000;
+      result += dat.month() * 100;
+      result += dat.day();
 
-      return (y) * 10000 + (m) * 100 + d;
+      return result;
     }
 
     //----------------------------------------------------------------------------
@@ -112,6 +175,7 @@ namespace Sloppy
     bool CommonTimestamp::setTime(int hour, int min, int sec)
     {
       // check the time validity;
+      if (!isValidTime(hour, min, sec)) return false;
       boost::posix_time::time_duration td;
       try
       {
@@ -123,23 +187,22 @@ namespace Sloppy
       }
 
       // keep the date, assign a new time
-      boost::gregorian::date d = raw.date();
-      raw = boost::posix_time::ptime{d, td};
+      raw = boost::posix_time::ptime{raw.date(), td};
 
       return true;
     }
 
     //----------------------------------------------------------------------------
 
-    tuple<int, int, int> CommonTimestamp::getYearMonthDay() const
+    tuple<unsigned short, unsigned short, unsigned short> CommonTimestamp::getYearMonthDay() const
     {
       using namespace boost;
 
-      gregorian::date dat = raw.date();
+      const gregorian::date& dat = raw.date();
 
-      int y = dat.year();
-      int m = dat.month();
-      int d = dat.day();
+      unsigned short y = dat.year();
+      unsigned short m = dat.month();
+      unsigned short d = dat.day();
 
       return make_tuple(y, m, d);
     }
@@ -150,7 +213,11 @@ namespace Sloppy
     {
       try
       {
-        boost::gregorian::date d{(short unsigned)year, (short unsigned)month, (short unsigned)day};
+        boost::gregorian::date d{
+              gsl::narrow_cast<unsigned short>(year),
+              gsl::narrow_cast<unsigned short>(month),
+              gsl::narrow_cast<unsigned short>(day)
+        };
         return (!(d.is_special()));
       }
       catch (exception e)
@@ -180,8 +247,8 @@ namespace Sloppy
     {
       tm timestamp = boost::posix_time::to_tm(raw);
 
-      char buf[80];
-      strftime(buf, 80, fmt.c_str(), &timestamp);
+      char buf[100];
+      strftime(buf, 100, fmt.c_str(), &timestamp);
       string result = string(buf);
 
       return result;
@@ -228,6 +295,12 @@ namespace Sloppy
 
     LocalTimestamp UTCTimestamp::toLocalTime(boost::local_time::time_zone_ptr tzp) const
     {
+      // make sure the time zone pointer is valid
+      if (tzp == nullptr)
+      {
+        throw std::invalid_argument("Time zone pointer is empty");
+      }
+
       return LocalTimestamp(boost::posix_time::to_time_t(raw), tzp);
     }
 
@@ -240,11 +313,20 @@ namespace Sloppy
       using namespace boost::posix_time;
       using namespace boost::local_time;
 
+      if ((year < 1400) || (year > 9999))
+      {
+        throw std::out_of_range("Invalid year for initializing a boost::gregorian::date!");
+      }
+
       // try to construct a date object
       date d;
       try
       {
-        d = date{(short unsigned)year, (short unsigned)month, (short unsigned)day};
+        d = boost::gregorian::date {
+          gsl::narrow_cast<unsigned short>(year),
+          gsl::narrow_cast<unsigned short>(month),
+          gsl::narrow_cast<unsigned short>(day)
+        };
       }
       catch (exception e)
       {
@@ -252,6 +334,10 @@ namespace Sloppy
       }
 
       // try to construct a time duration
+      if (!isValidTime(hour, min, sec))
+      {
+        throw std::invalid_argument("Invalid time values!");
+      }
       time_duration td{0,0,0, 0};
       try
       {
@@ -288,6 +374,12 @@ namespace Sloppy
     {
       using namespace boost;
 
+      // make sure the time zone pointer is valid
+      if (tzp == nullptr)
+      {
+        throw std::invalid_argument("Time zone pointer is empty");
+      }
+
       // store the provided raw value
       utc = posix_time::from_time_t(rawTimeInUTC);
 
@@ -310,7 +402,7 @@ namespace Sloppy
 
     UTCTimestamp LocalTimestamp::toUTC() const
     {
-      return UTCTimestamp(raw);
+      return raw;
     }
 
     //----------------------------------------------------------------------------
@@ -320,29 +412,12 @@ namespace Sloppy
       //
       // split the string into its components
       //
+      estring d{isoDate};
+      auto parts = d.split("-", false, true);
+      if (parts.size() != 3) return nullptr;
 
-      // find the first "-"
-      size_t posFirstDash = isoDate.find('-');
-      if (posFirstDash != 4)    // the first dash must always be at position 4 (4-digit year!)
-      {
-        return nullptr;
-      }
-      string sYear = isoDate.substr(0, 4);
-
-      // find the second "-"
-      size_t posSecondDash = isoDate.find('-', 5);
-      if (posSecondDash == string::npos)
-      {
-        return nullptr;
-      }
-      string sMonth = isoDate.substr(5, posSecondDash - 5 + 1);
-
-      // get the day
-      if (posSecondDash >= (isoDate.length() - 1))    // the dash is the last character ==> no day string
-      {
-        return nullptr;
-      }
-      string sDay = isoDate.substr(posSecondDash+1, string::npos);
+      // we require a 4-digit date
+      if (parts[0].size() != 4) return nullptr;
 
       // try to convert the string into ints
       int year;
@@ -350,9 +425,9 @@ namespace Sloppy
       int day;
       try
       {
-        year = stoi(sYear);
-        month = stoi(sMonth);
-        day = stoi(sDay);
+        year = stoi(parts[0]);
+        month = stoi(parts[1]);
+        day = stoi(parts[2]);
       } catch (exception e) {
         return nullptr;
       }
@@ -445,7 +520,7 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    bool parseDateString(const string& in, boost::gregorian::date& out, const string& fmtString, bool strictChecking)
+    boost::gregorian::date parseDateString(const string& in, const string& fmtString, bool strictChecking)
     {
       // create a date input facet that represents the
       // requested format or use extended ISO (yyyy-mm-dd) instead
@@ -497,8 +572,7 @@ namespace Sloppy
 
           if (check == in)
           {
-            out = tmp;
-            return true;
+            return tmp;
           }
         }
       }
@@ -506,8 +580,7 @@ namespace Sloppy
       {
       }
 
-      out = boost::gregorian::date{};   // set output to "not_a_date_time"
-      return false;
+      return boost::gregorian::date{};   // set output to "not_a_date_time"
     }
 
     //----------------------------------------------------------------------------
@@ -549,3 +622,4 @@ namespace Sloppy
 
   }
 }
+

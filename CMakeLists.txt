@@ -39,6 +39,7 @@ set(LIB_SOURCES
     #Sloppy/Net/Net.cpp
     #Sloppy/Timer.cpp
     Sloppy/String.cpp
+    Sloppy/Memory.cpp
 )
 
 #
@@ -110,6 +111,8 @@ set(LIB_SOURCES_TST
     tests/tstTimestamps.cpp
     tests/tstGenericPeriod.cpp
     tests/tstTimePeriods.cpp
+    tests/tstArrayView.cpp
+    tests/tstManagedArray.cpp
     #tests/tstDatePeriods.cpp
     #tests/tstRFC822.cpp
     #tests/tstRFC2045.cpp

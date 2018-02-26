@@ -64,8 +64,11 @@ namespace Sloppy
     /// default ctor, creates an empty estring
     estring() : string() {}
 
-    /// ctor from an C-style string
+    /// ctor from an C-style string (zero-terminated)
     estring(const char* s) : string(s) {}
+
+    /// ctor from an C-style string with given length
+    estring(const char* s, size_type n) : string(s, n) {}
 
     /// copy constructor from an std::string
     estring(const string& other) : string(other) {}

@@ -36,7 +36,7 @@ set(LIB_SOURCES
     #Sloppy/HTML/Bootstrap.cpp
     #Sloppy/TemplateProcessor/TemplateSys.cpp
     #Sloppy/jsoncpp.cpp
-    #Sloppy/Net/Net.cpp
+    Sloppy/Net/Net.cpp
     #Sloppy/Timer.cpp
     Sloppy/String.cpp
     Sloppy/Memory.cpp
@@ -127,7 +127,7 @@ set(LIB_SOURCES_TST
     #tests/tstManagedMemory.cpp
     #tests/tstManagedFileDescriptor.cpp
     #tests/tstTcpClientServer.cpp
-    #tests/tstNetFunc.cpp
+    tests/tstNetFunc.cpp
     #tests/tstCryptoClientServer.cpp
     #tests/tstPasswordProtectedSecret.cpp
     #tests/tstPosixFileFunc.cpp

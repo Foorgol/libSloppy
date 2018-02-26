@@ -142,6 +142,14 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
+    ArrayView<uint8_t> MessageBuilder::view()
+    {
+      return ArrayView<uint8_t>(data.c_str(), data.size());
+    }
+
+/*
+    //----------------------------------------------------------------------------
+
     void MessageBuilder::addManagedMemory(const ManagedMemory& mem)
     {
       addUI64(mem.getSize());
@@ -186,10 +194,20 @@ namespace Sloppy
 
       return result;
     }
+*/
+
+    //----------------------------------------------------------------------------
+    //----------------------------------------------------------------------------
+    //----------------------------------------------------------------------------
+
+    Message::Message(const ArrayView<uint8_t>& v)
+      :fullView{v}, curView{v}, data{}
+    {
+    }
 
     //----------------------------------------------------------------------------
 
-    string MessageDissector::getString()
+    estring Message::getString()
     {
       // get the string length
       assertSufficientData(8);
@@ -197,56 +215,61 @@ namespace Sloppy
 
       // get the string itself
       assertSufficientData(len);
-      string result{((char *)data.c_str() + offset), len};
-      offset += len;
+      estring result{curView.to_charPtr(), len};
+      curView.chopLeft(len);
 
       return result;
     }
 
     //----------------------------------------------------------------------------
 
-    uint8_t MessageDissector::getByte()
+    uint8_t Message::getByte()
     {
       assertSufficientData(1);
-      return data[offset++];
+      uint8_t b = curView[0];
+      curView.chopLeft(1);
+      return b;
     }
 
     //----------------------------------------------------------------------------
 
-    int MessageDissector::getInt()
+    int Message::getInt()
     {
       uint32_t u = getUI32();
 
-      return (int)u;
+      return static_cast<int>(u);
     }
 
     //----------------------------------------------------------------------------
 
-    uint16_t MessageDissector::getUI16()
+    uint16_t Message::getUI16()
     {
       assertSufficientData(2);
+      const uint16_t* uPtr = reinterpret_cast<const uint16_t*>(curView.to_voidPtr());
 
-      uint16_t networkOrder = *((uint16_t *)(data.c_str() + offset));
-      offset += 2;
+      uint16_t networkOrder = *uPtr;
+      curView.chopLeft(2);
 
       return ntohs(networkOrder);
     }
 
     //----------------------------------------------------------------------------
 
-    uint32_t MessageDissector::getUI32()
+    uint32_t Message::getUI32()
     {
       assertSufficientData(4);
 
-      uint32_t networkOrder = *((uint32_t *)(data.c_str() + offset));
-      offset += 4;
+      const uint32_t* uPtr = reinterpret_cast<const uint32_t*>(curView.to_voidPtr());
+
+      uint32_t networkOrder = *uPtr;
+      curView.chopLeft(4);
 
       return ntohl(networkOrder);
     }
 
     //----------------------------------------------------------------------------
 
-    uint64_t MessageDissector::getUI64()
+    uint64_t Message::getUI64()
     {
       assertSufficientData(8);
 
@@ -262,12 +285,14 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    bool MessageDissector::getBool()
+    bool Message::getBool()
     {
       return (getByte() != 0);
     }
 
     //----------------------------------------------------------------------------
+
+    /*
 
     ManagedBuffer MessageDissector::getManagedBuffer()
     {
@@ -329,14 +354,14 @@ namespace Sloppy
     }
 
     //----------------------------------------------------------------------------
-
-    void MessageDissector::assertSufficientData(size_t n) const
+*/
+    void Message::assertSufficientData(size_t n) const
     {
-      if (offset >= data.size()) throw InvalidMessageAccess{};
-      size_t remaining = data.size() - offset;
-      if (remaining < n) throw InvalidMessageAccess{};
+      if (curView.size() < n)
+      {
+        throw std::out_of_range("Sloppy::Message: insufficient remaining data for read operation");
+      }
     }
-
 
   }
 }

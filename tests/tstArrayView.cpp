@@ -249,3 +249,26 @@ TEST(ArrayView, OtherOperators)
   ASSERT_FALSE(ia < empty);
   ASSERT_FALSE(ia < ia2);
 }
+
+//----------------------------------------------------------------------------
+
+TEST(ArrayView, ByteArrayView)
+{
+  int a1[] = {42,23,666,200,99};
+  IntArray ia{&a1[0], 5};
+
+  uint8_t refVal[] = {
+    42, 0, 0, 0,
+    23, 0, 0, 0,
+    154, 2, 0, 0,
+    200, 0, 0, 0,
+    99, 0, 0, 0};
+
+  auto bav = ia.toByteArrayView();
+  ASSERT_EQ(20, bav.size());
+
+  for (int i = 0; i < bav.size(); ++i)
+  {
+    ASSERT_EQ(refVal[i], bav[i]);
+  }
+}

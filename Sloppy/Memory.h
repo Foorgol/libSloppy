@@ -343,9 +343,37 @@ namespace Sloppy
       return cnt < other.cnt;
     }
 
+    /** \brief Converts the view into a "standardized" `uint8`-view ("ByteView")
+     *
+     * \returns an `ArrayView<uint8>` that covers the full array
+     */
+    ArrayView<uint8_t> toByteArrayView() const
+    {
+      return ArrayView<uint8_t>(reinterpret_cast<const uint8_t*>(ptr), cnt * sizeof(T));
+    }
+
   private:
     const T* ptr;
     size_t cnt;
+  };
+
+  //----------------------------------------------------------------------------
+
+  /** \brief A specialized ArrayView for memory segments; uses UI8 (==> bytes) as internal format
+   *
+   * Offers the additional benefit of being constructable from char-pointers
+   * which is a common type when dealing with legacy C-functions.
+   */
+  class MemView : public ArrayView<uint8_t>
+  {
+  public:
+    // inherit ArrayView's constructors
+    using ArrayView<uint8_t>::ArrayView;
+
+    /** \brief Ctor from a char-pointer that is being reinterpreted as a byte-pointer
+     */
+    MemView(const char* ptr, size_t len)
+      :ArrayView(reinterpret_cast<const uint8_t*>(ptr), len) {}
   };
 
   //----------------------------------------------------------------------------
@@ -508,6 +536,8 @@ namespace Sloppy
       other.ptr = nullptr;
       cnt = other.cnt;
       other.cnt = 0;
+
+      return *this;
     }
 
     /** \returns `true` if the array contains elements, `false` otherwise
@@ -608,6 +638,29 @@ namespace Sloppy
   private:
     T* ptr;
     size_t cnt;
+  };
+
+  //----------------------------------------------------------------------------
+
+  /** \brief A specialized ManagedArray for memory segments; uses UI8 (==> bytes) as internal format
+   *
+   * Offers the additional benefit of being constructable by copying data from a MemView
+   */
+  class MemArray : public ManagedArray<uint8_t>
+  {
+    // Inherit base constructors
+    using ManagedArray<uint8_t>::ManagedArray;
+
+  public:
+    /** \brief Ctor that creates a DEEP COPY of a MemView.
+     *
+     * \throws std::runtime_error if the memory allocation failed
+     */
+    MemArray(const MemView& v)
+      :ManagedArray<uint8_t>{v.byteSize()}
+    {
+      memcpy(to_voidPtr(), v.to_voidPtr(), byteSize());
+    }
   };
 }
 

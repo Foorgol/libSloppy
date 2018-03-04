@@ -22,12 +22,13 @@
 #include <gtest/gtest.h>
 
 #include "../Sloppy/Net/Net.h"
+#include "../Sloppy/Memory.h"
 
 using namespace Sloppy::Net;
 
 TEST(NetFuncs, MsgBuilder)
 {
-  MessageBuilder b;
+  OutMessage b;
 
   // ugly strings
   b.addString("");
@@ -66,7 +67,7 @@ TEST(NetFuncs, MsgBuilder)
 
   auto result = b.view();
 
-  Message d{result};
+  InMessage d{result};
 
   // ugly string
   ASSERT_EQ("", d.getString());
@@ -106,6 +107,93 @@ TEST(NetFuncs, MsgBuilder)
 
 //----------------------------------------------------------------------------
 
+TEST(NetFuncs, ByteArrayMessage_ByteString)
+{
+  static constexpr int nBytes = 1000;
+  Sloppy::MemArray ba(nBytes);
+  for (int i = 0; i < nBytes; ++i)
+  {
+    ba[i] = rand() % 256;
+  }
+
+  OutMessage b;
+  b.addMemView(ba.view());
+  ASSERT_EQ(nBytes + sizeof(size_t), b.getSize());
+
+  InMessage m{b.view()};
+  ByteString bs = m.getByteString();
+  for (int i = 0; i < nBytes; ++i) ASSERT_EQ(bs[i], ba[i]);
+
+  b.addByteString(bs);
+  size_t expectedSize = 2 * (sizeof(size_t) + nBytes);
+  ASSERT_EQ(expectedSize, b.getSize());
+  auto bv = b.view();
+  ASSERT_EQ(expectedSize, bv.byteSize());
+  InMessage m2{bv};
+  bs = m2.getByteString();   // get the first string, created via addArrayView
+  bs = m2.getByteString();   // get the second string, created via addByteString
+  ASSERT_EQ(nBytes, bs.size());
+  for (int i = 0; i < nBytes; ++i) ASSERT_EQ(bs[i], ba[i]);
+}
+
+//----------------------------------------------------------------------------
+
+TEST(NetFuncs, RawMessagePoke)
+{
+  OutMessage om;
+  for (int i = 0; i < 100; ++i) om.addByte(120 + i);
+
+  int i = 0x04030201;
+  Sloppy::MemView v{(uint8_t*)&i, sizeof(int)};
+  om.rawPoke(v, 42);
+  auto mv = om.view();
+  for (int i = 0; i < 42; ++i) ASSERT_EQ(120 + i, mv[i]);
+  for (int i = 42; i < 46; ++i) ASSERT_EQ(i - 41, mv[i]);
+  for (int i = 46; i < 100; ++i) ASSERT_EQ(120 + i, mv[i]);
+}
+
+//----------------------------------------------------------------------------
+
+TEST(NetFuncs, OwningInMessage)
+{
+  OutMessage om;
+  om.addByte(42);
+  om.addString("SomeString");
+
+  // create an InMessage with a local data copy
+  InMessage im = InMessage::fromDataCopy(om.getDataAsRef());
+
+  // double-clear the source data location
+  char c{'x'};
+  Sloppy::MemView mv{&c, 1};
+  for (int i=0; i < om.getSize(); ++i) om.rawPoke(mv, i);  // overwrite existing memory
+  om.clear();  // release memory
+
+  // despite overwriting / clearing, we should see the original content
+  ASSERT_EQ(42, im.getByte());
+  ASSERT_EQ("SomeString", im.getString());
+}
+
+//----------------------------------------------------------------------------
+
+TEST(NetFuncs, PeekDataWithoutForwarding)
+{
+  OutMessage om;
+  om.addUI32(424242);
+  om.addUI64(2323232323);
+
+  InMessage im{om.getDataAsRef()};
+  ASSERT_EQ(424242, im.peekUI32());
+  ASSERT_EQ(424242, im.peekUI32());
+  ASSERT_EQ(424242, im.getUI32());
+
+  ASSERT_EQ(2323232323, im.peekUI64());
+  ASSERT_EQ(2323232323, im.peekUI64());
+  ASSERT_EQ(2323232323, im.getUI64());
+}
+
+//----------------------------------------------------------------------------
+
 TEST(NetFuncs, Uint64Conversion)
 {
   for (uint64_t u : vector<uint64_t>{0, 666, 0xffffffffffffffff, 0x0123456789abcdef})
@@ -118,34 +206,34 @@ TEST(NetFuncs, Uint64Conversion)
 }
 
 //----------------------------------------------------------------------------
-/*
+
 TEST(NetFuncs, MessageLists)
 {
-  vector<MessageBuilder> v;
+  vector<OutMessage> v;
   for (int i=0; i <10 ; ++i)
   {
-    MessageBuilder msg;
+    OutMessage msg;
     msg.addString(to_string(i));
     msg.addInt(i);
 
     v.push_back(msg);
   }
 
-  MessageBuilder frame;
+  OutMessage frame;
   frame.addString("SomeData");
   frame.addMessageList(v);
   frame.addString("SomeOtherData");
 
 
-  MessageDissector d{frame.getDataAsRef()};
+  InMessage d{frame.view()};
   ASSERT_EQ("SomeData", d.getString());
-  vector<MessageDissector> vDis = d.getMessageList();
-  ASSERT_EQ(10, vDis.size());
+  vector<InMessage> vInMsg = d.getMessageList();
+  ASSERT_EQ(10, vInMsg.size());
   int i = 0;
-  for (MessageDissector& innerDis : vDis)
+  for (InMessage& innerMsg : vInMsg)
   {
-    ASSERT_EQ(to_string(i), innerDis.getString());
-    ASSERT_EQ(i, innerDis.getInt());
+    ASSERT_EQ(to_string(i), innerMsg.getString());
+    ASSERT_EQ(i, innerMsg.getInt());
     ++i;
   }
   ASSERT_EQ("SomeOtherData", d.getString());
@@ -162,8 +250,8 @@ TEST(NetFuncs, TypedMessages)
     T3
   };
 
-  using MyMsg = TypedMessageBuilder<MsgTypes>;
-  using MyDis = TypedMessageDissector<MsgTypes>;
+  using MyMsg = TypedOutMessage<MsgTypes>;
+  using MyDis = TypedInMessage<MsgTypes>;
 
   MyMsg msg(MsgTypes::T2);
   msg.addString("SomeData");
@@ -177,5 +265,9 @@ TEST(NetFuncs, TypedMessages)
   ASSERT_EQ(MsgTypes::T3, d.getType());
   ASSERT_EQ("SomeData", d.getString());
 
+  // construct invalid messages
+  OutMessage om;
+  om.addByte(42);
+  ASSERT_THROW(MyDis{om.getDataAsRef()}, std::out_of_range);   // input too short
 }
-*/
+

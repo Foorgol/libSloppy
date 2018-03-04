@@ -92,7 +92,7 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    void MessageBuilder::addString(const string& s)
+    void OutMessage::addString(const string& s)
     {
       addUI64(s.size());
       data += ByteString{(uint8_t*)s.c_str(), s.size()};
@@ -100,14 +100,14 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    void MessageBuilder::addByte(uint8_t b)
+    void OutMessage::addByte(uint8_t b)
     {
       data += b;
     }
 
     //----------------------------------------------------------------------------
 
-    void MessageBuilder::addInt(int i)
+    void OutMessage::addInt(int i)
     {
       static_assert(sizeof(int) == 4, "Need 32-bit int!!");
 
@@ -116,7 +116,7 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    void MessageBuilder::addUI16(uint16_t u)
+    void OutMessage::addUI16(uint16_t u)
     {
       uint16_t networkOrder = htons(u);
       data += ByteString{(uint8_t*)&networkOrder, 2};
@@ -124,7 +124,7 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    void MessageBuilder::addUI32(uint32_t u)
+    void OutMessage::addUI32(uint32_t u)
     {
       uint32_t networkOrder = htonl(u);
       data += ByteString{(uint8_t*)&networkOrder, 4};
@@ -132,7 +132,7 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    void MessageBuilder::addUI64(uint64_t u)
+    void OutMessage::addUI64(uint64_t u)
     {
       uint32_t high = (u >> 32);
       addUI32(high);
@@ -142,25 +142,30 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    ArrayView<uint8_t> MessageBuilder::view()
+    void OutMessage::addMemView(const ArrayView<uint8_t>& mv)
     {
-      return ArrayView<uint8_t>(data.c_str(), data.size());
+      // is sufficient space left in the data area?
+      size_t bytesRemaining = data.capacity() - data.size();
+      if (bytesRemaining < mv.size())
+      {
+        data.reserve(data.size() + mv.size() + sizeof(size_t));
+      }
+
+      // append a length tag and the data itself
+      addUI64(mv.size());
+      data.append(mv.to_uint8Ptr(), mv.byteSize());
     }
 
-/*
     //----------------------------------------------------------------------------
 
-    void MessageBuilder::addManagedMemory(const ManagedMemory& mem)
+    MemView OutMessage::view()
     {
-      addUI64(mem.getSize());
-      if (mem.getSize() == 0) return;
-
-      data += ByteString{mem.get_uc(), mem.getSize()};
+      return MemView(data.c_str(), data.size());
     }
 
     //----------------------------------------------------------------------------
 
-    void MessageBuilder::addByteString(const ByteString& bs)
+    void OutMessage::addByteString(const ByteString& bs)
     {
       addUI64(bs.size());
       data += bs;
@@ -168,10 +173,10 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    void MessageBuilder::addMessageList(const vector<MessageBuilder>& msgList)
+    void OutMessage::addMessageList(const vector<OutMessage>& msgList)
     {
       addUI64(msgList.size());
-      for (const MessageBuilder& msg : msgList)
+      for (const OutMessage& msg : msgList)
       {
         addByteString(msg.getDataAsRef());
       }
@@ -179,35 +184,45 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    void MessageBuilder::rawPoke(const char* src, size_t srcLen, size_t dstOffset)
+    void OutMessage::rawPoke(const MemView& mv, size_t dstOffset)
     {
-      if ((dstOffset + srcLen) > data.size()) throw InvalidMessageAccess{};
-      memcpy((char *)data.c_str() + dstOffset, src, srcLen);
+      if ((dstOffset + mv.byteSize()) > data.size())
+      {
+        throw std::out_of_range{"OutMessage: rawPoke would exceed message limits"};
+      }
+      memcpy( ((char *)(data.c_str())) + dstOffset, mv.to_charPtr(), mv.byteSize());
     }
 
     //----------------------------------------------------------------------------
-
-    ManagedBuffer MessageBuilder::get() const
-    {
-      ManagedBuffer result{getSize()};
-      memcpy(result.get_c(), (char *)data.c_str(), getSize());
-
-      return result;
-    }
-*/
-
-    //----------------------------------------------------------------------------
     //----------------------------------------------------------------------------
     //----------------------------------------------------------------------------
 
-    Message::Message(const ArrayView<uint8_t>& v)
+    InMessage::InMessage(const MemView& v)
       :fullView{v}, curView{v}, data{}
     {
     }
 
     //----------------------------------------------------------------------------
 
-    estring Message::getString()
+    InMessage InMessage::fromDataCopy(const MemView& v)
+    {
+      // start with an empty message
+      InMessage result{MemView{}};
+
+      // copy the data to the new message
+      result.data = MemArray(v);  // creates a deep copy
+
+      // adjust the views
+      MemView owningData{result.data.to_uint8Ptr(), result.data.size()};
+      result.fullView = owningData;
+      result.curView = owningData;
+
+      return result;
+    }
+
+    //----------------------------------------------------------------------------
+
+    estring InMessage::getString()
     {
       // get the string length
       assertSufficientData(8);
@@ -223,7 +238,23 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    uint8_t Message::getByte()
+    ByteString InMessage::getByteString()
+    {
+      // get the string length
+      assertSufficientData(8);
+      size_t len = getUI64();
+
+      // get the string itself
+      assertSufficientData(len);
+      ByteString result{curView.to_uint8Ptr(), len};
+      curView.chopLeft(len);
+
+      return result;
+    }
+
+    //----------------------------------------------------------------------------
+
+    uint8_t InMessage::getByte()
     {
       assertSufficientData(1);
       uint8_t b = curView[0];
@@ -233,7 +264,7 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    int Message::getInt()
+    int InMessage::getInt()
     {
       uint32_t u = getUI32();
 
@@ -242,7 +273,7 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    uint16_t Message::getUI16()
+    uint16_t InMessage::getUI16()
     {
       assertSufficientData(2);
       const uint16_t* uPtr = reinterpret_cast<const uint16_t*>(curView.to_voidPtr());
@@ -255,21 +286,30 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    uint32_t Message::getUI32()
+    uint32_t InMessage::getUI32()
+    {
+      uint32_t result = peekUI32();
+      curView.chopLeft(4);
+
+      return result;
+    }
+
+    //----------------------------------------------------------------------------
+
+    uint32_t InMessage::peekUI32()
     {
       assertSufficientData(4);
 
       const uint32_t* uPtr = reinterpret_cast<const uint32_t*>(curView.to_voidPtr());
 
       uint32_t networkOrder = *uPtr;
-      curView.chopLeft(4);
 
       return ntohl(networkOrder);
     }
 
     //----------------------------------------------------------------------------
 
-    uint64_t Message::getUI64()
+    uint64_t InMessage::getUI64()
     {
       assertSufficientData(8);
 
@@ -285,56 +325,31 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    bool Message::getBool()
+    uint64_t InMessage::peekUI64()
+    {
+      InMessage sub{curView};
+
+      return sub.getUI64();
+    }
+
+    //----------------------------------------------------------------------------
+
+    bool InMessage::getBool()
     {
       return (getByte() != 0);
     }
 
     //----------------------------------------------------------------------------
 
-    /*
-
-    ManagedBuffer MessageDissector::getManagedBuffer()
-    {
-      assertSufficientData(8);
-      size_t len = getUI64();
-
-      if (len == 0) return ManagedBuffer{};
-
-      assertSufficientData(len);
-      ManagedBuffer result{len};
-      memcpy(result.get_c(), data.c_str() + offset, len);
-      offset += len;
-
-      return result;   // let's hope the compiler picks move()-semantics here
-    }
-
-    //----------------------------------------------------------------------------
-
-    ByteString MessageDissector::getByteString()
-    {
-      // get the string length
-      assertSufficientData(8);
-      size_t len = getUI64();
-
-      // get the string itself
-      assertSufficientData(len);
-      ByteString result{data.c_str() + offset, len};
-      offset += len;
-
-      return result;
-    }
-
-    //----------------------------------------------------------------------------
-
-    vector<MessageDissector> MessageDissector::getMessageList()
+    vector<InMessage> InMessage::getMessageList()
     {
       size_t cnt = getUI64();
 
-      vector<MessageDissector> result;
+      vector<InMessage> result;
       for (size_t i = 0; i < cnt; ++i)
       {
-        result.push_back(MessageDissector{getByteString()});
+        ByteString bs = getByteString();
+        result.push_back(InMessage::fromDataCopy(bs));
       }
 
       return result;
@@ -342,20 +357,7 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    size_t MessageDissector::peekNextBufferSize()
-    {
-      // the next 64-bit integer
-      size_t result = getUI64();
-
-      // "rewind" the data stream
-      offset -= 8;
-
-      return result;
-    }
-
-    //----------------------------------------------------------------------------
-*/
-    void Message::assertSufficientData(size_t n) const
+    void InMessage::assertSufficientData(size_t n) const
     {
       if (curView.size() < n)
       {

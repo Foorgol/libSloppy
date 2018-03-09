@@ -30,7 +30,7 @@ set(LIB_SOURCES
     #Sloppy/TemplateProcessor/TemplateCollection.cpp
     #Sloppy/Crypto/Crypto.cpp
     #Sloppy/Crypto/Sodium.cpp
-    #Sloppy/HTML/StyledElement.cpp
+    Sloppy/HTML/StyledElement.cpp
     #Sloppy/HTML/BasicElements.cpp
     #Sloppy/HTML/Table.cpp
     #Sloppy/HTML/Bootstrap.cpp
@@ -119,7 +119,7 @@ set(LIB_SOURCES_TST
     tests/tstConfigParser.cpp
     #tests/tstTemplateProcessor.cpp
     #tests/tstEmailPattern.cpp
-    #tests/tstHTML.cpp
+    tests/tstHTML.cpp
     #tests/tstCrypto.cpp
     #tests/tstStringFunc.cpp
     #tests/tstBetterTemplateSys.cpp

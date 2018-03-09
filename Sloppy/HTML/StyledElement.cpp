@@ -54,8 +54,13 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    void StyledElement::addContentElement(StyledElement* other)
+    void StyledElement::addChildElement(StyledElement* other)
     {
+      if (other == nullptr)
+      {
+        throw std::invalid_argument("StyledElement: received nullptr for adding a child element");
+      }
+
       content.push_back(other);
     }
 
@@ -80,18 +85,24 @@ namespace Sloppy
       // close the opening tag
       result += ">";
 
+      //
       // render content
       //
-      // if plainTextContent is set, we take that. It overrides everything
-      // else. If not, we iterate over possibly existing child elements
-      if (plainTextContent.empty())
+
+      // index of the next plain text string in the list
+      int idxNextText = 0;
+
+      // iteratively add the HTML-representation of each child
+      // or of the next plain text section
+      for (StyledElement* e : content)
       {
-        for (StyledElement* e : content)
+        if (e != nullptr)
         {
-          if (e != nullptr) result += e->to_html();
+          result += e->to_html();
+        } else {
+          result += plainTextSections.at(idxNextText);
+          ++idxNextText;
         }
-      } else {
-        result += plainTextContent;
       }
 
       // write the closing tag, if necessary
@@ -110,6 +121,17 @@ namespace Sloppy
 
       content.push_back(newElem);
       return newElem;
+    }
+
+    //----------------------------------------------------------------------------
+
+    void StyledElement::addPlainText(const string& txt)
+    {
+      plainTextSections.push_back(txt);
+
+      // store a nullptr in the content list to indicate
+      // that a plain text section follows
+      content.push_back(nullptr);
     }
 
     //----------------------------------------------------------------------------
@@ -157,7 +179,7 @@ namespace Sloppy
     {
       for (StyledElement* e : content)
       {
-        delete e;
+        if (e != nullptr) delete e;
       }
     }
 

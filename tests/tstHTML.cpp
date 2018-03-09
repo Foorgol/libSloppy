@@ -30,7 +30,7 @@ TEST(HTML, StyledElement_Basics)
   StyledElement e{"abc"};
   ASSERT_EQ("<abc></abc>", e.to_html());
 
-  e.setPlainTextContent("xyz");
+  e.addPlainText("xyz");
   ASSERT_EQ("<abc>xyz</abc>", e.to_html());
 
   e.addClass("c1");
@@ -47,10 +47,10 @@ TEST(HTML, StyledElement_Basics)
 
   e.addAttr("a1", "av1");
   e.addAttr("a2", "av2");
-  ASSERT_EQ("<abc a2=\"av2\" a1=\"av1\" style=\"s1: v1; s2: v2;\" class=\"c1 c2\">xyz</abc>", e.to_html());
+  ASSERT_EQ("<abc a2=\"av2\" a1=\"av1\" class=\"c1 c2\" style=\"s1: v1; s2: v2;\">xyz</abc>", e.to_html());
 
   e.addAttr("a2", "av2New");
-  ASSERT_EQ("<abc a2=\"av2New\" a1=\"av1\" style=\"s1: v1; s2: v2;\" class=\"c1 c2\">xyz</abc>", e.to_html());
+  ASSERT_EQ("<abc a2=\"av2New\" a1=\"av1\" class=\"c1 c2\" style=\"s1: v1; s2: v2;\">xyz</abc>", e.to_html());
 }
 
 //----------------------------------------------------------------------------
@@ -58,16 +58,20 @@ TEST(HTML, StyledElement_Basics)
 TEST(HTML, StyledElement_Nesting)
 {
   StyledElement e1{"abc"};
+  e1.addPlainText("plain1");
   StyledElement* e2 = e1.createContentChild("child");
   ASSERT_TRUE(e2 != nullptr);
-  ASSERT_EQ("<abc><child></child></abc>", e1.to_html());
+  ASSERT_EQ("<abc>plain1<child></child></abc>", e1.to_html());
+
+  e1.addPlainText("plain2");
+  ASSERT_EQ("<abc>plain1<child></child>plain2</abc>", e1.to_html());
 
   StyledElement* e3 = e1.createContentChild("other");
   ASSERT_TRUE(e3 != nullptr);
-  ASSERT_EQ("<abc><child></child><other></other></abc>", e1.to_html());
+  ASSERT_EQ("<abc>plain1<child></child>plain2<other></other></abc>", e1.to_html());
 
   StyledElement* e4 = e2->createContentChild("inner");
   ASSERT_TRUE(e4 != nullptr);
-  ASSERT_EQ("<abc><child><inner></inner></child><other></other></abc>", e1.to_html());
+  ASSERT_EQ("<abc>plain1<child><inner></inner></child>plain2<other></other></abc>", e1.to_html());
 }
 

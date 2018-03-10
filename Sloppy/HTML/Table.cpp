@@ -23,16 +23,21 @@ namespace Sloppy
   namespace HTML
   {
 
-    Table::Table(const StringList& headers)
+    Table::Table(const vector<string>& headers)
       :StyledElement("table"), colCount{headers.size()}
     {
+      if (colCount == 0)
+      {
+        throw std::invalid_argument("HTML table: ctor called with empty column list");
+      }
+
       // create table headers
       StyledElement* thead = createContentChild("thead");
       StyledElement* tr = thead->createContentChild("tr");
       for (const string& h : headers)
       {
         StyledElement* hdrElem = tr->createContentChild("th");
-        hdrElem->setPlainTextContent(h);
+        hdrElem->addPlainText(h);
         headerElems.push_back(hdrElem);
       }
 
@@ -99,7 +104,8 @@ namespace Sloppy
       StyledElement* cell = getCell(r, c, createRowIfNotExisting);
       if (cell == nullptr) return false;
 
-      cell->setPlainTextContent(plainText);
+      cell->deleteAllContent();
+      cell->addPlainText(plainText);
       return true;
     }
 
@@ -110,7 +116,8 @@ namespace Sloppy
       StyledElement* cell = getCell(r, c, createRowIfNotExisting);
       if (cell == nullptr) return false;
 
-      cell->addContentElement(elem);
+      cell->deleteAllContent();
+      cell->addChildElement(elem);
       return true;
     }
 

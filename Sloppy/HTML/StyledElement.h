@@ -29,12 +29,14 @@ namespace Sloppy
 {
   namespace HTML
   {
+    /** Enum for horizontal text alignment (style `text-align`)
+     */
     enum class Alignment
     {
-      Left,
-      Center,
-      Right,
-      Default
+      Left,   ///< text-align="left"
+      Center,   ///< text-align="center"
+      Right,   ///< text-align="right"
+      Default   ///< keep the default and do not set the `text-align' style
     };
 
     //----------------------------------------------------------------------------
@@ -90,6 +92,8 @@ namespace Sloppy
 
       /** Adds a child to the element
        *
+       * The new child is appended to any other previously added childs.
+       *
        * \throws std::invalid_argument if the passed pointer is `nullptr`
        *
        * \note We take ownership of the pointer passed to this function!
@@ -105,6 +109,8 @@ namespace Sloppy
 
       /** \brief A template function that heap-constructs a new HTML element of
        * a given type and passes the given parameters to its constructor.
+       *
+       * The new child is appended to any other previously created childs.
        *
        * We take ownership of the newly created element. The returned
        * pointer shall only be used for accessing element functions such
@@ -128,7 +134,9 @@ namespace Sloppy
         return newElem;
       }
 
-      /** Heap-constructs a new StyledElement instance as a child of this element
+      /** \brief Heap-constructs a new StyledElement instance as a child of this element.
+       *
+       * The new child is appended to any other previously created childs.
        *
        * \returns `nullptr` if the element creation failed; a pointer to the new element otherwise
        */
@@ -164,8 +172,11 @@ namespace Sloppy
           Alignment horAlign   ///< the text alignment to set for this element
           );
 
+      /** \brief Deletes all child data (elements as well as plain text)
+       */
+      void deleteAllContent();
 
-    protected:
+    private:
       string elemName;   ///< the element's name
       string assignedClasses;   ///< a space separated list of assigned CSS-classes
       string styles;   ///< a semicolon-separated list of assigned styles

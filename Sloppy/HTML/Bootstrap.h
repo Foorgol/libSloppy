@@ -34,57 +34,23 @@ namespace Sloppy
   {
     namespace Bootstrap
     {
+      /** \brief A text button with a `onclick`-URL
+       *
+       * Basically creates an anchor element `&lt;a&gt;` with the `btn` class and
+       * optional additional CSS classes assigned.
+       */
       class TextButton : public Anchor
       {
       public:
-        explicit TextButton(const string& label, const string& url, const string& additionalClass = "btn-default");
+        /** \brief Ctor for the text button
+         */
+        TextButton(
+            const string& label,   ///< the button's label
+            const string& url,     ///< the URL to call on click
+            const string& additionalClass = "btn-default"   ///< any additional CSS classes to assign to the button
+            );
+
         virtual ~TextButton(){}
-      };
-
-      //----------------------------------------------------------------------------
-
-      enum class GlyphiconName
-      {
-        Trash,
-        User,
-        Okay,
-        Home,
-        Refresh,
-        Alert,
-        Wrench,
-        Link,
-        Off,
-        SignQuestion,
-        SignInformation,
-        SignExclamation,
-        Pencil,
-        Plus
-      };
-
-      string to_string(GlyphiconName gn);
-
-      //----------------------------------------------------------------------------
-
-      class Glyphicon : public Span
-      {
-      public:
-        explicit Glyphicon(const string& plainGlyName);
-        explicit Glyphicon(GlyphiconName gn)
-          :Glyphicon(to_string(gn)) {}
-
-        virtual ~Glyphicon(){}
-      };
-
-      //----------------------------------------------------------------------------
-
-      class GlyphiconButton : public TextButton
-      {
-      public:
-        explicit GlyphiconButton(const string& plainGlyName, const string& url, const string& additionalClass = "btn-default");
-        explicit GlyphiconButton(GlyphiconName gn, const string& url, const string& additionalClass = "btn-default")
-          :GlyphiconButton(to_string(gn), url, additionalClass) {}
-
-        virtual ~GlyphiconButton(){}
       };
 
       //----------------------------------------------------------------------------

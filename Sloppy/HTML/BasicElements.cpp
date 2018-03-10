@@ -22,12 +22,11 @@ namespace Sloppy
 {
   namespace HTML
   {
-
-    Span::Span(const string& content, Alignment horAlignment)
-      :StyledElement("span")
+    ElementWithTextAndHorAlignment::ElementWithTextAndHorAlignment(const string& elName, const string& content, Alignment horAlignment)
+      : StyledElement{elName, false}
     {
       setTextAlignment(horAlignment);
-      setPlainTextContent(content);
+      addPlainText(content);
     }
 
     //----------------------------------------------------------------------------
@@ -36,7 +35,7 @@ namespace Sloppy
       :StyledElement("a")
     {
       addAttr("href", url);
-      setPlainTextContent(linkText);
+      addPlainText(linkText);
     }
 
     //----------------------------------------------------------------------------
@@ -89,9 +88,10 @@ namespace Sloppy
 
       if (!(content.empty()))
       {
-        setPlainTextContent(content);
+        addPlainText(content);
       }
     }
+
 
 
     //----------------------------------------------------------------------------

@@ -175,12 +175,22 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    StyledElement::~StyledElement()
+    void StyledElement::deleteAllContent()
     {
       for (StyledElement* e : content)
       {
         if (e != nullptr) delete e;
       }
+
+      content.clear();
+      plainTextSections.clear();
+    }
+
+    //----------------------------------------------------------------------------
+
+    StyledElement::~StyledElement()
+    {
+      deleteAllContent();
     }
 
 

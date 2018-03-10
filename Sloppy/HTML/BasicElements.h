@@ -31,71 +31,142 @@ namespace Sloppy
 {
   namespace HTML
   {
-    class Span : public StyledElement
+    /** \brief A helper class for easily constructing simple HTML tags such as `&lt;p&gt;`, `&lt;span&gt;` and the like.
+     *
+     * All these elements have in common that they (mostly)
+     * consist of a plain text context and that they can have
+     * a horizontal alignment.
+     */
+    class ElementWithTextAndHorAlignment : public StyledElement
     {
     public:
-      explicit Span(const string& content, Alignment horAlignment = Alignment::Default);
+      /** Ctor
+       */
+      ElementWithTextAndHorAlignment(
+          const string& elName,   ///< the name of the element to construct
+          const string& content,   ///< the content within the `<xxx>' tags
+          Alignment horAlignment = Alignment::Default   ///< the horizontal alignment of the content text
+          );
+    };
+
+    /** \brief A `&lt;span&gt;' element
+     */
+    class Span : public ElementWithTextAndHorAlignment
+    {
+    public:
+      /** Ctor for a `&lt;span&gt;' element with plain text content
+       */
+      explicit Span(
+          const string& content,   ///< the content within the `<span>` tags
+          Alignment horAlignment = Alignment::Default   ///< the horizontal alignment of the content text
+          )
+        : ElementWithTextAndHorAlignment("span", content, horAlignment) {}
+
       virtual ~Span(){}
     };
 
     //----------------------------------------------------------------------------
 
-    class Para : public Span
+    /** \brief A `&lt;p&gt;' element
+     */
+    class Para : public ElementWithTextAndHorAlignment
     {
     public:
-      explicit Para(const string& content, Alignment horAlignment = Alignment::Default)
-        :Span(content, horAlignment) { elemName = "p"; }
+      /** Ctor for a `&lt;p&gt;' element with plain text content
+       */
+      explicit Para(
+          const string& content,   ///< the content within the `<p>` tags
+          Alignment horAlignment = Alignment::Default   ///< the horizontal alignment of the content text
+          )
+        :ElementWithTextAndHorAlignment("p", content, horAlignment) {}
+
       virtual ~Para(){}
     };
 
     //----------------------------------------------------------------------------
 
-    class Head : public Span
+    /** \brief A `&lt;h1&gt;', `&lt;h2&gt;', `&lt;h3&gt;'... header element
+     */
+    class Head : public ElementWithTextAndHorAlignment
     {
     public:
-      explicit Head(int lvl, const string& content, Alignment horAlignment = Alignment::Default)
-        :Span(content, horAlignment) { elemName = "h" + to_string(lvl); }
+      explicit Head(
+          int lvl,   ///< the headline level, starting at 1. No range checks applied!
+          const string& content,   ///< the header itself
+          Alignment horAlignment = Alignment::Default   ///< the horizontal alignment of the header
+          )
+        :ElementWithTextAndHorAlignment("h" + to_string(lvl), content, horAlignment) {}
+
       virtual ~Head(){}
     };
 
     //----------------------------------------------------------------------------
 
+    /** \brief A `<a href="xxx">SomeText</a>` element
+     */
     class Anchor : public StyledElement
     {
     public:
-      explicit Anchor(const string& url, const string& linkText="");
+      explicit Anchor(
+          const string& url,   ///< the value for the `href` attribute
+          const string& linkText=""   ///< the inner text
+          );
+
       virtual ~Anchor(){}
     };
 
     //----------------------------------------------------------------------------
 
+    /** Request method for submitting form data
+     */
     enum class FormMethod
     {
-      Post,
-      Get
+      Post,   ///< use a POST request
+      Get     ///< use a GET request
     };
 
+    /** \brief A '<form>' element
+     */
     class Form : public StyledElement
     {
     public:
-      Form(const string& id, const string& targetUrl, FormMethod method = FormMethod::Post, const string& encType = "multipart/form-data");
+      /** Ctor
+       */
+      Form(
+          const string& id,   ///< the value to assign to the form's `id` attribute
+          const string& targetUrl,   ///< the submission URL for the form data (==> value of the `action` attribute)
+          FormMethod method = FormMethod::Post,    ///< whether to use a GET (url-encoded) or POST (multipart) request for submission
+          const string& encType = "multipart/form-data"   ///< the value of the `enctype` attribute
+          );
+
       virtual ~Form(){}
     };
 
     //----------------------------------------------------------------------------
 
+    /** enum of supported types of `<input>` elements
+     */
     enum class InputType
     {
-      Text,
-      Radio,
-      CheckBox,
-      Hidden
+      Text,   ///< text input (`type="text"`)
+      Radio,  ///< radio button (`type="radio"`)
+      CheckBox, ///< checkbox (`type="checkbox"`)
+      Hidden   ///< invisible input (`type="hidden"`)
     };
 
+    /** \brief A `<input>` element
+     */
     class Input : public StyledElement
     {
     public:
-      Input(const string& id, InputType it, const string& value="", const string& content="", const string& name="");
+      Input(
+          const string& id,   ///< the value to assign to the input's `id` attribute
+          InputType it,   ///< the type of element to create
+          const string& value="",   ///< the value to assign to the input's `value` attribute
+          const string& content="",   ///< the content between the opening and closing tags
+          const string& name=""   ///< the value for the `name` attribute; defaults to the `id` if empty
+          );
+
       virtual ~Input(){}
     };
   }

@@ -18,8 +18,6 @@
 
 #include <regex>
 
-#include <boost/algorithm/string.hpp>
-
 #include "MIME_Message.h"
 
 namespace Sloppy
@@ -29,7 +27,7 @@ namespace Sloppy
 
     MIME_Message::MIME_Message(const RFC822::Message& inMsg, bool skipMIMEVersionCheck)
     {
-      RFC822::Header* hdr = inMsg.getHeaderPtr();
+      const RFC822::Header* hdr = inMsg.getHeaderPtr();
 
       // check the correct MIME version, if requested
       if (!skipMIMEVersionCheck)
@@ -62,7 +60,7 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    void MIME_Message::parseParts(const string& body)
+    void MIME_Message::parseParts(const estring& body)
     {
       if (!ctHeader.isMultipart())
       {
@@ -100,18 +98,12 @@ namespace Sloppy
 
         size_t lastSectionCharacter = nextSectionStartPos - 1;
 
-        // the first character of the section is at
-        //   curPos + length(sectionStart) + 2
-        // with the "+2" representing the \r\n at the
-        // end of the section delimiter
-
+        // the "+2" represents the \r\n at the
+        // end of the section delimiter:
         size_t firstSectionCharacter = curSectionStartPos + sectionDelimiter.size() + 2;
 
-        // calculate the number of bytes in the section
-        size_t secLen = lastSectionCharacter - firstSectionCharacter + 1;
-
         // extract the section data
-        string data = body.substr(firstSectionCharacter, secLen);
+        estring data = body.slice(firstSectionCharacter, lastSectionCharacter);
 
         // append a new message part
         parts.push_back(MessagePart{data});
@@ -130,16 +122,17 @@ namespace Sloppy
       :body{hdrBody}, type{ContentType::Unknown}
     {
       // parse the content type
-      StringList parts;
-      stringSplitter(parts, body.getValue(), "/");
+      StringList parts = body.getValue().split("/", false, true);
       if (parts.size() != 2)
       {
         throw MalformedHeader();
       }
-      string mainType = boost::to_lower_copy(parts[0]);
-      string subType = boost::to_lower_copy(parts[1]);
-      boost::trim(mainType);
-      boost::trim(subType);
+
+      estring mainType = parts[0];
+      mainType.toLower();
+      estring subType = parts[1];
+      subType.toLower();
+
       _isMultipart = (mainType == "multipart");
       if ((mainType == "text") && (subType == "html")) type = ContentType::Text_Html;
       if ((mainType == "text") && (subType == "plain")) type = ContentType::Text_Plain;
@@ -150,7 +143,7 @@ namespace Sloppy
     //----------------------------------------------------------------------------
     //----------------------------------------------------------------------------
 
-    StructuredHeaderBody::StructuredHeaderBody(const string& hdrBody)
+    StructuredHeaderBody::StructuredHeaderBody(const estring& hdrBody)
     {
       // the header's value is everything up to the first ';'
       //
@@ -159,8 +152,8 @@ namespace Sloppy
       size_t stopPos = hdrBody.find(';');
 
       // extract the actual header value
-      val = hdrBody.substr(0, stopPos);
-      boost::trim(val);
+      val = hdrBody.left(stopPos);
+      val.trim();
 
       // find all name=value parameter pairs
       regex reParam_QuotedString{"(\\w+)\\s*=\\s*\"(.*)\""};
@@ -170,8 +163,8 @@ namespace Sloppy
         for (sregex_iterator p{hdrBody.begin()+stopPos, hdrBody.end(), re};
              p != sregex_iterator{}; ++p)
         {
-          string key{(*p)[1]};
-          boost::to_lower(key);   // parameter names are case insensitive
+          estring key{(*p)[1]};
+          key.toLower();  // parameter names are case insensitive
           params.emplace(key, (*p)[2]);
         }
       }
@@ -181,7 +174,8 @@ namespace Sloppy
 
     bool StructuredHeaderBody::hasParameter(const string& paraName) const
     {
-      string key{boost::to_lower_copy(paraName)};
+      estring key{paraName};
+      key.toLower();
 
       auto it = params.find(key);
       return (it != params.end());
@@ -189,9 +183,10 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    string StructuredHeaderBody::getParameter(const string& paraName) const
+    estring StructuredHeaderBody::getParameter(const string& paraName) const
     {
-      string key{boost::to_lower_copy(paraName)};
+      estring key{paraName};
+      key.toLower();
 
       auto it = params.find(key);
       if (it == params.end()) return "";

@@ -50,7 +50,7 @@ namespace Sloppy
       size_t bodyStart = delimPos + 4;
       if (bodyStart < rawMessage.length())
       {
-        body = rawMessage.substr(bodyStart, rawMessage.length() - bodyStart);
+        body = rawMessage.substr(bodyStart);
       }
 
       // extract the raw header data
@@ -63,7 +63,13 @@ namespace Sloppy
       }
 
       // parse the header
-      hdr = make_unique<Header>(headerString);
+      try
+      {
+        hdr = make_unique<Header>(headerString);
+      } catch (...)
+      {
+        throw MalformedMessage();
+      }
     }
 
     //----------------------------------------------------------------------------
@@ -75,7 +81,7 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    Header*Message::getHeaderPtr() const
+    const Header* Message::getHeaderPtr() const
     {
       return hdr.get();
     }

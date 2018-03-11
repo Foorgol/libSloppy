@@ -60,7 +60,7 @@ TEST_F(EmailFixture, HeaderParser)
 {
   Message msg{getMailData()};
 
-  Header* hdr = msg.getHeaderPtr();
+  const Header* hdr = msg.getHeaderPtr();
   ASSERT_TRUE(hdr->getFieldCount() == 27);
 
   ASSERT_FALSE(hdr->hasField("dskfjsdklf"));
@@ -104,7 +104,7 @@ TEST_F(EmailFixture, HeaderComments)
 
     Message msg{dummyMsg};
 
-    Header* hdr = msg.getHeaderPtr();
+    const Header* hdr = msg.getHeaderPtr();
     ASSERT_TRUE(hdr->getFieldCount() == 1);
 
     ASSERT_TRUE(hdr->hasField("fname"));
@@ -112,6 +112,13 @@ TEST_F(EmailFixture, HeaderComments)
     string bClean = hdr->getFieldBody_Simple("fname");
     ASSERT_EQ(r2p.first, bRaw);
     ASSERT_EQ(r2p.second, bClean);
+
+    /*HeaderField hf{"dummy", r2p.first};
+    string raw = hf.getRawBody();
+    string clean = hf.getBody();
+    ASSERT_EQ(r2p.first, raw);
+    ASSERT_EQ(r2p.second, clean);*/
+
   }
 
   // test malformed headers
@@ -127,7 +134,7 @@ TEST_F(EmailFixture, HeaderComments)
     string dummyMsg = "fname: " + s;
     dummyMsg += "\r\n\r\nDummyMessageBody";
 
-    ASSERT_THROW(Message{dummyMsg}, MalformedHeader);
+    ASSERT_THROW(Message{dummyMsg}, MalformedMessage);
   }
 }
 

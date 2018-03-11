@@ -22,7 +22,6 @@
 #include <string>
 #include <vector>
 
-#include "../libSloppy.h"
 #include "MailAndMIME.h"
 #include "../String.h"
 
@@ -37,53 +36,137 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
+    /** \brief A single header field in the header of an RFC 882 compliant email message
+     */
     class HeaderField
     {
     public:
-      explicit HeaderField(const string& fName, const string& fBody);
+      /** \brief Ctor from the the field name (everything left of the colon) and the field content (everythin right of the colon)
+       *
+       * Assumes that the headers are already unfolded.
+       */
+      HeaderField(
+          const string& fName,   ///< the header's name
+          const string& fBody    ///< the header field's content
+          );
 
-      bool operator ==(const string& fName) const;
+      /** \returns `true` if the header field's name matches a given string.
+       *
+       * The comparision is case-insensitive.
+       */
+      bool operator ==(
+          const string& fName   ///< the string to check the field's name against
+          ) const;
 
-      bool operator !=(const string& fName) const;
+      /** \returns `true` if the header field's name NOT matches a given string.
+       *
+       * The comparision is case-insensitive.
+       */
+      bool operator !=(
+          const string& fName   ///< the string to check the field's name against
+          ) const;
 
+      /** \returns the raw field content including comments etc.
+       */
       inline estring getRawBody() const
       {
         return fieldBody_raw;
       }
 
+      /** \returns the pure field content with comments removed
+       */
       inline estring getBody() const
       {
         return fieldBody;
       }
 
-    protected:
-      estring fieldName;
-      estring fieldBody_raw;
-      estring fieldBody;
+      /** \brief parses a raw body string and returns a version without comments.
+       *
+       * \returns a field body without comments.
+       */
+      estring removeCommentsFromBody(
+          const estring& rawBody   ///< the raw body content to remove the comments from
+          ) const;
 
     private:
-      estring removeCommentsFromBody(const string& rawBody);
+      estring fieldName;       ///< the field's name (the part left of the colon)
+      estring fieldBody_raw;   ///< the field's raw body (the part right of the colon)
+      estring fieldBody;       ///< the field's body without comments
     };
 
     //----------------------------------------------------------------------------
 
+    /** \brief Represents the full header of a RFC 822 compliant email message
+     */
     class Header
     {
     public:
+      /** \brief Default ctor for an empty header object
+       */
       explicit Header() {}
-      explicit Header(const estring& rawHeaderData);
 
-      vector<estring> getRawFieldBody(const string& fieldName) const;
-      bool hasField(const string& fieldName) const;
+      /** \brief Ctor from raw header data, e.g. as delivered by SMTP
+       *
+       * The terminating CR-LF-CR-LF should not be part of the input.
+       *
+       * \throws MalformedHeader if the header data was empty or could not be parsed.
+       *
+       */
+      explicit Header(
+          const estring& rawHeaderData   ///< the raw email header up to but not including the CR-LF-CR-LF
+          );
+
+      /** \brief Collects the contents of all instances of a header field with a given name.
+       *
+       * Mail messages can contain multiple instances of a header (e.g., "Received"). This
+       * method returns the header bodies of all instances as a list.
+       *
+       * The header name is treated case-insensitve.
+       *
+       * \returns a list of all field bodies for a given header name
+       */
+      vector<estring> getRawFieldBody(
+          const string& fieldName   ///< the name of the header field to retrieve
+          ) const;
+
+      /** \returns `true` if the message header contains a field with a given name
+       *
+       * The header field's name is treated case-insensitive.
+       */
+      bool hasField(
+          const string& fieldName   ///< the name of the header field to search for
+          ) const;
+
+      /** \returns the number of fields in the header.
+       *
+       * Folded header lines are only counted as one.
+       *
+       * Multiple instances of the same header field (e.g., "Received")
+       * are all counted individually (e.g. 3 x "Received" ==> 3 lines)
+       */
       inline int getFieldCount() const
       {
         return fields.size();
       }
+
+      /** \brief Searches for the first occurence of a header with a given name and returns it's raw content
+       *
+       * The header field's name is treated case-insensitive.
+       *
+       * \returns the raw body (incl. comments) of the requested header field or "" if the header field doesn't exist
+       */
       string getRawFieldBody_Simple(const string& fieldName) const;
+
+      /** \brief Searches for the first occurence of a header with a given name and returns it's content
+       *
+       * The header field's name is treated case-insensitive.
+       *
+       * \returns the pure body without comments of the requested header field or "" if the header field doesn't exist
+       */
       string getFieldBody_Simple(const string& fieldName) const;
 
     private:
-      vector<HeaderField> fields;
+      vector<HeaderField> fields;   ///< a list of all header fields in this header
     };
 
   }

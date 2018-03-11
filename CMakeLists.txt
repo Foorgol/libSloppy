@@ -21,10 +21,10 @@ set(LIB_SOURCES
     #Sloppy/libSloppy.cpp
     Sloppy/DateTime/DateAndTime.cpp
     Sloppy/Logger/Logger.cpp
-    #Sloppy/MailAndMIME/MailAndMIME.cpp
-    #Sloppy/MailAndMIME/Message.cpp
-    #Sloppy/MailAndMIME/Header.cpp
-    #Sloppy/MailAndMIME/MIME_Message.cpp
+    Sloppy/MailAndMIME/MailAndMIME.cpp
+    Sloppy/MailAndMIME/Message.cpp
+    Sloppy/MailAndMIME/Header.cpp
+    Sloppy/MailAndMIME/MIME_Message.cpp
     Sloppy/ConfigFileParser/ConfigFileParser.cpp
     #Sloppy/TemplateProcessor/Template.cpp
     #Sloppy/TemplateProcessor/TemplateCollection.cpp
@@ -114,8 +114,8 @@ set(LIB_SOURCES_TST
     tests/tstArrayView.cpp
     tests/tstManagedArray.cpp
     #tests/tstDatePeriods.cpp
-    #tests/tstRFC822.cpp
-    #tests/tstRFC2045.cpp
+    tests/tstRFC822.cpp
+    tests/tstRFC2045.cpp
     tests/tstConfigParser.cpp
     #tests/tstTemplateProcessor.cpp
     #tests/tstEmailPattern.cpp

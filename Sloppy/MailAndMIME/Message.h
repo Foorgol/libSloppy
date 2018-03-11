@@ -19,11 +19,11 @@
 #ifndef SLOPPY__MAIL_AND_MIME__MESSAGE_H
 #define SLOPPY__MAIL_AND_MIME__MESSAGE_H
 
-#include <string>
 #include <memory>
 
 #include "MailAndMIME.h"
 #include "Header.h"
+#include "../String.h"
 
 using namespace std;
 
@@ -38,19 +38,32 @@ namespace Sloppy
     struct MalformedMessage {};
     struct EmptyMessage {};
 
-    // concrete class
+    /** \brief A class representing a RFC 822 compliant email message.
+     */
     class Message
     {
     public:
-      explicit Message(const string& rawMessage);
+      /** \brief Ctor from the raw message data, e.g. delivered via SNMP.
+       *
+       * \throws EmptyMessage if the message data is empty
+       * \throws MalformedMessage if the message could not be parsed
+       */
+      explicit Message(const string& rawMessage   ///< a string containing the raw message data
+          );
 
+      /** \returns the raw body part of the message
+       */
       string getBodyData() const;
 
-      Header* getHeaderPtr() const;
+      /** \returns a pointer to an object representing the email header
+       *
+       * The header object is owned by this class and the user may not delete it.
+       */
+      const Header* getHeaderPtr() const;
 
     private:
-      unique_ptr<Header> hdr;
-      string body;
+      unique_ptr<Header> hdr;   ///< pointer to an object with the header data
+      string body;   ///< the message body
     };
 
   }

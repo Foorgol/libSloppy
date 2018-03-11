@@ -486,4 +486,23 @@ namespace Sloppy
 
 }
 
+namespace std
+{
+  /** \brief A hash-function for Sloppy::estring so that estrings can be used with (unordered) maps.
+   *
+   * We simply use the hash function of the underlying std::string
+   *
+   * The hash is implemented as a functor and injected into the `std` namespace. See also
+   * [here](http://en.cppreference.com/w/cpp/utility/hash).
+   */
+  template<>
+  struct hash<Sloppy::estring>
+  {
+    std::size_t operator()(const Sloppy::estring& s) const
+    {
+      return hash<std::string>()(s.toStdString());
+    }
+  };
+}
+
 #endif

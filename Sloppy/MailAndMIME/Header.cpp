@@ -43,10 +43,6 @@ namespace Sloppy
       }
 
       // split the headers up at CRLF positions
-      //
-      // note: boost::split and <regex> don't work well here.
-      // regex are complicated because we can't rely on the last
-      // line ending with the delimiter token CRLF
       vector<estring> hdrLines = rawHeaderData.split(sCRLF, true, false);
 
       // unfold header lines
@@ -141,15 +137,15 @@ namespace Sloppy
       : fieldName{fName}, fieldBody_raw{fBody}, fieldBody{}
     {
       // trim field names on both sides
-      boost::trim(fieldName);
+      fieldName.trim();
 
-      // trim the body only on the left side. This is a possible
+      // trim the body only on the left side. This removes a possible
       // space between the colon and the field body
-      boost::trim_left(fieldBody_raw);
+      fieldBody_raw.trimLeft();
 
       // since field names are case-insensitive, we store
       // all field names as lower case values
-      boost::to_lower(fieldName);
+      fieldName.toLower();
 
       // erase comments from the field body
       //
@@ -162,19 +158,23 @@ namespace Sloppy
 
     bool HeaderField::operator ==(const string& fName) const
     {
-      return (fieldName == boost::to_lower_copy(fName));
+      estring fn{fName};
+      fn.toLower();
+      return (fieldName == fn);
     }
 
     //----------------------------------------------------------------------------
 
     bool HeaderField::operator !=(const string& fName) const
     {
-      return (fieldName != boost::to_lower_copy(fName));
+      estring fn{fName};
+      fn.toLower();
+      return (fieldName != fn);
     }
 
     //----------------------------------------------------------------------------
 
-    estring HeaderField::removeCommentsFromBody(const string& rawBody)
+    estring HeaderField::removeCommentsFromBody(const estring& rawBody) const
     {
       // a little helper function that determines whether a character
       // in rawBody is escaped (preceded by '\') or not
@@ -198,32 +198,40 @@ namespace Sloppy
         while (i < rawBody.length())
         {
           // test for a valid closing bracket
-          if (rawBody[i] == ')')
+          if ((rawBody[i] == ')') && (!(pred_isEscaped(i))))
           {
-            if (!(pred_isEscaped(i)))
-            {
-              if (lvl == 0) throw MalformedHeader(); // ERROR: found closing bracket without opening bracket
-              return i;
-            }
+            if (lvl == 0) throw MalformedHeader(); // ERROR: found closing bracket without opening bracket
+            return i;  // return the index of the closing bracket
           }
 
           // test for a (maybe nested) comment
-          if (rawBody[i] == '(')
+          if ((rawBody[i] == '(') && (!(pred_isEscaped(i))))
           {
-            if (!(pred_isEscaped(i)))
-            {
-              size_t cmtEnd = searchComment_recursion(i, lvl+1);
-              if (cmtEnd == string::npos) return string::npos; // ERROR!!!!
-              if (lvl == 0)
-              {
-                result += rawBody.substr(startPos, i - startPos);
-                startPos = cmtEnd + 1;
-              }
+            // i is the index of the opening bracket of a comment
+            // ==> search for the position of the associated closing bracket
+            size_t cmtEnd = searchComment_recursion(i, lvl+1);
 
-              // fast-forward to the end of the nested comment
-              i = cmtEnd;
+            if (cmtEnd == string::npos) return string::npos; // ERROR, causes throwing of MalformedHeader by the caller
+
+            if (lvl == 0)   // we found the end of the outmost comment
+            {
+              // copy everything from the start index up to but
+              // not including the opening bracket
+              if ((i != startPos) && (i > 0)) result += rawBody.slice(startPos, i - 1);
+
+              // the next non-comment text chunk starts after
+              // the outer closing bracket position
+              //
+              // FIX: this does not work if we have directly
+              // adjacent comments like "....(comment1)(comment2)...."
+              //
+              startPos = cmtEnd + 1;
             }
+
+            // fast-forward to the end of the nested comment
+            i = cmtEnd;
           }
+
           ++i;
         }
 
@@ -231,7 +239,7 @@ namespace Sloppy
 
         // add the remaining part of the source string, in case the source
         // doesn't end with a comment
-        result += rawBody.substr(startPos, string::npos);
+        result += rawBody.substr(startPos);
 
         return 0;  // 0 = dummy value for a regular end of the recursion
       };
@@ -239,7 +247,11 @@ namespace Sloppy
 
       // find all comments and add the non-comment-part of the field body
       // directly to 'result'
-      searchComment_recursion(0, 0);
+      size_t rc = searchComment_recursion(0, 0);
+      if (rc == string::npos)
+      {
+        throw MalformedHeader{};
+      }
 
       return result;
     }

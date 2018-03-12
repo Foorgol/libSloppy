@@ -25,7 +25,6 @@
 #include <boost/filesystem.hpp>
 
 #include "TemplateSys.h"
-#include "../libSloppy.h"
 #include "../json/json.h"
 
 namespace bfs = boost::filesystem;
@@ -45,7 +44,7 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    SyntaxTreeError SyntaxTree::parse(const string& s)
+    SyntaxTreeError SyntaxTree::parse(const estring& s)
     {
       tree.clear();
 
@@ -91,7 +90,7 @@ namespace Sloppy
         idxLastSibling = idxInsertedItem;
       };
 
-      // a helper function that links all subsequent new item
+      // a helper function that links all subsequent new items
       // to the most recently inserted item. Means: it makes the
       // last item in the list the parent of all subsequent items
       //
@@ -160,16 +159,16 @@ namespace Sloppy
           sti.t = SyntaxTreeItemType::Static;
           sti.idxFirstChar = curSectionStart;
           sti.idxLastChar = sm.position() - 1;
-          size_t len = sti.idxLastChar - sti.idxFirstChar + 1;
-          sti.staticText = s.substr(sti.idxFirstChar, len);
+          sti.staticText = s.slice(sti.idxFirstChar, sti.idxLastChar);
           tree.push_back(sti);
           updateLinks();
         }
 
         // extract the inner token, trim white spaces around it
         // and skip it if it's empty
-        string token = sm[1];
-        if (!(trimAndCheckString(token)))
+        estring token{sm[1]};
+        token.trim();
+        if (token.empty())
         {
           // set the start of the next section to one
           // character after the closing bracket of the token
@@ -196,7 +195,7 @@ namespace Sloppy
         // not a variable and not an "include" AND if this token
         // is followed by "\n" AND if this token started on a new
         // line, then we skip the subsequent "\n" to avoid
-        // a flood of newlines that a caused by non-printable
+        // a flood of newlines that is caused by non-printable
         // control tokens such as "if" or "for"
         bool skipNewLineChar = false;
         if ((tt != TokenType::Variable) && (tt != TokenType::IncludeCmd))
@@ -292,12 +291,12 @@ namespace Sloppy
       if (curSection != SyntaxSectionType::Root)
       {
         SyntaxTreeItem& unmatchedParent = tree.at(idxParentItem);
-        string msg = "Unmatched %1-section starting at position %2";
+        estring msg = "Unmatched %1-section starting at position %2";
 
-        if (unmatchedParent.t == SyntaxTreeItemType::ForLoop) strArg(msg, "for");
-        else strArg(msg, "if");
+        if (unmatchedParent.t == SyntaxTreeItemType::ForLoop) msg.arg("for");
+        else msg.arg("if");
 
-        strArg(msg, (int)unmatchedParent.idxFirstChar);
+        msg.arg(unmatchedParent.idxFirstChar);
 
         SyntaxTreeError err;
         err.idxFirstChar = unmatchedParent.idxFirstChar;
@@ -313,8 +312,7 @@ namespace Sloppy
         sti.t = SyntaxTreeItemType::Static;
         sti.idxFirstChar = curSectionStart;
         sti.idxLastChar = s.size() - 1;
-        size_t len = sti.idxLastChar - sti.idxFirstChar + 1;
-        sti.staticText = s.substr(sti.idxFirstChar, len);
+        sti.staticText = s.slice(sti.idxFirstChar, sti.idxLastChar);
         tree.push_back(sti);
         updateLinks();
       }
@@ -376,31 +374,31 @@ namespace Sloppy
       // report syntactically invalid tokens
       if (!isValid)
       {
-        string msg = "Syntax error in '%1' token";
+        estring msg{"Syntax error in '%1' token"};
         switch (tt)
         {
         case TokenType::StartIf:
-          strArg(msg, "if");
+          msg.arg("if");
           break;
 
         case TokenType::EndIf:
-          strArg(msg, "endif");
+          msg.arg("endif");
           break;
 
         case TokenType::StartFor:
-          strArg(msg, "for");
+          msg.arg("for");
           break;
 
         case TokenType::EndFor:
-          strArg(msg, "endfor");
+          msg.arg("endfor");
           break;
 
         case TokenType::IncludeCmd:
-          strArg(msg, "include");
+          msg.arg("include");
           break;
 
         default:
-          msg = "Invalid variable name";
+          msg = estring{"Invalid variable name"};
         }
 
         return make_tuple(tt, SyntaxTreeError{msg});
@@ -569,7 +567,7 @@ namespace Sloppy
             ext = ext.substr(1);
           }
 
-          if (!(isInVector<string>(extList, ext)))
+          if (!(isInVector<estring>(extList, ext)))
           {
             it = allFiles.erase(it);
           } else {
@@ -623,9 +621,19 @@ namespace Sloppy
 
     bool TemplateStore::setStringlist(const string& slPath)
     {
-      auto sl = ConfigFileParser::Parser::readFromFile(slPath);
-      if (sl == nullptr) return false;
-      strList = std::move(sl);
+      unique_ptr<Parser> newStringList{nullptr};
+      try
+      {
+        newStringList = make_unique<Parser>(slPath);
+      }
+      catch (...)
+      {
+        return false;
+      }
+
+      if (newStringList == nullptr) return false;
+
+      strList = std::move(newStringList);
 
       return true;
     }
@@ -641,14 +649,10 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    string TemplateStore::getString(const string& sName, bool* isOk, const string& langOverride) const
+    optional<string> TemplateStore::getString(const string& sName, const string& langOverride) const
     {
       // if no stringlist is loaded, we can't return any strings
-      if (strList == nullptr)
-      {
-        assignIfNotNull<bool>(isOk, false);
-        return string{};
-      }
+      if (strList == nullptr) return optional<string>{};
 
       // determine which language to use
       string section = (langOverride.empty()) ? langCode : langOverride;
@@ -656,18 +660,17 @@ namespace Sloppy
       // try to get the localized string first
       if (strList->hasKey(section, sName))
       {
-        return strList->getValue(section, sName, isOk);
+        return strList->getValue(section, sName);
       }
 
       // try the default language / the default string second
       if (strList->hasKey(sName))
       {
-        return strList->getValue(sName, isOk);
+        return strList->getValue(sName);
       }
 
       // the string is not in the list
-      assignIfNotNull<bool>(isOk, false);
-      return string{};
+      return optional<string>{};
     }
 
     //----------------------------------------------------------------------------
@@ -701,7 +704,7 @@ namespace Sloppy
       }
 
       // have we used this template before? are we in a circular include dependency?
-      if (isInVector<string>(visitedTemplates, localTemplate))
+      if (isInVector<estring>(visitedTemplates, localTemplate))
       {
         throw std::runtime_error("TemplateStore: circular include-dependency in templates!");
       }
@@ -739,7 +742,7 @@ namespace Sloppy
     {
       string result;
 
-      // iterate over all child in this branch.
+      // iterate over all childs in this branch.
       // the end is indicated by a child index of "invalid"
       size_t curIdx{idxFirstItem};
       while (curIdx != SyntaxTree::InvalidIndex)
@@ -767,9 +770,8 @@ namespace Sloppy
             string var = sti.varName.substr(2);
             if (!(var.empty()))
             {
-              bool isOk;
-              string val = getString(var, &isOk);
-              result += isOk ? val : "???";
+              optional<string> val = getString(var);
+              result += val.has_value() ? *val : "???";
             }
           } else {
             result += resolveVariable(sti.varName, dic, localScopeVars).asString();

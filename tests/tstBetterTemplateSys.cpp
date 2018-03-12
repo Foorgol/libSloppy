@@ -378,23 +378,20 @@ TEST(BetterTemplateSys, StringList)
   ASSERT_TRUE(ts.setStringlist("../tests/sampleTemplateStore/stringlist.lst"));
 
   // get a few strings directly from the template store
-  bool isOk;
-  string s = ts.getString("s1", &isOk);
-  ASSERT_TRUE(isOk);
-  ASSERT_EQ("some string", s);
+  optional<string> s = ts.getString("s1");
+  ASSERT_TRUE(s.has_value());
+  ASSERT_EQ("some string", *s);
 
-  s = ts.getString("s1", &isOk, "de");
-  ASSERT_TRUE(isOk);
-  ASSERT_EQ("eine Zeichenkette", s);
+  s = ts.getString("s1", "de");
+  ASSERT_TRUE(s.has_value());
+  ASSERT_EQ("eine Zeichenkette", *s);
 
-  s = ts.getString("sfkjsdf", &isOk, "de");
-  ASSERT_FALSE(isOk);
-  ASSERT_EQ("", s);
+  s = ts.getString("sfkjsdf", "de");
+  ASSERT_FALSE(s.has_value());
 
   s = "nonempty";
-  s = ts.getString("lkjo", &isOk);
-  ASSERT_FALSE(isOk);
-  ASSERT_EQ("", s);
+  s = ts.getString("lkjo");
+  ASSERT_FALSE(s.has_value());
 
   Json::Value dic;
   s = ts.get("stringlist.txt", dic);

@@ -24,6 +24,7 @@
 #include <memory>
 #include <vector>
 #include <regex>
+#include <optional>
 
 #include "../libSloppy.h"
 #include "../json/json-forwards.h"
@@ -35,23 +36,27 @@ namespace Sloppy
 {
   namespace TemplateSystem
   {
+    /** \brief An Enum that defines entry types for a template syntax tree
+     */
     enum class SyntaxTreeItemType
     {
-      Static,
-      Variable,
-      ForLoop,
-      Condition,
-      IncludeCmd
+      Static,       ///< static text
+      Variable,     ///< a variable
+      ForLoop,      ///< a `for`-loop with the loop items in a subtree
+      Condition,    ///< an 'if'-item
+      IncludeCmd    ///< an 'include' command for inserting another template
     };
 
+    /** \brief An Enum that contains an entry for each language token in the template syntax
+     */
     enum class TokenType
     {
-      Variable,
-      StartIf,
-      EndIf,
-      StartFor,
-      EndFor,
-      IncludeCmd
+      Variable,   ///< a variable
+      StartIf,    ///< an opening `if`-statement ("`if`")
+      EndIf,      ///< a closing 'if'-statement ("`endif`")
+      StartFor,   ///< an opening 'for'-statement ("`for`")
+      EndFor,     ///< a closing 'for'-statement ("`endfor`")
+      IncludeCmd  ///< an 'include'-statement ("`include`")
     };
 
     enum class SyntaxSectionType
@@ -61,68 +66,109 @@ namespace Sloppy
       Condition
     };
 
+    /** \brief An element in the syntax tree that formally describes a template's contents
+     */
     struct SyntaxTreeItem
     {
-      SyntaxTreeItemType t;
-      string varName;
-      string listName;
-      string staticText;
-      bool invertCondition;
+      SyntaxTreeItemType t;   ///< the item type (static text, variable, ...)
+      string varName;         ///< in case of variable items: the variable's name
+      string listName;        ///< in case of 'for'-loops: the name of the list to loop over
+      string staticText;      ///< in case of static text: the text itself
+      bool invertCondition;   ///< in case if 'if'-conditions: indicates whether the condition shall be inverted (aka "not")
 
-      size_t idxNextSibling;
-      size_t idxFirstChild;
-      size_t idxParent;   // is redundant, but makes traversal in both direction easier
+      size_t idxNextSibling;  ///< index of the next sibling at the same hierarchy level as this item
+      size_t idxFirstChild;   ///< for items that start a subtree: the index of the first child item in the subtree
+      size_t idxParent;       ///< for subtree-elements: the index of the parent item. The data is redundant, but makes tree raversal in both directions easier
 
-      size_t idxFirstChar;
-      size_t idxLastChar;
+      size_t idxFirstChar;    ///< index of the first character in the template source text that is represented by this tree item
+      size_t idxLastChar;     ///< index of the last character in the template source text that is represented by this tree item
     };
     using SyntaxTreeItemList = vector<SyntaxTreeItem>;
 
+    /** \brief A 'struct' for collecting/reporting syntax errors in the template text
+     */
     struct SyntaxTreeError
     {
-      size_t line;
-      size_t idxFirstChar;
-      size_t idxLastChar;
-      string msg;
+      size_t line;   ///< number of the text line that contains the error
+      size_t idxFirstChar;   ///< index of the first character of the "offending" section
+      size_t idxLastChar;   ///< index of the last character of the "offending" section
+      string msg;   ///< a message describing the error
 
-      SyntaxTreeError(const sregex_iterator::value_type& tokenMatch, const string& _msg)
+      /** \brief Ctor for a new syntax error with an `sregex_iterator` defining the offending text range
+       */
+      SyntaxTreeError(
+          const sregex_iterator::value_type& tokenMatch,   ///< the regex match that triggerd the syntax error
+          const string& _msg   ///< a message describing the syntax error
+          )
         :SyntaxTreeError{_msg}
       {
         updatePosition(tokenMatch);
       }
 
+      /** \brief Default ctor, defining an empty error message
+       */
       SyntaxTreeError()
         :idxFirstChar{0}, idxLastChar{0}, msg{} {}
 
-      explicit SyntaxTreeError(const string& _msg)
+      /** \brief Ctor for a syntax error that is only defined by a message and not by a text range
+       */
+      explicit SyntaxTreeError(
+          const string& _msg   ///< the error message
+          )
         :idxFirstChar{0}, idxLastChar{0}, msg{_msg} {}
 
+      /** \returns `true` if the SyntaxTreeError contains a non-empty error message
+       */
       bool isError() { return (!(msg.empty())); }
 
+      /** \brief Updates the text range data (first / last character) from a 'sregex_iterator'
+       */
       void updatePosition(const sregex_iterator::value_type& tokenMatch)
       {
         idxFirstChar = tokenMatch.position();
         idxLastChar = idxFirstChar + tokenMatch.size() - 1;
       }
 
+      /** \returns a human-readable string that describes the syntax error and that can be printed e.g., to `stderr`
+       */
       string str()
       {
-        string s = "Template parsing error at position %1: ";
-        strArg(s, (int) idxFirstChar);
+        estring s = "Template parsing error at position %1: ";
+        s.arg(idxFirstChar);
         s += msg;
         return s;
       }
     };
 
+    /** \brief A class that parses raw template text into a tree of syntax items that represent the inner structure of the template content
+     */
     class SyntaxTree
     {
     public:
       static constexpr size_t InvalidIndex = (1 << 31);
-      explicit SyntaxTree();
-      SyntaxTreeError parse(const string& s);
+
+      /** \brief Ctor for an empty tree; simply initiates some member variables
+       */
+      SyntaxTree();
+
+      /** \brief Parses the raw template content into a syntax tree
+       *
+       * \note All previous tree items are erased, even if we return an error!
+       *
+       * \returns the first encountered syntax error or an empty error if everything was okay
+       */
+      SyntaxTreeError parse(const estring& s);
+
+      /** \returns a copy of the current syntax tree
+       */
       SyntaxTreeItemList getTree() const { return tree; }
+
+      /** \returns a read-only reference to the current syntax tree (avoids copying of data)
+       */
       const SyntaxTreeItemList& getTreeAsRef() const { return tree; }
 
+      /** \returns a list of all referenced templates in the tree
+       */
       StringList getIncludes() const;
 
     private:
@@ -150,49 +196,289 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
+    /** \brief A class that stores and parses a (text-based) template containing
+     * variables and a simple template language.
+     *
+     * A template can be created with content from a file on disk, a string
+     * or an input stream.
+     *
+     * The template language is as follows:
+     *
+     * * `{{VarName}}` denotes a variable called `VarName`. During template instantiation
+     *   it will be replaced with content from a JSON dictionary (key = `VarName').
+     *
+     * * A `for`-loop looks like `{{ for x : listName }} Here is a list entry: {{x}} {{endfor}}`.
+     *   The identifier `listName` will be looked up in the JSON dictionary and should resolve
+     *   into an array. Everthing between `{{ for ... }}` and `{{ endfor }}` will be repeated for
+     *   each entry in the array. Inside the loop, the `x` (or whatever name you choose) resolves
+     *   into the array item for the current iteration.
+     *
+     * * An `if` can be built as follows: `{{if condVar}} Conditional text {{endif}}`. `condVar`
+     *   will be looked up in the JSON dictionary and should be parseable as a bool. The text
+     *   between `{{if ...}}` and `{{endif}}` will only be rendered if the `condVar` resolves
+     *   to `true`.
+     *
+     * * JSON objects are supported. If a variable resolves into a JSON object, you can
+     *   access object attributes using classic dot notation. Example: `{{ person.name }}`.
+     *   This also works with loops: '{{ for p : personList }} Name = {{ p.name }} {{endfor}}`
+     *
+     * * `for`-loops can be nested:
+     * `{{ for p : personList }} Name = {{p.name}}, Siblings = {{ for s : p.siblings}}{{s.name}} {{endfor}}{{endfor}}
+     *
+     * * `if` can be inside `for` and vice versa.
+     *
+     * * You can include other files from the template directory like this: `{{ include /other/file/name.txt }}`. Circular
+     *   dependencies are detected and an error is raised. All template names, even if starting with a leading '`/`'
+     *   are interpreted relative to the template root dir.
+     *
+     * * Variables like `{{ ::varName }}` (two leading colons) are looked up in a list of strings. The list can be loaded
+     *   from an ini-style file in which the section headers (e.g., `[de]`) denote translation languages.
+     *   If, for instace, the current language is set to "de" then `{{ ::varName }}` will be replaced with the
+     *   value of `varName` in the section `[de]` of the ini file.
+     *
+     * * Templates can be organized in subdirectories with translations for each language. Example: `/my/template.txt`,
+     *   `/de/my/template.txt`, `/es/my/template.txt`, etc. If existing, the localized version such
+     *   as `/de/my/template.txt' will be preferred over the default `/my/template.txt` if `/my/template.txt`
+     *   is requested by the user.
+     *
+     * * Whitespaces between the curly brackets and their content don't matter. `{{var}}' is equal to `{{ var }}'
+     *   or `{{ var}}`.
+     *
+     * * Variable names and tokens are case-sensitive.
+     *
+     * * Text lines that only contain a control statement such as `if`, `for`, `endfor` or `endif` will not
+     *   show up in the output at all. Not even as an empty line / newline.
+     *
+     */
     class Template
     {
     public:
-      explicit Template(istream& inData);
-      explicit Template(const string& inData);
+      /** \brief Ctor for filling the template from an input stream.
+       *
+       * The stream is read until EOF.
+       *
+       * \note You must call `parse()` for actually triggering the
+       * interpretation of the template content. The separate call
+       * enables users to better deal with template syntax errors.
+       *
+       */
+      explicit Template(
+          istream& inData   ///< the stream that delivers the template content
+          );
+
+      /** \brief Ctor from string content.
+       *
+       * \note You must call `parse()` for actually triggering the
+       * interpretation of the template content. The separate call
+       * enables users to better deal with template syntax errors.
+       *
+       */
+      explicit Template(
+          const string& inData   ///< the string containing the template content
+          );
+
+      /** \brief Static function that tries to read the template
+       * from a file on disk.
+       *
+       * \returns `nullptr` if the file could not be read.
+       */
       static unique_ptr<Template> fromFile(const string& fName);
 
+      /** \brief Parses the template content; precondition for
+       * actually using the template.
+       *
+       * No matter how many errors the template contains: this
+       * method returns only first error it encounters during
+       * parsing.
+       *
+       * \returns an instance of SyntaxTreeError that is empty if
+       * parsing was successful.
+       */
       SyntaxTreeError parse();
+
+      /** \returns `true` if the template was successfully parsed and
+       * `false` if the template has not yet been parsed or parsing failed.
+       */
       bool isSyntaxOkay() { return syntaxOkay; }
 
+      /** \returns a list of other templates that are referenced
+       * via `include` statements.
+       *
+       * The template names are returned as written in the template. This
+       * method does not check for their validity or existence. It also does
+       * no translation or mapping of the default template name to the
+       * localized template name.
+       */
       StringList getIncludes() const;
 
-      SyntaxTreeItemList getTreeAsRef() const { return st.getTreeAsRef(); }
+      /** \returns a read-only reference to the list of all items in the internal syntax tree.
+       */
+      const SyntaxTreeItemList& getTreeAsRef() const { return st.getTreeAsRef(); }
 
-    protected:
-      string rawData;
-      SyntaxTree st;
-      bool syntaxOkay;
+    private:
+      const string rawData;   ///< the raw template content as provided to the ctor
+      SyntaxTree st;   ///< the syntax tree representing the template content
+      bool syntaxOkay;   ///< a tag that indicates whether the template was parsed successfully or not (yet)
     };
 
     //----------------------------------------------------------------------------
 
+    /** \brief A collection of templates (represented as file/directory hierarchy in a given root directory)
+     * and the necessary functionality for parsing templates and applying substitution dictionaries to them.
+     */
     class TemplateStore
     {
     public:
-      explicit TemplateStore(const string& rootDir, const StringList& extList);
-      void setLang(const string& lang = "") { langCode = lang; }
+      /** \brief Ctor for a new template store.
+       *
+       * Read templates upon creation. If the underlying files on disk change
+       * after this file has been instantiated, the changes WILL NOT take effect
+       * until a TemplateStore object has been created.
+       *
+       * \throws std::invalid_argument if the provided path is invalid or empty or
+       * if didn't contain any valid template file.
+       */
+      TemplateStore(
+          const string& rootDir,      ///< the absolute or relative path to the directory that contains the templates
+          const StringList& extList   ///< a whitelist of file extensions (case-sensitive, no leading dot) that indicate valid template files in the root dir
+          );
+
+      /** \brief Sets the language code (= subdirectory in the template root dir) for template retrieval
+       *
+       * If empty, the default template in the root dir will be used.
+       */
+      void setLang(
+          const string& lang = ""   ///< the new default language for template look-ups
+          ) { langCode = lang; }
+
+      /** \brief Reads a list of (translation) strings from an ini file
+       *
+       * The sections of the ini file should represent language codes, e.g., `[en]`, `[de]`, ...
+       *
+       * The key-value pairs in each section map symbolic string names to their translations.
+       *
+       * The provided ini file will simply be read as it is. There's no checking whatsoever that
+       * each provided translation section is complete, consistent, etc.
+       *
+       * A previously read string list will not be deleted/released if opening of the new
+       * string list failed.
+       *
+       * \returns `true` if the ini file could be parsed, `false` otherwise
+       */
       bool setStringlist(const string& slPath);
 
-      string get(const string& tName, const Json::Value& dic);
+      /** \brief Looks up a template with a given name, applies substitutions from a dictionary to it and returns the result.
+       *
+       * The first attempt is to retrieve `<languageCode>/<providedTemplatePath>`. If that template file doesn't exist,
+       * the location '<providedTemplatePath>' is tried next. If that
+       * template also doesn't exist, an exception is raised.
+       *
+       * \throws std::invalid_argument if the requested template doesn't exist (neither "localized" with language prefix nor directly)
+       *
+       * \throws std::runtime_error (raised by `getTemplate_Recursive`) if a circular dependency between templates (via `include`-statements)
+       * has been detected.
+       *
+       * \returns the content of the requested template with all
+       * substitutions recursively applied (other referenced/included templates etc.)
+       */
+      string get(
+          const string& tName,   ///< the name of the template to retrieve (e.g., `subDir/template.txt`)
+          const Json::Value& dic   ///< a JSON dictionary with substitution strings
+          );
 
-      string getString(const string& sName, bool* isOk = nullptr, const string& langOverride="") const;
+      /** \brief Looks up a string in the list of string translations
+       *
+       * The string list has to be previously loaded using `setStringList`.
+       *
+       * We first try to look up the string in the string list section for
+       * the currently selected language (e.g., `[en]`). If that look-up failed
+       * we try to find the string in default section of the ini file (that is
+       * the part of the ini file without section header).
+       *
+       * \returns the translation of the requested string or an empty `optional<string>`
+       * if no string list was loaded or if the requested string does not exist.
+       */
+      optional<string> getString(
+          const string& sName,   ///< the template to look up
+          const string& langOverride=""   ///< overrides the currently selected language with a different language
+          ) const;
+
+    protected:
+      /** \brief Determines the actual name of the template file to use for a look-up
+       *
+       * If a language code is set (using `setLang') and `<lang>/<docname>` exists,
+       * that path is returned.
+       *
+       * If a language code is set and `<lang>/<docname>` **does not** exist, the
+       * direct path <docname> is returned, provided that the file exists.
+       *
+       * Without defined language code, `<docname>` is returned, provided that the file exists.
+       *
+       * If we couldn't determine a localized or default template of the given name, an
+       * empty string is returned.
+       *
+       * \returns the best match for a requested template with a preference on the localized template;
+       * empty string if no match could be found.
+       */
+      string getLocalizedTemplateName(
+          const string& docName   ///< the name of the template to retrieve
+          ) const;
+
+      /** \brief Recursively visits all elements of a template and apply all substitutions
+       *
+       * First, the effective template is determined as described for `getLocalizedTemplateName`.
+       * Subsequently, all substitutions are applied to that template's syntax tree and the
+       * result is returned.
+       *
+       * \throws std::invalid_argument if the requested template could not be found
+       *
+       * \throws std::runtime_error if a circular dependency between templates (via `include`-statements)
+       * has been detected.
+       *
+       * \returns the content of the requested template with all
+       * substitutions recursively applied (other referenced/included templates etc.)
+       */
+      string getTemplate_Recursive(
+          const string& tName,   ///< the name of the template to retrieve
+          const Json::Value& dic,   ///< a dictionary with substitutions to be applied to the template
+          StringList& visitedTemplates   ///< a list to which all visited sub-templates are append; used for the detection of circular dependencies
+          ) const;
+
+      /** \brief Iterates over a given subtree of a templates syntax tree and applies substitutions
+       *
+       * This function does the actual work of replacing `include`, `if` and `for` with the
+       * content defined by the substitution dictionary.
+       *
+       * \returns a string that represents the content of the subtree with all substitutions applied.
+       */
+      string getSyntaxSubtree(
+          const SyntaxTreeItemList& tree,   ///< a reference to the tree we're working on
+          size_t idxFirstItem,    ///< the index of first item in the tree that shall be processed
+          const Json::Value& dic,   ///< the substitutions to apply
+          unordered_map<string, const Json::Value&>& localScopeVars,   ///< in case of nested statements (e.g., `if` inside a `for`) this map contains the local variables and their value
+          StringList& visitedTemplates   ///< a list to which all visited sub-templates are append; used for the detection of circular dependencies
+          ) const;
+
+      /** \brief Resolves a template variable to its effective value,
+       * taking local variables etc. into account.
+       *
+       * Local variables take precedence over dictionary values.
+       *
+       * \throws std::runtime_error if an invalid variable name (e.g., "`.xy`") has been detected
+       *
+       * \returns a Json::Value with the resolved symbol
+       */
+      const Json::Value& resolveVariable(
+          const string& varName,   ///< the name of the variable to resolve
+          const Json::Value& dic,  ///< the dictionary for looking up variable values
+          unordered_map<string, const Json::Value&>& localScopeVars   ///< a map of local variables
+          ) const;
 
     private:
-      unordered_map<string, Template> docs;
-      string langCode;
-      unique_ptr<ConfigFileParser::Parser> strList;
-      string getLocalizedTemplateName(const string& docName) const;
-      string getTemplate_Recursive(const string& tName, const Json::Value& dic, StringList& visitedTemplates) const;
+      unordered_map<string, Template> docs;   ///< a mapping of relative file names to Template instances
+      string langCode;   ///< the current language code
+      unique_ptr<Parser> strList;   ///< the currently load string list
 
-      string getSyntaxSubtree(const SyntaxTreeItemList& tree, size_t idxFirstItem, const Json::Value& dic, unordered_map<string, const Json::Value&>& localScopeVars,
-                              StringList& visitedTemplates) const;
-      const Json::Value& resolveVariable(const string& varName, const Json::Value& dic, unordered_map<string, const Json::Value&>& localScopeVars) const;
     };
   }
 }

@@ -55,7 +55,7 @@ namespace Sloppy
       if (salt.empty()) return "";
 
       string s = salt + pw;
-      for (int i=0; i < numCycles; ++i) s = SHA256::get(s);
+      for (int i=0; i < numCycles; ++i) s = SHA256::hash(s);
 
       return s;
     }
@@ -81,7 +81,7 @@ namespace Sloppy
       if (clearPw.empty() || hashedPw.empty() || salt.empty() || (numCycles < 0)) return false;
 
       string s = salt + clearPw;
-      for (int i=0; i < numCycles; ++i) s = SHA256::get(s);
+      for (int i=0; i < numCycles; ++i) s = SHA256::hash(s);
 
       return (s == hashedPw);
     }
@@ -277,6 +277,8 @@ namespace Sloppy
         0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208,
         0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2};
 
+    //----------------------------------------------------------------------------
+
     void SHA256::transform(const unsigned char *message, unsigned int block_nb)
     {
       uint32 w[64];
@@ -315,6 +317,8 @@ namespace Sloppy
       }
     }
 
+    //----------------------------------------------------------------------------
+
     void SHA256::init()
     {
       m_h[0] = 0x6a09e667;
@@ -328,6 +332,8 @@ namespace Sloppy
       m_len = 0;
       m_tot_len = 0;
     }
+
+    //----------------------------------------------------------------------------
 
     void SHA256::update(const unsigned char *message, unsigned int len)
     {
@@ -352,6 +358,8 @@ namespace Sloppy
       m_tot_len += (block_nb + 1) << 6;
     }
 
+    //----------------------------------------------------------------------------
+
     void SHA256::final(unsigned char *digest)
     {
       unsigned int block_nb;
@@ -371,21 +379,52 @@ namespace Sloppy
       }
     }
 
-    string SHA256::get(const string& input)
+    //----------------------------------------------------------------------------
+
+    void SHA256::nextChunk(const MemView& input)
+    {
+      update(input.to_ucPtr(), input.size());
+    }
+
+    //----------------------------------------------------------------------------
+
+    void SHA256::nextChunk(const string& input)
+    {
+      update((unsigned char *)input.c_str(), input.length());
+    }
+
+    //----------------------------------------------------------------------------
+
+    string SHA256::done()
     {
       unsigned char digest[SHA256::DIGEST_SIZE];
       memset(digest,0,SHA256::DIGEST_SIZE);
 
-      SHA256 ctx = SHA256();
-      ctx.init();
-      ctx.update( (unsigned char*)input.c_str(), input.length());
-      ctx.final(digest);
+      final(digest);
 
       char buf[2*SHA256::DIGEST_SIZE+1];
       buf[2*SHA256::DIGEST_SIZE] = 0;
       for (unsigned int i = 0; i < SHA256::DIGEST_SIZE; i++)
         sprintf(buf+i*2, "%02x", digest[i]);
+
       return string(buf);
+    }
+
+    //----------------------------------------------------------------------------
+
+    string SHA256::hash(const string& input)
+    {
+      MemView mv{input};
+      return hash(mv);
+    }
+
+    //----------------------------------------------------------------------------
+
+    string SHA256::hash(const MemView& input)
+    {
+      SHA256 ctx{};
+      ctx.update(input.to_ucPtr(), input.size());
+      return ctx.done();
     }
 
   }

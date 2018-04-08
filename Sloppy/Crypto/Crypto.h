@@ -121,28 +121,99 @@ namespace Sloppy
      * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
      * SUCH DAMAGE.
      */
+
+    /** \brief A class that wraps a SHA256 hasher
+     */
     class SHA256
     {
-    protected:
+    private:
       typedef unsigned char uint8;
       typedef unsigned int uint32;
       typedef unsigned long long uint64;
 
       const static uint32 sha256_k[];
       static const unsigned int SHA224_256_BLOCK_SIZE = (512/8);
-    public:
-      void init();
-      void update(const unsigned char *message, unsigned int len);
-      void final(unsigned char *digest);
-      static const unsigned int DIGEST_SIZE = ( 256 / 8);
-      static string get(const string& input);
 
-    protected:
-      void transform(const unsigned char *message, unsigned int block_nb);
       unsigned int m_tot_len;
       unsigned int m_len;
       unsigned char m_block[2*SHA224_256_BLOCK_SIZE];
       uint32 m_h[8];
+
+    public:
+      /** \brief Default ctor; initializes the hashing algo and prepares it for hashing the first data chunks
+       */
+      SHA256() { init(); }
+
+      static const unsigned int DIGEST_SIZE = ( 256 / 8);
+
+      /** \brief Updates the SHA256 hashing with the next chunk of data
+       */
+      void nextChunk(
+          const MemView& input   ///< the data for hashing
+          );
+
+      /** \brief Updates the SHA256 hashing with the next chunk of data
+       */
+      void nextChunk(
+          const string& input   ///< the data for hashing
+          );
+
+      /** \brief Finalizes the hashing and returns the hash value
+       *
+       * \note `nextChunk()` may not be used anymore after `done()` has been called
+       *
+       * \returns a string with the SHA256 hash value in hex notation (64 chars)
+       */
+      string done();
+
+      /** \brief Calculates the SHA256 hash for a given string
+       *
+       * This is a static function that does not require the management of a
+       * SHA256 instance by the caller.
+       *
+       * \returns a string with the SHA256 hash value in hex notation (64 chars)
+       */
+      static string hash(
+          const string& input   ///< the input data for hashing
+          );
+
+      /** \brief Calculates the SHA256 hash for a given memory section
+       *
+       * This is a static function that does not require the management of a
+       * SHA256 instance by the caller.
+       *
+       * \returns a string with the SHA256 hash value in hex notation (64 chars)
+       */
+      static string hash(
+          const MemView& input   ///< the input data for hashing
+          );
+
+    protected:
+      /** \brief Initializes / resets the hashing algo
+       *
+       * Needs to be called before any data can be hashed.
+       */
+      void init();
+
+      /** \brief Hashes a chunk of data
+       *
+       * Can be called repeatedly if a sequence of data chunks shall be processed.
+       */
+      void update(
+          const unsigned char *message,   ///< a pointer to the data location
+          unsigned int len                ///< the number of bytes in that location
+          );
+
+      /** \brief Returns the current hash value
+       *
+       * \note the target array has to provide at least 32 bytes of space!
+       * The is no length checking!
+       */
+      void final(
+          unsigned char *digest   ///< the target to write the raw, binary hash value to
+          );
+
+      void transform(const unsigned char *message, unsigned int block_nb);
     };
 
     #define SHA2_SHFR(x, n)    (x >> n)

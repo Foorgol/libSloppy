@@ -107,3 +107,21 @@ TEST(Crypto, Base64Enc)
   }
 
 }
+
+//----------------------------------------------------------------------------
+
+TEST(Crypto, Sha256_Hashing)
+{
+  const string data{"This is some dummy data!"};
+  const string hash{"5eb6cb6459194396e4a9056c191a4056a85d050a5368c30035a117f7f771a3da"};  // determined with sha256sum
+
+  // test the static function
+  ASSERT_EQ(hash, SHA256::hash(data));
+
+  // test the incremental hashing
+  SHA256 h;
+  h.nextChunk("This is ");
+  h.nextChunk("some dummy ");
+  h.nextChunk("data!");
+  ASSERT_EQ(hash, h.done());
+}

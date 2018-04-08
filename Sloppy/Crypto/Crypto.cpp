@@ -19,6 +19,7 @@
 #include <cstring>
 #include <vector>
 #include <chrono>
+#include <iostream>
 
 #include "Crypto.h"
 
@@ -217,7 +218,12 @@ namespace Sloppy
       {
         uint8_t c = src[curSrcIdx];
 
-        if (T[c] == -1) break;
+        if (c == '=') break;  // we've reaching a padding character
+
+        if (T[c] == -1)
+        {
+          throw std::invalid_argument("fromBase64: the source data array contains invalid, non-Base64 data!");
+        }
 
         val = (val<<6) + T[c];
         valb += 6;
@@ -244,6 +250,12 @@ namespace Sloppy
       {
         MemArray raw = fromBase64(MemView{b64Data});
         return string{raw.to_charPtr(), raw.byteSize()};
+      }
+      catch (std::bad_alloc& e)
+      {
+        // dump an error message and re-throw the exception
+        cerr << e.what() << endl;
+        throw;
       }
       catch (...) {}
 

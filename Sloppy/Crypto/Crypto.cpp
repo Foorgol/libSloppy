@@ -28,19 +28,20 @@ namespace Sloppy
   {
     mt19937_64 rng = mt19937_64{static_cast<unsigned long>(chrono::system_clock::now().time_since_epoch().count())};
 
-    string getRandomAlphanumString(int len)
+    string getRandomAlphanumString(size_t len)
     {
       if (len < 1) return "";
 
       string result;
+      result.resize(len);
 
       static const char alphanum[] =
           "0123456789"
           "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
           "abcdefghijklmnopqrstuvwxyz";
 
-      for (int i = 0; i < len; ++i) {
-        result += alphanum[rng() % (sizeof(alphanum) - 1)];
+      for (size_t i = 0; i < len; ++i) {
+        result[i] = alphanum[rng() % (sizeof(alphanum) - 1)];
       }
 
       return result;

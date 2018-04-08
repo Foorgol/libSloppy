@@ -35,12 +35,29 @@ namespace Sloppy
     // a random engine that can be used by various crypto functions
     extern mt19937_64 rng;
 
-    string getRandomAlphanumString(int len);
+    /** \brief Generates a random alphanumeric string
+     *
+     * The string consists of the characters 0-9, A-Z and a-z.
+     *
+     * \returns a random alphanumeric string of a user-specified length
+     */
+    string getRandomAlphanumString(
+        size_t len  ///< the required number of characters in the string
+        );
 
+    /** \warning DO NOT USE because it relies on SHA256 for hashing. SHA256 is not suitable
+     * for this purpose because it is not sufficiently computation- / memory-heavy!
+     */
     pair<string, string> hashPassword_DEPRECATED(const string& pw, int saltLen, int numCycles);
 
+    /** \warning DO NOT USE because it relies on SHA256 for hashing. SHA256 is not suitable
+     * for this purpose because it is not sufficiently computation- / memory-heavy!
+     */
     string hashPassword_DEPRECATED(const string& pw, const string& salt, int numCycles);
 
+    /** \warning DO NOT USE because it relies on SHA256 for hashing. SHA256 is not suitable
+     * for this purpose because it is not sufficiently computation- / memory-heavy!
+     */
     bool checkPassword_DEPRECATED(const string& clearPw, const string& hashedPw, const string& salt, int numCycles);
 
     /** \brief Encodes a given memory block to Base64.
@@ -207,7 +224,7 @@ namespace Sloppy
       /** \brief Returns the current hash value
        *
        * \note the target array has to provide at least 32 bytes of space!
-       * The is no length checking!
+       * There is no length checking!
        */
       void final(
           unsigned char *digest   ///< the target to write the raw, binary hash value to

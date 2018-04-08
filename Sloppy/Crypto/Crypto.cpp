@@ -48,7 +48,7 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    string hashPassword(const string& pw, const string& salt, int numCycles)
+    string hashPassword_DEPRECATED(const string& pw, const string& salt, int numCycles)
     {
       if (numCycles < 1) return "";
       if (pw.empty()) return "";
@@ -62,12 +62,12 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    pair<string, string> hashPassword(const string& pw, int saltLen, int numCycles)
+    pair<string, string> hashPassword_DEPRECATED(const string& pw, int saltLen, int numCycles)
     {
       if (saltLen < 1) return make_pair("","");
 
       string salt = getRandomAlphanumString(saltLen);
-      string hashedPw = hashPassword(pw, salt, numCycles);
+      string hashedPw = hashPassword_DEPRECATED(pw, salt, numCycles);
 
       if (hashedPw.empty()) return make_pair("", "");
 
@@ -76,7 +76,7 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    bool checkPassword(const string& clearPw, const string& hashedPw, const string& salt, int numCycles)
+    bool checkPassword_DEPRECATED(const string& clearPw, const string& hashedPw, const string& salt, int numCycles)
     {
       if (clearPw.empty() || hashedPw.empty() || salt.empty() || (numCycles < 0)) return false;
 
@@ -114,28 +114,15 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    size_t calc_base64_rawSize(const string& b64Data)
+    size_t calc_base64_rawSize(const MemView& encData)
     {
-      return calc_base64_rawSize((unsigned char *)b64Data.c_str(), b64Data.size());
-    }
-
-    //----------------------------------------------------------------------------
-
-    size_t calc_base64_rawSize(const ManagedMemory& encData)
-    {
-      return calc_base64_rawSize(encData.get_uc(), encData.getSize());
-    }
-
-    //----------------------------------------------------------------------------
-
-    size_t calc_base64_rawSize(unsigned char* src, size_t srcLen)
-    {
+      const size_t srcLen = encData.byteSize();
       if (srcLen < 4) return 0; // error, need at least four bytes
 
       size_t paddingChars = 0;
       size_t lastIdx = srcLen - 1;
-      if (src[lastIdx - 1] == '=') paddingChars = 2;
-      else if (src[lastIdx] == '=') paddingChars = 1;
+      if (encData[lastIdx - 1] == '=') paddingChars = 2;
+      else if (encData[lastIdx] == '=') paddingChars = 1;
 
       return calc_base64_rawSize(srcLen, paddingChars);
     }
@@ -143,88 +130,79 @@ namespace Sloppy
     //----------------------------------------------------------------------------
 
     // Taken from https://stackoverflow.com/a/34571089
-    bool toBase64(unsigned char* src, size_t srcLen, unsigned char* dst, size_t maxDstLen)
+    MemArray toBase64(const MemView& src)
     {
-      using uchar = unsigned char;
+      const size_t srcLen = src.byteSize();
+      if (src.empty())
+      {
+        throw std::invalid_argument("toBase64: received empty source data array!");
+      }
 
-      if (maxDstLen < calc_base64_encSize(srcLen)) return false;
+      // allocate the target memory
+      MemArray dst{calc_base64_encSize(srcLen)};
 
       int val = 0;
       int valb = -6;
 
-      uchar* curSrcChar = src;
-      uchar* curDstChar = dst;
-      while (curSrcChar < (src + srcLen))
+      size_t curSrcIdx = 0;
+      size_t curDstIdx = 0;
+      while (curSrcIdx < srcLen)
       {
-        uchar c = *curSrcChar;
+        uint8_t c = src[curSrcIdx];
 
         val = (val<<8) + c;
         valb += 8;
 
         while (valb>=0) {
-          *curDstChar = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"[(val>>valb)&0x3F];
-          ++curDstChar;
+          dst[curDstIdx] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"[(val>>valb)&0x3F];
+          ++curDstIdx;
           valb -= 6;
         }
 
-        ++curSrcChar;
+        ++curSrcIdx;
       }
 
       if (valb>-6)
       {
-        *curDstChar = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"[((val<<8)>>(valb+8))&0x3F];
-        ++curDstChar;
+        dst[curDstIdx] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"[((val<<8)>>(valb+8))&0x3F];
+        ++curDstIdx;
       }
 
-      while ((curDstChar - dst) % 4)
+      while (curDstIdx % 4)
       {
-        *curDstChar = '=';
-        ++curDstChar;
+        dst[curDstIdx] = '=';
+        ++curDstIdx;
       }
 
-      return true;
+      return dst;
     }
 
     //----------------------------------------------------------------------------
 
     string toBase64(const string &rawData)
     {
-      string result;
-      result.resize(calc_base64_encSize(rawData.size()));
+      if (rawData.empty()) return string{};
 
-      bool isOkay = toBase64((unsigned char *)rawData.c_str(), rawData.size(), (unsigned char *)result.c_str(), result.size());
+      MemArray enc = toBase64(MemView{rawData});
 
-      return isOkay ? result : string{};
-    }
-
-    //----------------------------------------------------------------------------
-
-    string toBase64(const ManagedMemory& rawData)
-    {
-      string result;
-      result.resize(calc_base64_encSize(rawData.getSize()));
-
-      bool isOkay = toBase64(rawData.get_uc(), rawData.getSize(), (unsigned char *)result.c_str(), result.size());
-
-      return isOkay ? result : string{};
-    }
-
-    //----------------------------------------------------------------------------
-
-    bool toBase64(const ManagedMemory& src, const ManagedMemory& dst)
-    {
-      return toBase64(src.get_uc(), src.getSize(), dst.get_uc(), dst.getSize());
+      // copy the data over to a string
+      return string{enc.to_charPtr(), enc.byteSize()};
     }
 
     //----------------------------------------------------------------------------
 
     // Taken from https://stackoverflow.com/a/34571089
-    bool fromBase64(unsigned char* src, size_t srcLen, unsigned char* dst, size_t maxDstLen)
+    MemArray fromBase64(const MemView& src)
     {
-      using uchar = unsigned char;
+      // calculate the length of the destination data block and
+      // make sure that the padding is used correctly in the source data
+      size_t dstLen = calc_base64_rawSize(src);
+      if (dstLen == 0)
+      {
+        throw std::invalid_argument("fromBase64: source data array is empty or malformed!");
+      }
 
-      size_t dstLen = calc_base64_rawSize(src, srcLen);
-      if (maxDstLen < dstLen) return false;
+      MemArray dst{dstLen};
 
       vector<int> T(256,-1);
       for (int i=0; i<64; i++) T["ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"[i]] = i;
@@ -232,11 +210,11 @@ namespace Sloppy
       int val = 0;
       int valb =- 8;
 
-      uchar* curSrcChar = src;
-      uchar* curDstChar = dst;
-      while (curSrcChar < (src + srcLen))
+      size_t curSrcIdx = 0;
+      size_t curDstIdx = 0;
+      while (curSrcIdx < src.byteSize())
       {
-        uchar c = *curSrcChar;
+        uint8_t c = src[curSrcIdx];
 
         if (T[c] == -1) break;
 
@@ -245,15 +223,15 @@ namespace Sloppy
 
         if (valb>=0)
         {
-          *curDstChar = char((val>>valb)&0xFF);
-          ++curDstChar;
+          dst[curDstIdx] = static_cast<uint8_t>((val>>valb)&0xFF);
+          ++curDstIdx;
           valb -= 8;
         }
 
-        ++curSrcChar;
+        ++curSrcIdx;
       }
 
-      return true;
+      return dst;
 
     }
 
@@ -261,21 +239,14 @@ namespace Sloppy
 
     string fromBase64(const string& b64Data)
     {
-      size_t rawSize = calc_base64_rawSize(b64Data);
-      string result;
-      result.resize(rawSize);
+      try
+      {
+        MemArray raw = fromBase64(MemView{b64Data});
+        return string{raw.to_charPtr(), raw.byteSize()};
+      }
+      catch (...) {}
 
-      bool isOkay = fromBase64((unsigned char *)b64Data.c_str(), b64Data.size(),
-                               (unsigned char *)result.c_str(), result.size());
-
-      return isOkay ? result : string{};
-    }
-
-    //----------------------------------------------------------------------------
-
-    bool fromBase64(const ManagedMemory& src, const ManagedMemory& dst)
-    {
-      return fromBase64(src.get_uc(), src.getSize(), dst.get_uc(), dst.getSize());
+      return string{};
     }
 
     //----------------------------------------------------------------------------

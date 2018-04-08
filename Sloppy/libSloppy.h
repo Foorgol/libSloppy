@@ -91,66 +91,6 @@ namespace Sloppy
   bool isDirectory(const string& dirName);
 #endif
 
-  //----------------------------------------------------------------------------
-
-  class ManagedMemory
-  {
-  public:
-    ManagedMemory()
-      :rawPtr{nullptr}, len{0}{}
-    ManagedMemory(size_t _len);
-
-    virtual ~ManagedMemory() {}
-
-    void* get() const { return rawPtr; }
-    char * get_c() const { return (char *)(rawPtr); }
-    unsigned char * get_uc() const { return (unsigned char *)(rawPtr); }
-
-    uint8_t byteAt(size_t idx) const;
-    char charAt(size_t idx) const;
-
-    size_t getSize() const { return len; }
-
-    bool isValid() const { return ((len > 0) && (rawPtr != nullptr)); }
-
-    string copyToString() const;
-
-    virtual void shrink(size_t newSize) = 0;
-
-    virtual void releaseMemory() = 0;
-
-  protected:
-    void* rawPtr;
-    size_t len;
-  };
-
-  //----------------------------------------------------------------------------
-
-  class ManagedBuffer : public ManagedMemory
-  {
-  public:
-    ManagedBuffer() : ManagedMemory{}{}
-    explicit ManagedBuffer(size_t _len);
-    explicit ManagedBuffer(const string& src);
-    virtual ~ManagedBuffer();
-
-    // disable copy functions
-    ManagedBuffer(const ManagedBuffer&) = delete; // no copy constructor
-    ManagedBuffer& operator=(const ManagedBuffer&) = delete; // no copy assignment
-
-    // move semantics
-    ManagedBuffer(ManagedBuffer&& other); // move constructor
-    virtual ManagedBuffer& operator=(ManagedBuffer&& other); // move assignment
-
-    // create a copy
-    static ManagedBuffer asCopy(const ManagedMemory& src);
-
-    // size change
-    virtual void shrink(size_t newSize) override;
-
-    virtual void releaseMemory() override;
-  };
-
 }
 
 #endif

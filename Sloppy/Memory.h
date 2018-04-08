@@ -225,6 +225,20 @@ namespace Sloppy
       return *(ptr + cnt - 1);
     }
 
+    /** \returns a reference to the last element in the array
+     *
+     * \throws std::out_of_range if the array is empty
+     */
+    const T* lastPtr() const
+    {
+      if ((cnt == 0) || (ptr == nullptr))
+      {
+        throw std::out_of_range("ArrayView: attempt to access the last element of an empty array");
+      }
+
+      return (ptr + cnt - 1);
+    }
+
     /** \brief Provides read access to an element in the array
      *
      * \throws std::out_of_range if the index is outside the array's bounds
@@ -362,7 +376,7 @@ namespace Sloppy
   /** \brief A specialized ArrayView for memory segments; uses UI8 (==> bytes) as internal format
    *
    * Offers the additional benefit of being constructable from char-pointers
-   * which is a common type when dealing with legacy C-functions.
+   * (which is a common type when dealing with legacy C-functions) or `std::string`s.
    */
   class MemView : public ArrayView<uint8_t>
   {
@@ -374,6 +388,11 @@ namespace Sloppy
      */
     MemView(const char* ptr, size_t len)
       :ArrayView(reinterpret_cast<const uint8_t*>(ptr), len) {}
+
+    /** \brief Ctor from a standard string
+     */
+    MemView(const string& src)
+      :ArrayView(reinterpret_cast<const uint8_t*>(src.c_str()), src.size()) {}
   };
 
   //----------------------------------------------------------------------------
@@ -644,7 +663,7 @@ namespace Sloppy
 
   /** \brief A specialized ManagedArray for memory segments; uses UI8 (==> bytes) as internal format
    *
-   * Offers the additional benefit of being constructable by copying data from a MemView
+   * Offers the additional benefit of being constructable by COPYING data from a MemView.
    */
   class MemArray : public ManagedArray<uint8_t>
   {
@@ -660,7 +679,7 @@ namespace Sloppy
       :ManagedArray<uint8_t>{v.byteSize()}
     {
       memcpy(to_voidPtr(), v.to_voidPtr(), byteSize());
-    }
+    }   
   };
 }
 

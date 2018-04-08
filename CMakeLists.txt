@@ -26,7 +26,7 @@ set(LIB_SOURCES
     Sloppy/MailAndMIME/Header.cpp
     Sloppy/MailAndMIME/MIME_Message.cpp
     Sloppy/ConfigFileParser/ConfigFileParser.cpp
-    #Sloppy/Crypto/Crypto.cpp
+    Sloppy/Crypto/Crypto.cpp
     #Sloppy/Crypto/Sodium.cpp
     Sloppy/HTML/StyledElement.cpp
     Sloppy/HTML/BasicElements.cpp
@@ -117,7 +117,7 @@ set(LIB_SOURCES_TST
     tests/tstConfigParser.cpp
     #tests/tstEmailPattern.cpp
     tests/tstHTML.cpp
-    #tests/tstCrypto.cpp
+    tests/tstCrypto.cpp
     #tests/tstStringFunc.cpp
     tests/tstBetterTemplateSys.cpp
     #tests/tstSodium.cpp

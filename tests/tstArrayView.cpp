@@ -163,6 +163,9 @@ TEST(ArrayView, FirstLast)
   IntArray empty{};
   ASSERT_THROW(empty.first(), std::out_of_range);
   ASSERT_THROW(empty.last() , std::out_of_range);
+
+  int* lastItemPtr = &a1[4];
+  ASSERT_EQ(lastItemPtr, ia.lastPtr());
 }
 
 //----------------------------------------------------------------------------

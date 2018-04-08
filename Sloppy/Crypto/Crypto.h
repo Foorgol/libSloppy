@@ -24,7 +24,7 @@
 #include <random>
 #include <chrono>
 
-#include "../libSloppy.h"
+#include "../Memory.h"
 
 using namespace std;
 
@@ -37,27 +37,44 @@ namespace Sloppy
 
     string getRandomAlphanumString(int len);
 
-    pair<string, string> hashPassword(const string& pw, int saltLen, int numCycles);
+    pair<string, string> hashPassword_DEPRECATED(const string& pw, int saltLen, int numCycles);
 
-    string hashPassword(const string& pw, const string& salt, int numCycles);
+    string hashPassword_DEPRECATED(const string& pw, const string& salt, int numCycles);
 
-    bool checkPassword(const string& clearPw, const string& hashedPw, const string& salt, int numCycles);
+    bool checkPassword_DEPRECATED(const string& clearPw, const string& hashedPw, const string& salt, int numCycles);
 
-    bool toBase64(unsigned char* src, size_t srcLen, unsigned char* dst, size_t maxDstLen);
+    /** \brief Encodes a given memory block to Base64.
+     *
+     * \throws std::invalid_argument is the source data is empty (zero size).
+     *
+     * \throws std::bad_alloc if the memory for the encoded data could not be allocated
+     *
+     * \returns a MemArray that contains the encoded data.
+     */
+    MemArray toBase64(const MemView& src);
+
+    /** \brief Encodes a string to Base64.
+     *
+     * \note Internally, the encoded data is copied once between an intermediate
+     * memory array and the target string. This extra copy operation might be an
+     * unacceptable penalty if dealing with large amounts of data. In that case,
+     * consider using toBase64 with MemView / MemArry instead.
+     *
+     * \throws std::bad_alloc if the memory allocation for the intermediate storage
+     * of the encoded data failed.
+     *
+     * \returns a string with the Base64-encoded source data. If the source string
+     * was empty, the target string is empty as well.
+     */
     string toBase64(const string& rawData);
-    string toBase64(const ManagedMemory& rawData);
-    bool toBase64(const ManagedMemory& src, const ManagedMemory& dst);
 
-    bool fromBase64(unsigned char* src, size_t srcLen, unsigned char* dst, size_t maxDstLen);
+    MemArray fromBase64(const MemView& src);
     string fromBase64(const string& b64Data);
-    bool fromBase64(const ManagedMemory& src, const ManagedMemory& dst);
 
     size_t calc_base64_encSize(size_t rawSize);
 
     size_t calc_base64_rawSize(size_t encSize, size_t paddingChars);
-    size_t calc_base64_rawSize(unsigned char* src, size_t srcLen);
-    size_t calc_base64_rawSize(const string& b64Data);
-    size_t calc_base64_rawSize(const ManagedMemory& encData);
+    size_t calc_base64_rawSize(const MemView& encData);
 
     /*
      * !!! Everything we need for SHA256 starts here !!!

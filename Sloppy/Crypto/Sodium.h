@@ -26,7 +26,8 @@
 
 #include <sodium.h>
 
-#include "../libSloppy.h"
+//#include "../libSloppy.h"
+#include "../Memory.h"
 
 using namespace std;
 
@@ -79,6 +80,13 @@ namespace Sloppy
         :SodiumBasicException{"could not change the state of protected and/or locked memory", context} {}
     };
 
+    class SodiumMemoryGuardException : public SodiumBasicException
+    {
+    public:
+      SodiumMemoryGuardException(const string& context = string{})
+        :SodiumBasicException{"attempt to access guarded, inaccessible secure memory", context} {}
+    };
+
     class SodiumKeyLocked : public SodiumBasicException
     {
     public:
@@ -93,62 +101,289 @@ namespace Sloppy
         :SodiumBasicException{"a key does not have the required length", context} {}
     };
 
-    //----------------------------------------------------------------------------
-
-    enum class SodiumSecureMemType
-    {
-      Normal,
-      Locked,
-      Guarded
-    };
-
-    enum class SodiumSecureMemAccess
-    {
-      NoAccess,
-      RO,
-      RW
-    };
-
-    class SodiumSecureMemory : public ManagedMemory
+    class SodiumInvalidKey : public SodiumBasicException
     {
     public:
+      SodiumInvalidKey(const string& context = string{})
+        :SodiumBasicException{"the provided key was empty or invalid", context} {}
+    };
+
+    class SodiumInvalidNonce : public SodiumBasicException
+    {
+    public:
+      SodiumInvalidNonce(const string& context = string{})
+        :SodiumBasicException{"the provided nonce was empty or invalid", context} {}
+    };
+
+    class SodiumInvalidCipher : public SodiumBasicException
+    {
+    public:
+      SodiumInvalidCipher(const string& context = string{})
+        :SodiumBasicException{"the provided cipher was empty or of invalid size", context} {}
+    };
+
+    class SodiumInvalidMessage : public SodiumBasicException
+    {
+    public:
+      SodiumInvalidMessage(const string& context = string{})
+        :SodiumBasicException{"the provided plain text message was empty", context} {}
+    };
+
+    class SodiumInvalidMac : public SodiumBasicException
+    {
+    public:
+      SodiumInvalidMac(const string& context = string{})
+        :SodiumBasicException{"the provided authentication tag (MAC) was empty or of invalid size", context} {}
+    };
+
+    class SodiumInvalidBuffer : public SodiumBasicException
+    {
+    public:
+      SodiumInvalidBuffer(const string& context = string{})
+        :SodiumBasicException{"a buffer did not have the required size", context} {}
+    };
+
+    class SodiumConversionError : public SodiumBasicException
+    {
+    public:
+      SodiumConversionError(const string& context = string{})
+        :SodiumBasicException{"the conversion between data formats failed", context} {}
+    };
+
+    //----------------------------------------------------------------------------
+
+    /** An enum that defines different types of secure memory
+     */
+    enum class SodiumSecureMemType
+    {
+      Normal,   ///< normal, unprotected memory that is being managed through standard `malloc()` and `free()`
+      Locked,   ///< special memory that is protected from being swapped to disk
+      Guarded   ///< guarded memory that can be set to NoAccess, read-only or read-write
+    };
+
+    /** An enum that defines the current access protection class of a SodiumSecureMemory instance
+     */
+    enum class SodiumSecureMemAccess
+    {
+      NoAccess,   ///< memory may be neither read nor written; only possible for `SodiumSecureMemType::Guarded`
+      RO,   ///< memory is read-only
+      RW    ///< memory can read and written
+    };
+
+    /** \brief A class that manages access-protected memory that is suitable for storing secret data.
+     */
+    class SodiumSecureMemory
+    {
+    public:
+      /** \brief Default ctor; creates a zero-sized, invalid data block
+       */
       SodiumSecureMemory()
-        :ManagedMemory{}, type{SodiumSecureMemType::Normal},
+        :rawPtr{nullptr}, nBytes{0}, type{SodiumSecureMemType::Normal},
           lib{nullptr}, curProtection{SodiumSecureMemAccess::NoAccess} {}
-      SodiumSecureMemory(size_t _len, SodiumSecureMemType t);
+
+      /** \brief Ctor that allocates a given amount of memory of a certain protection class.
+       *
+       * If the memory is of type `guarded`, it is initialized with read-write access after creation.
+       *
+       * \throws SodiumNotAvailableException if the sodium lib could not be loaded
+       *
+       * \throws SodiumOutOfMemoryException if the secure memory could not be allocated or locked
+       */
+      SodiumSecureMemory(
+          size_t _len,   ///< the number of bytes to allocate
+          SodiumSecureMemType t   ///< the protection class to use for that memory
+          );
+
+      /** \brief Ctor that allocates memory of a certain protection class or initializes it
+       * with the contents of a string.
+       *
+       * If the memory is of type `guarded`, it is initialized with read-write access after creation.
+       *
+       * \throws std::invalid_argument if the source string was empty
+       *
+       * \throws SodiumNotAvailableException if the sodium lib could not be loaded
+       *
+       * \throws SodiumOutOfMemoryException if the secure memory could not be allocated or locked
+       */
       SodiumSecureMemory(const string& src, SodiumSecureMemType t);
+
+      /** \brief Ctor that allocates memory of a certain protection class or initializes it
+       * with the contents of a given memory block.
+       *
+       * If the memory is of type `guarded`, it is initialized with read-write access after creation.
+       *
+       * \throws std::invalid_argument if the source string was empty
+       *
+       * \throws SodiumNotAvailableException if the sodium lib could not be loaded
+       *
+       * \throws SodiumOutOfMemoryException if the secure memory could not be allocated or locked
+       */
+      SodiumSecureMemory(const MemView& src, SodiumSecureMemType t);
 
       // disable copy functions
       SodiumSecureMemory(const SodiumSecureMemory&) = delete; // no copy constructor
       SodiumSecureMemory& operator=(const SodiumSecureMemory&) = delete; // no copy assignment
 
-      // move semantics
-      SodiumSecureMemory(SodiumSecureMemory&& other); // move constructor
-      virtual SodiumSecureMemory& operator=(SodiumSecureMemory&& other); // move assignment
+      /** \brief Move ctor
+       *
+       * Memory that is currently being managed by this instance is free'd
+       * before the other instance's data is taken over.
+       *
+       */
+      SodiumSecureMemory(
+          SodiumSecureMemory&& other   ///< other SodiumSecureMemory instance whose contents shall be taken over
+          );
 
+      /** \brief Move assignment operator
+       *
+       * Memory that is currently being managed by this instance is free'd
+       * before the other instance's data is taken over.
+       *
+       */
+      virtual SodiumSecureMemory& operator=(
+          SodiumSecureMemory&& other   ///< other SodiumSecureMemory instance whose contents shall be taken over
+          );
+
+      /** \brief dtor, release all managed ressources.
+       */
       virtual ~SodiumSecureMemory();
 
+      /** \returns the type (normal, locked, guarded) of the managed memory
+       */
       SodiumSecureMemType getType() const { return type; }
+
+      /** \returns the currently set access protection (RW, RO, NoAccess) of the managed memory
+       */
       SodiumSecureMemAccess getProtection() const { return curProtection; }
+
+      /** \returns `true` if it is currently possible to read from the memory; `false` otherwise
+       */
       bool canRead() const { return ((curProtection == SodiumSecureMemAccess::RO) || (curProtection == SodiumSecureMemAccess::RW)); }
+
+      /** \returns `true` if it is currently possible to write to the memory; `false` otherwise
+       */
       bool canWrite() const { return (curProtection == SodiumSecureMemAccess::RW); }
+
+      /** \returns `false` if it is currently impossible to access the memory in any way and `true` otherwise; only useful for guarded memory
+       */
       bool canAccess() const { return (curProtection != SodiumSecureMemAccess::NoAccess); }
 
-      bool setAccess(SodiumSecureMemAccess a);
+      /** \brief Changes the access protection for the managed memory.
+       *
+       * Since access protection is only possible for guarded memory, this function
+       * will always return `false` if called on on-guarded (read: `normal` or `locked`) memory.
+       *
+       * \returns `true` if the new access type was set successfully and `false` otherwise
+       */
+      bool setAccess(
+          SodiumSecureMemAccess a   ///< the new access protection type to assign to the memory
+          );
 
-      // create a copy of an already allocated memory region
+      /** \brief Static function that creates a deep copy of an existing secure memory region
+       *
+       * I want copies of secure memory to be explicit. This is why I disabled the copy constructor
+       * and the copy assignment operator and created explicit copy functions.
+       *
+       * \note If the source is guarded memory it needs to be set to read-only or read-write
+       * access before calling this copy function.
+       *
+       * \throws SodiumOutOfMemoryException if the secure memory could not be allocated or locked
+       *
+       * \throws SodiumMemoryGuardException if the source memory is guarded against access
+       *
+       * \throws SodiumMemoryManagementException if a copy of guarded memory has been successfully
+       * created but could not be access-protected afterwards
+       */
       static SodiumSecureMemory asCopy(const SodiumSecureMemory& src);
+
+      /** \brief Creates a deep copy of the managed memory
+       *
+       * I want copies of secure memory to be explicit. This is why I disabled the copy constructor
+       * and the copy assignment operator and created explicit copy functions.
+       *
+       * \note If the source is guarded memory it needs to be set to read-only or read-write
+       * access before calling this copy function.
+       *
+       * \throws SodiumOutOfMemoryException if the secure memory could not be allocated or locked
+       *
+       * \throws SodiumMemoryGuardException if the source memory is guarded against access
+       *
+       * \throws SodiumMemoryManagementException if a copy of guarded memory has been successfully
+       * created but could not be access-protected afterwards
+       */
       SodiumSecureMemory copy() const;
 
-      // size change
-      virtual void shrink(size_t newSize) override;
+      /** \returns the number of bytes in the managed memory block
+       */
+      size_t size() const { return nBytes; }
 
-      // comparison of SodiumSecureMemory contents
-      bool operator == (const SodiumSecureMemory& other) const;
+      /** \brief Compares the content of two SodiumSecureMemory blocks
+       *
+       * \note If guarded memory is involved it needs to be set to read-only or read-write
+       * access before calling this comparison function. Of course, this applies to this instance
+       * as well as to the other memory block that is used for comparison.
+       *
+       * \returns `true` if the size and content of the two memory blocks are identical; `false` otherwise
+       */
+      bool operator == (
+          const SodiumSecureMemory& other   ///< the other memory block for comparison
+          ) const;
 
-      void releaseMemory() override;
+      /** \brief Frees the memory managed by this instance.
+       *
+       * \throws std::runtime_error if the memory could not be properly released.
+       *
+       * \note This method is also called from the dtor. An exception in the dtor will
+       * terminate the program!
+       */
+      void releaseMemory();
 
-    protected:
+      /** \returns a MemView instance that represents the memory managed by this instance.
+       *
+       * \note Accessing the memory through the MemView requires that guarded memory has been
+       * enabled for reading.
+       */
+      MemView toMemView() const;
+
+      /** \brief Convenience function that exports the raw pointer for read/write (non-const) access.
+       *
+       * \returns The internal raw pointer, non-const
+       */
+      unsigned char* to_ucPtr_rw() const
+      {
+        return reinterpret_cast<unsigned char *>(rawPtr);
+      }
+
+      /** \brief Convenience function that exports the raw pointer for read-only (const) access.
+       *
+       * \returns The internal raw pointer, const
+       */
+      const unsigned char* to_ucPtr_ro() const
+      {
+        return reinterpret_cast<const unsigned char *>(rawPtr);
+      }
+
+      /** \returns `true` if the instance does not contain memory, `false` otherwise
+       */
+      bool empty() const
+      {
+        return ((rawPtr == nullptr) || (nBytes == 0));
+      }
+
+      /** \returns a MemArray representation of this buffer; the MemArray is not owning
+       * and will thus not release the memory after use.
+       *
+       * This is intended for passing SodiumSecureMemory instances in a common format
+       * (MemArray) as a parameter to other functions.
+       */
+      MemArray toNotOwningArray() const
+      {
+        return MemArray{rawPtr, nBytes};
+      }
+
+    private:
+      void* rawPtr;
+      size_t nBytes;
       SodiumSecureMemType type;
       SodiumLib* lib;
       SodiumSecureMemAccess curProtection;
@@ -157,55 +392,103 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
+    /** \brief An enum class for distinguishing between secret (private) and public cryptographic keys
+     */
     enum class SodiumKeyType
     {
-      Secret,
-      Public
+      Secret,   ///< the key is a secret key (either a private, asymetric key or a symetric key)
+      Public    ///< the key is a public asymetric key
     };
 
+    /** \brief A template class for cryptographic keys of different kinds and sizes
+     *
+     * Secret keys will be stored in guarded, secure memory. Public keys will be stored in normal memory.
+     * All memory is heap allocated.
+     *
+     * \tparam kt sets the key type (secret or public)
+     *
+     * \tparam keySize defines the size of the key in bytes
+     */
     template<SodiumKeyType kt, size_t keySize>
     class SodiumKey : public SodiumSecureMemory
     {
     public:
+
+      /** \brief Default ctor; allocates memory for the key according to the defined key size.
+       *
+       * Internally calls the ctor of SodiumSecureMemory for the actual memory allocation. Thus,
+       * all exceptions of the SodiumSecureMemory ctor can occur here as well.
+       *
+       * The memory for secret keys is **not** protected after initialization. It can be directly
+       * accessed for reading and writing.
+       */
       SodiumKey()
         : SodiumSecureMemory{keySize, (kt == SodiumKeyType::Secret) ? SodiumSecureMemType::Guarded : SodiumSecureMemType::Normal},
-          keyType{kt}
-      {}
+          keyType{kt} {}
 
-      // move constructor and move assignment
-      SodiumKey<kt, keySize>(SodiumKey<kt, keySize>&& other) { *this = std::move(other); }
-      virtual SodiumKey<kt, keySize>& operator =(SodiumKey<kt, keySize>&& other)
+      /** \brief Move ctor, forwards all activity to the move assignment operator.
+       */
+      SodiumKey(
+            SodiumKey&& other   ///< the other key whose content shall be moved to this instance
+            ) { *this = std::move(other); }
+
+      /** \brief Move assignment operator, takes over the content of another key and invalidates the other key
+       */
+      virtual SodiumKey& operator =(
+            SodiumKey&& other   ///< the other key whose content shall be moved to this instance
+            )
       {
+          // call the base class' move operator that does the
+          // actual memory transfer
           SodiumSecureMemory::operator =(std::move(other));
+
+          // take over the other key's key type
           keyType = other.keyType;
+
+          // done
           return *this;
       }
-      virtual SodiumKey<kt, keySize>& operator =(SodiumSecureMemory&& other)
+
+      /** \brief Move assignment operator that takes content directly from SodiumSecureMemory
+       *
+       * \throws SodiumInvalidKeysize if the size of the SodiumSecureMemory does not match the key size
+       */
+      virtual SodiumKey& operator =(
+            SodiumSecureMemory&& other   ///< the memory block whose content will be taken over by us
+            )
       {
-        if (other.getSize() != keySize)
+        if (other.size() != keySize)
         {
           throw SodiumInvalidKeysize{"move assignment of SodiumKey"};
         }
         SodiumSecureMemory::operator =(std::move(other));
-        keyType = kt;
         return *this;
       }
 
-      static SodiumKey<kt, keySize> asCopy(const SodiumKey<kt, keySize>& src)
+      /** \brief Creates a deep copy of a key.
+       *
+       * Calls internally the ctor for SodiumKey and can thus throw all exceptions
+       * that are also thrown by the ctor.
+       *
+       * \throws SodiumKeyLocked if a secret shall be copied that is currently not read-accessible
+       */
+      static SodiumKey asCopy(
+            const SodiumKey& src   ///< the key to copy
+            )
       {
         if (!(src.canRead()))
         {
           throw SodiumKeyLocked{"creating a key copy"};
         }
 
-        SodiumKey<kt, keySize> cpy;
+        SodiumKey cpy;
         SodiumSecureMemAccess srcProtection = src.getProtection();
         if (kt == SodiumKeyType::Secret)
         {
           cpy.setAccess(SodiumSecureMemAccess::RW);
         }
 
-        memcpy(cpy.rawPtr, src.rawPtr, src.len);
+        memcpy(cpy.toNotOwningArray().to_voidPtr(), src.toNotOwningArray().to_voidPtr(), src.size());
 
         if (kt == SodiumKeyType::Secret)
         {
@@ -215,24 +498,44 @@ namespace Sloppy
         return cpy;
       }
 
-      SodiumKey<kt, keySize> copy() const
+      /** \brief Creates a deep copy of the key.
+       *
+       * Calls internally the ctor for SodiumKey and can thus throw all exceptions
+       * that are also thrown by the ctor.
+       *
+       * \throws SodiumKeyLocked if a secret shall be copied that is currently not read-accessible
+       */
+      SodiumKey copy() const
       {
         return asCopy(*this);
       }
 
-      bool fillFromString(const string& data)
+      /** \brief Copies content from a string into the key, overwriting all existing key data.
+       *
+       * \returns `false` if the string length does not match the key size or if the key is not write-accessible.
+       */
+      bool fillFromString(
+            const string& data   ///< the string containing the data to copy
+            )
       {
         if (data.size() != keySize) return false;
         if (!(canWrite())) return false;
-        memcpy(rawPtr, data.c_str(), keySize);
+        memcpy(toNotOwningArray().to_voidPtr(), data.c_str(), keySize);
+
         return true;
       }
 
-      bool fillFromManagedMemory(const ManagedMemory& data)
+      /** \brief Copies content from a MemView into the key, overwriting all existing key data.
+        *
+        * \returns `false` if the length of the memory block does not match the key size or if the key is not write-accessible.
+       */
+      bool fillFromMemView(
+            const MemView& data   ///< a MemView instance pointing to the data to copy
+            )
       {
-        if (data.getSize() != keySize) return false;
+        if (data.size() != keySize) return false;
         if (!(canWrite())) return false;
-        memcpy(rawPtr, data.get_c(), keySize);
+        memcpy(rawPtr, data.to_voidPtr(), keySize);
         return true;
       }
 
@@ -242,8 +545,8 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    // a table of function pointers to the
-    // sodium lib
+    /** \brief A table of function pointers to the sodium lib
+     */
     struct SodiumPtr
     {
       // intialization
@@ -252,6 +555,12 @@ namespace Sloppy
       // helpers
       int (*memcmp)(const void * const b1_, const void * const b2_, size_t len);
       char* (*bin2hex)(char * const hex, const size_t hex_maxlen, const unsigned char * const bin, const size_t bin_len);
+      int (*hex2bin)(unsigned char * const bin, const size_t bin_maxlen, const char * const hex, const size_t hex_len,
+                     const char * const ignore, size_t * const bin_len, const char ** const hex_end);
+      char* (*bin2base64)(char * const b64, const size_t b64_maxlen, const unsigned char * const bin,
+                          const size_t bin_len, const int variant);
+      int (*base642bin)(unsigned char * const bin, const size_t bin_maxlen, const char * const b64, const size_t b64_len,
+                        const char * const ignore, size_t * const bin_len, const char ** const b64_end, const int variant);
       int (*isZero)(const unsigned char *n, const size_t nlen);
       void (*increment)(unsigned char *n, const size_t nlen);
       void (*add)(unsigned char *a, const unsigned char *b, const size_t len);
@@ -416,69 +725,469 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    // a C++ wrapper around the functions of libsodium
-    //
-    // it's implemented as a singleton that implicitly takes care
-    // of proper initialization and de-initialization
+    /** \brief An enum class that defines different kinds of Base64-encodings
+     * that are supported by libsodium
+     */
+    enum class SodiumBase64Enconding
+    {
+      Original,
+      Original_NoPadding,
+      URLSafe,
+      URLSafe_NoPadding
+    };
+
+    /** \returns the libsodium-internal integer representation for a given
+     * SodiumBase64Enconding value
+     */
+    int SodiumBase64Enconding2int(const SodiumBase64Enconding& enc);
+
+    /** \brief A C++ wrapper around the functions of libsodium
+     *
+     * It is implemented as a singleton that implicitly takes care
+     * of proper initialization and de-initialization of libsodium
+     */
     class SodiumLib
     {
     public:
+      /** \returns a pointer to the SodiumLib singleton instance
+       */
       static SodiumLib* getInstance();
+
+      /** \brief dtor, unloads the libsodium
+       */
       ~SodiumLib();
 
-      // helpers
-      bool memcmp(const ManagedMemory& b1, const ManagedMemory& b2) const;
-      string bin2hex(const string& binData) const;
-      string bin2hex(const ManagedBuffer& binData) const;
-      bool isZero(const ManagedMemory& buf) const;
-      void increment(const ManagedMemory& buf);
-      void add(const ManagedMemory& a, const ManagedMemory& b);
+      /** \brief Compares two memory segments; original documentation [here](https://download.libsodium.org/doc/helpers).
+       *
+       * \note This function behaves a bit different than the underlying libsodium function:
+       * if the sizes of the two memory segments do not match, we don't even look at the content at
+       * all. If, for instance, one segment holds 20 bytes and the other 15, we *do not* compare
+       * the first 15 bytes. Instead, we simply return `false`.
+       *
+       * \returns `true` if the two memory segments match in length and content; `false` otherwise
+       */
+      bool memcmp(
+          const MemView& m1,   ///< the first memory segment for comparison
+          const MemView& m2    ///< the second memory segment for comparison
+          ) const;
 
-      // memory management
-      void memzero(void * const pnt, const size_t len);
-      int mlock(void * const addr, const size_t len);
-      int munlock(void * const addr, const size_t len);
-      void *malloc(size_t size);
-      void *allocarray(size_t count, size_t size);
+
+      /** \brief Converts binary data into a string with a hexadecimal representation;
+       * original documentation [here](https://download.libsodium.org/doc/helpers).
+       *
+       * \returns a string with a hex representation of the provided data (empty if the input was empty)
+       */
+      string bin2hex(
+          const string& binData   ///< a string with the binary data for conversion
+          ) const;
+
+      /** \brief Converts binary data into a string with a hexadecimal representation;
+       * original documentation [here](https://download.libsodium.org/doc/helpers).
+       *
+       * \note The returned array includes a terminating zero character! Thus, the resulting
+       * array length for `n` bytes of input data is `2n + 1`!
+       *
+       * \returns a string with a hex representation of the provided data (empty if the input was empty)
+       */
+      MemArray bin2hex(
+          const MemView& binData   ///< a memory block with the binary data for conversion
+          ) const;
+
+      /** \brief Converts a memory block with hexadecimal data into binary data;
+       * original documentation [here](https://download.libsodium.org/doc/helpers).
+       *
+       * \note Especially if the hex data contains ignore characters, a final copying between
+       * an intermediate array and the final result array is likely. Thus, you cannot rely on a constant
+       * runtime of this function.
+       *
+       * \throws SodiumConversionError if the input string could not fully parsed, e.g. due to invalid characters
+       *
+       * \returns a MemArray with the raw bytes represented by the hex input string
+       */
+      MemArray hex2bin(
+          const MemView& hex,   ///< a memory segment containing the hex data a for conversion
+          const string& ignore = string{}   ///< an optional string with characters that should be ignored in the input string (e.g., newlines)
+          ) const;
+
+      /** \brief Converts a string with hexadecimal data into binary data;
+       * original documentation [here](https://download.libsodium.org/doc/helpers).
+       *
+       * \note Especially if the hex data contains ignore characters, a final copying between
+       * an intermediate array and the final result array is likely. Thus, you cannot rely on a constant
+       * runtime of this function.
+       *
+       * \throws SodiumConversionError if the input string could not fully parsed, e.g. due to invalid characters
+       *
+       * \returns a string with the raw bytes represented by the hex input string
+       */
+      string hex2bin(
+          const string& hex,   ///< a string containing the hex data a for conversion
+          const string& ignore = string{}   ///< an optional string with characters that should be ignored in the input string (e.g., newlines)
+          ) const;
+
+      /** \brief Converts a string with binary data to a Base64-encoded string;
+       * original documentation [here](https://download.libsodium.org/doc/helpers).
+       *
+       * \throws SodiumConversionError if the conversion failed. This should only happen
+       * if the pre-calculated output size does not match the actual output size which is
+       * more or less impossible and would indicate an error in libsodium itself.
+       *
+       * \returns a string containing the source data in the selected Base64 encoding
+       */
+      string bin2Base64(
+          const string& bin,   ///< the binary data for conversion
+          SodiumBase64Enconding enc = SodiumBase64Enconding::Original   ///< the encoding variant that shall be used
+          ) const;
+
+      /** \brief Converts a MemView with binary data to a Base64-encoded MemArray;
+       * original documentation [here](https://download.libsodium.org/doc/helpers).
+       *
+       * \throws SodiumConversionError if the conversion failed. This should only happen
+       * if the pre-calculated output size does not match the actual output size which is
+       * more or less impossible and would indicate an error in libsodium itself.
+       *
+       * \returns a memory block containing the source data in the selected Base64 encoding
+       */
+      MemArray bin2Base64(
+          const MemView& bin,   ///< the binary data for conversion
+          SodiumBase64Enconding enc = SodiumBase64Enconding::Original   ///< the encoding variant that shall be used
+          ) const;
+
+      /** \brief Converts a string with Base64 encoded data into a string with binary data;
+       * original documentation [here](https://download.libsodium.org/doc/helpers).
+       *
+       * \note Especially if the Base64 data contains ignore characters, a final copying between
+       * an intermediate string and the final result string is likely. Thus, you cannot rely on a constant
+       * runtime of this function.
+       *
+       * \throws SodiumConversionError if the conversion failed, e.g. due to invalid characters
+       *
+       * \returns a string with the binary data
+       */
+      string base642Bin(
+          const string& b64,   ///< a string containing the Base64-encoded data
+          const string& ignore = string{},   ///< a string with optional characters that shall be ignored during conversion (e.g., newlines)
+          SodiumBase64Enconding enc = SodiumBase64Enconding::Original   ///< the Base64 encoding variant
+          ) const;
+
+      /** \brief Converts a memory block with Base64 encoded data into a memory block with binary data;
+       * original documentation [here](https://download.libsodium.org/doc/helpers).
+       *
+       * \note Especially if the Base64 data contains ignore characters, a final copying between
+       * an intermediate array and the final result array is likely. Thus, you cannot rely on a constant
+       * runtime of this function.
+       *
+       * \throws SodiumConversionError if the conversion failed, e.g. due to invalid characters
+       *
+       * \returns a string with the binary data
+       */
+      MemArray base642Bin(
+          const MemView& b64,   ///< a memory block containing the Base64-encoded data
+          const string& ignore = string{},   ///< a string with optional characters that shall be ignored during conversion (e.g., newlines)
+          SodiumBase64Enconding enc = SodiumBase64Enconding::Original   ///< the Base64 encoding variant
+          ) const;
+
+      /** \returns `true` if a given memory segment contains only zeros;
+       * original documentation [here](https://download.libsodium.org/doc/helpers).
+       */
+      bool isZero(
+          const MemView& buf   ///< the memory segment for checking
+          ) const;
+
+      /** \brief Increments an arbitrarily long unsigned number (represented by a memory segment) by 1;
+       * original documentation [here](https://download.libsodium.org/doc/helpers).
+       *
+       * It runs in constant-time for a given length, and considers the number to be encoded in little-endian format.
+       *
+       */
+      void increment(
+          const MemArray& buf   ///< memory segment containing the arbitrarily long, unsigned number
+          );
+
+      /** \brief Adds two arbitrarily long unsigned numbers of equal length;
+       * original documentation [here](https://download.libsodium.org/doc/helpers).
+       *
+       * The number are expected to be in little-endian. The first parameter is
+       * overwritten with the result.
+       */
+      void add(
+          const MemArray& a,   ///< first operand and target for the resulting number
+          const MemView& b    ///< second operand, remains untouched
+          );
+
+      /** \brief Overwrites a memory segment with zeros;
+       * original documentation [here](https://download.libsodium.org/doc/helpers/memory_management.html).
+       */
+      void memzero(
+          const MemArray& buf   ///< the buffer to overwrite
+          );
+
+      /** \brief Locks a memory section and prevents it from being swapped to disk;
+       * original documentation [here](https://download.libsodium.org/doc/helpers/memory_management.html).
+       *
+       * \returns `true` on success, `false` otherwise
+       */
+      bool mlock(const MemArray& buf);
+
+      /** \brief Unlocks a memory section that has previously been locked by `mlock`;
+       * original documentation [here](https://download.libsodium.org/doc/helpers/memory_management.html).
+       *
+       * Includes overwriting the memory with zeros.
+       *
+       * \returns `true` on success, `false` otherwise
+       */
+      bool munlock(const MemArray& buf);
+
+      /** \brief Allocates a block of guarded memory for storing sensitive data;
+       * original documentation [here](https://download.libsodium.org/doc/helpers/memory_management.html).
+       *
+       * \returns a raw pointer to the newly allocated memory
+       */
+      void *malloc(
+          size_t size   ///< number of bytes to allocate
+          );
+
+      /** \brief Allocates a block of guarded memory for storing sensitive data;
+       * original documentation [here](https://download.libsodium.org/doc/helpers/memory_management.html).
+       *
+       * \returns a raw pointer to the newly allocated memory
+       */
+      void *allocarray(
+          size_t count,   ///< number of elements to allocate memory for
+          size_t size     ///< size in bytes of each element
+          );
+
+      /** \brief Releases page-guarded memory that has previously been allocated
+       * with libsodium`s `malloc()` or `allocarray()`;
+       * original documentation [here](https://download.libsodium.org/doc/helpers/memory_management.html).
+       */
       void free(void* ptr);
+
+      /** \brief Makes page-guarded memory allocated via libsodium's `malloc()`
+       * or `allocarray()` inaccessible (no read or write possible);
+       * original documentation [here](https://download.libsodium.org/doc/helpers/memory_management.html).
+       *
+       * \returns the same value as the libsodium-internal call; however, the documentation doesn't specify
+       * what the return value means (presumeably: 0 on success)
+       */
       int mprotect_noaccess(void* ptr);
+
+      /** \brief Sets page-guarded memory allocated via libsodium's `malloc()`
+       * or `allocarray()` to read-only;
+       * original documentation [here](https://download.libsodium.org/doc/helpers/memory_management.html).
+       *
+       * \returns the same value as the libsodium-internal call; however, the documentation doesn't specify
+       * what the return value means (presumeably: 0 on success)
+       */
       int mprotect_readonly(void* ptr);
+
+      /** \brief Makes page-guarded memory allocated via libsodium's `malloc()`
+       * or `allocarray()` fully accessible for reading and writing;
+       * original documentation [here](https://download.libsodium.org/doc/helpers/memory_management.html).
+       *
+       * \returns the same value as the libsodium-internal call; however, the documentation doesn't specify
+       * what the return value means (presumeably: 0 on success)
+       */
       int mprotect_readwrite(void* ptr);
 
-      // random data
+      /** \brief Generates a random, unsigned 32-bit integer value;
+       * original documentation [here](https://download.libsodium.org/doc/generating_random_data).
+       *
+       * \returns an unpredictable value between `0` and `0xffffffff` (included).
+       */
       uint32_t randombytes_random() const;
-      uint32_t randombytes_uniform(const uint32_t upper_bound) const;
-      void randombytes_buf(const ManagedMemory& buf) const;
 
-      // symmetric encryption based on ManagedMemory
+
+      /** \brief Generates a random unsigned integer uniformly distributed in a range
+       * between zero and an upper bound;
+       * original documentation [here](https://download.libsodium.org/doc/generating_random_data).
+       *
+       * \returns an unpredictable value between `0` and `upper_bound`, with `upper_bound` not being included.
+       */
+      uint32_t randombytes_uniform(const uint32_t upper_bound) const;
+
+      /** \brief Fills a memory buffer with random data;
+       * original documentation [here](https://download.libsodium.org/doc/generating_random_data).
+       */
+      void randombytes_buf(const MemArray& buf) const;
+
+      // symmetric encryption based on MemView
       using SecretBoxKeyType = SodiumKey<SodiumKeyType::Secret, crypto_secretbox_KEYBYTES>;
       using SecretBoxNonceType = SodiumKey<SodiumKeyType::Public, crypto_secretbox_NONCEBYTES>;
-      ManagedBuffer crypto_secretbox_easy(const ManagedMemory& msg, const SecretBoxNonceType& nonce, const SecretBoxKeyType& key);
-      bool crypto_secretbox_open_easy__internal(char* targetBuf, size_t targetBufSize, const ManagedMemory& cipher, const SecretBoxNonceType& nonce, const SecretBoxKeyType& key);
-      SodiumSecureMemory crypto_secretbox_open_easy__secure(const ManagedMemory& cipher, const SecretBoxNonceType& nonce, const SecretBoxKeyType& key,
-                                                    SodiumSecureMemType clearTextProtection = SodiumSecureMemType::Locked);
-      ManagedBuffer crypto_secretbox_open_easy(const ManagedMemory& cipher, const SecretBoxNonceType& nonce, const SecretBoxKeyType& key);
-      pair<ManagedBuffer, ManagedBuffer> crypto_secretbox_detached(const ManagedMemory& msg, const SecretBoxNonceType& nonce, const SecretBoxKeyType& key);
-      SodiumSecureMemory crypto_secretbox_open_detached(const ManagedMemory& cipher, const ManagedMemory& mac, const SecretBoxNonceType& nonce, const SecretBoxKeyType& key,
-                                                        SodiumSecureMemType clearTextProtection = SodiumSecureMemType::Locked);
+      using SecretBoxMacType = SodiumKey<SodiumKeyType::Public, crypto_secretbox_MACBYTES>;
 
-      // symmetric encryption based on strings
-      string crypto_secretbox_easy(const string& msg, const string& nonce, const string& key);
-      string crypto_secretbox_open_easy(const string& cipher, const string& nonce, const string& key);
-      pair<string, string> crypto_secretbox_detached(const string& msg, const string& nonce, const string& key);
-      string crypto_secretbox_open_detached(const string& cipher, const string& mac, const string& nonce, const string& key);
+      /** \brief Symmetric, authenticated encryption of a plain message with the auth tag being attached to the cipher;
+       * original documentation [here](https://download.libsodium.org/doc/secret-key_cryptography/authenticated_encryption.html).
+       *
+       * \throws SodiumInvalidMessage if the provided message was empty
+       *
+       * \throws SodiumInvalidNonce if the provided nonce was empty
+       *
+       * \throws SodiumInvalidKey if the provided key was empty
+       *
+       * \returns a heap-allocated buffer with the encrypted data and an attached authentication tag
+       */
+      MemArray crypto_secretbox_easy(
+          const MemView& msg,   ///< the plain message for encryption
+          const SecretBoxNonceType& nonce,   ///< the nonce to be used for this specific message
+          const SecretBoxKeyType& key        ///< the secret key; the caller has to ensure that the memory is enabled for reading
+          );
 
-      // symmetric encryption, mixed version (messages as strings, keys and nonces as ManagedMemory)
-      string crypto_secretbox_easy(const string& msg, const SecretBoxNonceType& nonce, const SecretBoxKeyType& key);
-      string crypto_secretbox_open_easy(const string& cipher, const SecretBoxNonceType& nonce, const SecretBoxKeyType& key);
-      pair<string, string> crypto_secretbox_detached(const string& msg, const SecretBoxNonceType& nonce, const SecretBoxKeyType& key);
-      string crypto_secretbox_open_detached(const string& cipher, const string& mac, const SecretBoxNonceType& nonce, const SecretBoxKeyType& key);
+      /** \brief Symmetric, authenticated decryption of a cipher with attached auth tag;
+       * original documentation [here](https://download.libsodium.org/doc/secret-key_cryptography/authenticated_encryption.html).
+       *
+       * \throws SodiumInvalidKey if the provided key was empty
+       *
+       * \throws SodiumInvalidNonce if the provided nonce was empty
+       *
+       * \throws SodiumInvalidCipher if the provided cipher was of insufficient length (MAC + at least one message byte)
+       *
+       * \returns a secure memory buffer with the plain data
+       * or an empty buffer if the decryption failed, e.g., due to an invalid MAC
+       */
+      SodiumSecureMemory crypto_secretbox_open_easy__secure(
+          const MemView& cipher,   ///< the buffer with the encrypted message and the attached MAC
+          const SecretBoxNonceType& nonce,   ///< the nonce to be used for this specific message
+          const SecretBoxKeyType& key,        ///< the secret key; the caller has to ensure that the memory is enabled for reading
+          SodiumSecureMemType clearTextProtection = SodiumSecureMemType::Locked   ///< the proctection class for the returned plain data buffer
+          );
+
+      /** \brief Symmetric, authenticated decryption of a cipher with attached auth tag;
+       * original documentation [here](https://download.libsodium.org/doc/secret-key_cryptography/authenticated_encryption.html).
+       *
+       * \throws SodiumInvalidKey if the provided key was empty
+       *
+       * \throws SodiumInvalidNonce if the provided nonce was empty
+       *
+       * \throws SodiumInvalidCipher if the provided cipher was of insufficient length (MAC + at least one message byte)
+       *
+       * \returns a heap-allocated standard buffer with the plain data
+       * or an empty buffer if the decryption failed, e.g., due to an invalid MAC
+       */
+      MemArray crypto_secretbox_open_easy(
+          const MemView& cipher,   ///< the buffer with the encrypted message and the attached MAC
+          const SecretBoxNonceType& nonce,   ///< the nonce to be used for this specific message
+          const SecretBoxKeyType& key        ///< the secret key; the caller has to ensure that the memory is enabled for reading
+          );
+
+      /** \brief Symmetric, authenticated encryption of a plain message with the a separate, detached auth tag;
+       * original documentation [here](https://download.libsodium.org/doc/secret-key_cryptography/authenticated_encryption.html).
+       *
+       * \throws SodiumInvalidMessage if the provided message was empty
+       *
+       * \throws SodiumInvalidNonce if the provided nonce was empty
+       *
+       * \throws SodiumInvalidKey if the provided key was empty
+       *
+       * \returns two heap-allocated buffers, the first one containing the encrypted data and the second one the authentication tag
+       */
+      pair<MemArray, SecretBoxMacType> crypto_secretbox_detached(
+          const MemView& msg,   ///< the plain message for encryption
+          const SecretBoxNonceType& nonce,   ///< the nonce to be used for this specific message
+          const SecretBoxKeyType& key        ///< the secret key; the caller has to ensure that the memory is enabled for reading
+          );
+
+      /** \brief Symmetric, authenticated decryption of a cipher with separate, detached auth tag;
+       * original documentation [here](https://download.libsodium.org/doc/secret-key_cryptography/authenticated_encryption.html).
+       *
+       * \throws SodiumInvalidKey if the provided key was empty
+       *
+       * \throws SodiumInvalidMac if the provided MAC was empty
+       *
+       * \throws SodiumInvalidNonce if the provided nonce was empty
+       *
+       * \throws SodiumInvalidCipher if the provided cipher was of insufficient length (MAC + at least one message byte)
+       *
+       * \returns a secure memory buffer with the plain data
+       * or an empty buffer if the decryption failed, e.g., due to an invalid MAC
+       */
+      SodiumSecureMemory crypto_secretbox_open_detached(
+          const MemView& cipher,   ///< a buffer with the pure, encrypted message without MAC attachment
+          const SecretBoxMacType& mac,   ///< the MAC for the message
+          const SecretBoxNonceType& nonce,   ///< the nonce to be used for this specific message
+          const SecretBoxKeyType& key,        ///< the secret key; the caller has to ensure that the memory is enabled for reading
+          SodiumSecureMemType clearTextProtection = SodiumSecureMemType::Locked   ///< the proctection class for the returned plain data buffer
+          );
+
+      /** \brief Symmetric, authenticated encryption of a plain message with the auth tag being attached to the cipher;
+       * original documentation [here](https://download.libsodium.org/doc/secret-key_cryptography/authenticated_encryption.html).
+       *
+       * \throws SodiumInvalidMessage if the provided message was empty
+       *
+       * \throws SodiumInvalidNonce if the provided nonce was empty
+       *
+       * \throws SodiumInvalidKey if the provided key was empty
+       *
+       * \returns a string with the encrypted data and an attached authentication tag
+       */
+      string crypto_secretbox_easy(
+          const string& msg,   ///< a string with the plain text message for encryption
+          const SecretBoxNonceType& nonce,   ///< the nonce to be used for this specific message
+          const SecretBoxKeyType& key        ///< the secret key; the caller has to ensure that the memory is enabled for reading
+          );
+
+      /** \brief Symmetric, authenticated decryption of a cipher with attached auth tag;
+       * original documentation [here](https://download.libsodium.org/doc/secret-key_cryptography/authenticated_encryption.html).
+       *
+       * \throws SodiumInvalidKey if the provided key was empty
+       *
+       * \throws SodiumInvalidNonce if the provided nonce was empty
+       *
+       * \throws SodiumInvalidCipher if the provided cipher was of insufficient length (MAC + at least one message byte)
+       *
+       * \returns a string with the plain data
+       * or an empty buffer if the decryption failed, e.g., due to an invalid MAC
+       */
+      string crypto_secretbox_open_easy(
+          const string& cipher,   ///< a string with the encrypted message and the attached MAC
+          const SecretBoxNonceType& nonce,   ///< the nonce to be used for this specific message
+          const SecretBoxKeyType& key        ///< the secret key; the caller has to ensure that the memory is enabled for reading
+          );
+
+      /** \brief Symmetric, authenticated encryption of a plain message with the a separate, detached auth tag;
+       * original documentation [here](https://download.libsodium.org/doc/secret-key_cryptography/authenticated_encryption.html).
+       *
+       * \throws SodiumInvalidMessage if the provided message was empty
+       *
+       * \throws SodiumInvalidNonce if the provided nonce was empty
+       *
+       * \throws SodiumInvalidKey if the provided key was empty
+       *
+       * \returns a string with the encrypted message and a heap-allocated buffer containing the authentication tag
+       */
+      pair<string, SecretBoxMacType> crypto_secretbox_detached(
+          const string& msg,   ///< the plain message for encryption
+          const SecretBoxNonceType& nonce,   ///< the nonce to be used for this specific message
+          const SecretBoxKeyType& key        ///< the secret key; the caller has to ensure that the memory is enabled for reading
+          );
+
+
+      /** \brief Symmetric, authenticated decryption of a cipher with separate, detached auth tag;
+       * original documentation [here](https://download.libsodium.org/doc/secret-key_cryptography/authenticated_encryption.html).
+       *
+       * \throws SodiumInvalidKey if the provided key was empty
+       *
+       * \throws SodiumInvalidMac if the provided MAC was empty
+       *
+       * \throws SodiumInvalidNonce if the provided nonce was empty
+       *
+       * \throws SodiumInvalidCipher if the provided cipher was of insufficient length (MAC + at least one message byte)
+       *
+       * \returns a string with the plain data
+       * or an empty string if the decryption failed, e.g., due to an invalid MAC
+       */
+      string crypto_secretbox_open_detached(
+          const string& cipher,   ///< a string with the pure, encrypted message without MAC attachment
+          const SecretBoxMacType& mac,   ///< the MAC for the message
+          const SecretBoxNonceType& nonce,   ///< the nonce to be used for this specific message
+          const SecretBoxKeyType& key        ///< the secret key; the caller has to ensure that the memory is enabled for reading
+          );
 
       // message authentication
       using AuthKeyType = SodiumKey<SodiumKeyType::Secret, crypto_auth_KEYBYTES>;
       using AuthTagType = SodiumKey<SodiumKeyType::Public, crypto_auth_BYTES>;
-      AuthTagType crypto_auth(const ManagedMemory& msg, const AuthKeyType& key);
-      bool crypto_auth_verify(const ManagedMemory& msg, const AuthTagType& tag, const AuthKeyType& key);
+      AuthTagType crypto_auth(const MemView& msg, const AuthKeyType& key);
+      bool crypto_auth_verify(const MemView& msg, const AuthTagType& tag, const AuthKeyType& key);
       string crypto_auth(const string& msg, const string& key);
       bool crypto_auth_verify(const string& msg, const string& tag, const string& key);
 
@@ -486,9 +1195,9 @@ namespace Sloppy
       using AEAD_ChaCha20Poly1305_KeyType = SodiumKey<SodiumKeyType::Secret, crypto_aead_chacha20poly1305_KEYBYTES>;
       using AEAD_ChaCha20Poly1305_NonceType = SodiumKey<SodiumKeyType::Public, crypto_aead_chacha20poly1305_NPUBBYTES>;
       using AEAD_ChaCha20Poly1305_TagType = SodiumKey<SodiumKeyType::Public, crypto_aead_chacha20poly1305_ABYTES>;
-      ManagedBuffer crypto_aead_chacha20poly1305_encrypt(const ManagedMemory& msg, const AEAD_ChaCha20Poly1305_NonceType& nonce,
+      ManagedBuffer crypto_aead_chacha20poly1305_encrypt(const MemView& msg, const AEAD_ChaCha20Poly1305_NonceType& nonce,
                                                          const AEAD_ChaCha20Poly1305_KeyType& key, const ManagedBuffer& ad = ManagedBuffer{});
-      SodiumSecureMemory crypto_aead_chacha20poly1305_decrypt(const ManagedMemory& cipher, const AEAD_ChaCha20Poly1305_NonceType& nonce,
+      SodiumSecureMemory crypto_aead_chacha20poly1305_decrypt(const MemView& cipher, const AEAD_ChaCha20Poly1305_NonceType& nonce,
                                                               const AEAD_ChaCha20Poly1305_KeyType& key, const ManagedBuffer& ad = ManagedBuffer{},
                                                               SodiumSecureMemType clearTextProtection = SodiumSecureMemType::Locked);
 
@@ -507,9 +1216,9 @@ namespace Sloppy
       using AEAD_AES256GCM_NonceType = SodiumKey<SodiumKeyType::Public, crypto_aead_aes256gcm_NPUBBYTES>;
       using AEAD_AES256GCM_TagType = SodiumKey<SodiumKeyType::Public, crypto_aead_aes256gcm_ABYTES>;
       bool is_AES256GCM_avail();
-      ManagedBuffer crypto_aead_aes256gcm_encrypt(const ManagedMemory& msg, const AEAD_AES256GCM_NonceType& nonce,
+      ManagedBuffer crypto_aead_aes256gcm_encrypt(const MemView& msg, const AEAD_AES256GCM_NonceType& nonce,
                                                          const AEAD_AES256GCM_KeyType& key, const ManagedBuffer& ad = ManagedBuffer{});
-      SodiumSecureMemory crypto_aead_aes256gcm_decrypt(const ManagedMemory& cipher, const AEAD_AES256GCM_NonceType& nonce,
+      SodiumSecureMemory crypto_aead_aes256gcm_decrypt(const MemView& cipher, const AEAD_AES256GCM_NonceType& nonce,
                                                               const AEAD_AES256GCM_KeyType& key, const ManagedBuffer& ad = ManagedBuffer{},
                                                               SodiumSecureMemType clearTextProtection = SodiumSecureMemType::Locked);
 
@@ -534,13 +1243,13 @@ namespace Sloppy
       // public key cryptography, encryption / decryption, buffer-based
       using AsymCrypto_Nonce = SodiumKey<SodiumKeyType::Public, crypto_box_NONCEBYTES>;
       using AsymCrypto_Tag = SodiumKey<SodiumKeyType::Public, crypto_box_MACBYTES>;
-      ManagedBuffer crypto_box_easy(const ManagedMemory& msg, const AsymCrypto_Nonce& nonce,
+      ManagedBuffer crypto_box_easy(const MemView& msg, const AsymCrypto_Nonce& nonce,
                                     const AsymCrypto_PublicKey& recipientKey, const AsymCrypto_SecretKey& senderKey);
-      SodiumSecureMemory crypto_box_open_easy(const ManagedMemory& cipher, const AsymCrypto_Nonce& nonce, const AsymCrypto_PublicKey& senderKey,
+      SodiumSecureMemory crypto_box_open_easy(const MemView& cipher, const AsymCrypto_Nonce& nonce, const AsymCrypto_PublicKey& senderKey,
                                               const AsymCrypto_SecretKey& recipientKey, SodiumSecureMemType clearTextProtection = SodiumSecureMemType::Locked);
-      pair<ManagedBuffer, AsymCrypto_Tag> crypto_box_detached(const ManagedMemory& msg, const AsymCrypto_Nonce& nonce,
+      pair<ManagedBuffer, AsymCrypto_Tag> crypto_box_detached(const MemView& msg, const AsymCrypto_Nonce& nonce,
                                     const AsymCrypto_PublicKey& recipientKey, const AsymCrypto_SecretKey& senderKey);
-      SodiumSecureMemory crypto_box_open_detached(const ManagedMemory& cipher, const AsymCrypto_Tag& mac, const AsymCrypto_Nonce& nonce, const AsymCrypto_PublicKey& senderKey,
+      SodiumSecureMemory crypto_box_open_detached(const MemView& cipher, const AsymCrypto_Tag& mac, const AsymCrypto_Nonce& nonce, const AsymCrypto_PublicKey& senderKey,
                                                   const AsymCrypto_SecretKey& recipientKey, SodiumSecureMemType clearTextProtection = SodiumSecureMemType::Locked);
 
       // public key cryptography, encryption / decryption, string-based
@@ -566,10 +1275,10 @@ namespace Sloppy
 
       // signatures, buffer-based
       using AsymSign_Signature = SodiumKey<SodiumKeyType::Public, crypto_sign_BYTES>;
-      ManagedBuffer crypto_sign(const ManagedMemory& msg, const AsymSign_SecretKey& sk);
-      ManagedBuffer crypto_sign_open(const ManagedMemory& signedMsg, const AsymSign_PublicKey& pk);
-      bool crypto_sign_detached(const ManagedMemory& msg, const AsymSign_SecretKey& sk, AsymSign_Signature& sig_out);
-      bool crypto_sign_verify_detached(const ManagedMemory& msg, const AsymSign_Signature& sig, const AsymSign_PublicKey& pk);
+      ManagedBuffer crypto_sign(const MemView& msg, const AsymSign_SecretKey& sk);
+      ManagedBuffer crypto_sign_open(const MemView& signedMsg, const AsymSign_PublicKey& pk);
+      bool crypto_sign_detached(const MemView& msg, const AsymSign_SecretKey& sk, AsymSign_Signature& sig_out);
+      bool crypto_sign_verify_detached(const MemView& msg, const AsymSign_Signature& sig, const AsymSign_PublicKey& pk);
 
       // signatures, string-based
       string crypto_sign(const string& msg, const AsymSign_SecretKey& sk);
@@ -580,17 +1289,17 @@ namespace Sloppy
       // hashing
       using GenericHashKey = SodiumKey<SodiumKeyType::Secret, crypto_generichash_KEYBYTES>;
       using ShorthashKey = SodiumKey<SodiumKeyType::Secret, crypto_shorthash_KEYBYTES>;
-      ManagedBuffer crypto_generichash(const ManagedMemory& inData);
-      ManagedBuffer crypto_generichash(const ManagedMemory& inData, const GenericHashKey& key);
+      ManagedBuffer crypto_generichash(const MemView& inData);
+      ManagedBuffer crypto_generichash(const MemView& inData, const GenericHashKey& key);
       string crypto_generichash(const string& inData);
       string crypto_generichash(const string& inData, const GenericHashKey& key);
       bool crypto_generichash_init(crypto_generichash_state *state);
       bool crypto_generichash_init(crypto_generichash_state *state, const GenericHashKey& k);
-      bool crypto_generichash_update(crypto_generichash_state *state, const ManagedMemory& inData);
+      bool crypto_generichash_update(crypto_generichash_state *state, const MemView& inData);
       bool crypto_generichash_update(crypto_generichash_state *state, const string& inData);
       ManagedBuffer crypto_generichash_final(crypto_generichash_state *state);
       string crypto_generichash_final_string(crypto_generichash_state *state);
-      ManagedBuffer crypto_shorthash(const ManagedMemory& inData, const ShorthashKey& k);
+      ManagedBuffer crypto_shorthash(const MemView& inData, const ShorthashKey& k);
       string crypto_shorthash(const string& inData, const ShorthashKey& k);
 
       // password hashing and key derivation
@@ -613,21 +1322,21 @@ namespace Sloppy
         PasswdHashAlgo algo;
       };
 
-      pair<SodiumSecureMemory, PwHashData> crypto_pwhash(const ManagedMemory& pw, size_t hashLen,
+      pair<SodiumSecureMemory, PwHashData> crypto_pwhash(const MemView& pw, size_t hashLen,
                                                             PasswdHashStrength strength = PasswdHashStrength::Moderate,
                                                             PasswdHashAlgo algo = PasswdHashAlgo::Argon2,
                                                             SodiumSecureMemType memType = SodiumSecureMemType::Locked);
-      SodiumSecureMemory crypto_pwhash(const ManagedMemory& pw, size_t hashLen, PwHashData& hDat,
+      SodiumSecureMemory crypto_pwhash(const MemView& pw, size_t hashLen, PwHashData& hDat,
                                        SodiumSecureMemType memType = SodiumSecureMemType::Locked);
       pair<string, string> crypto_pwhash(const string& pw, size_t hashLen,
                                          PasswdHashStrength strength = PasswdHashStrength::Moderate,
                                          PasswdHashAlgo algo = PasswdHashAlgo::Argon2,
                                          SodiumSecureMemType memType = SodiumSecureMemType::Locked);
-      string crypto_pwhash_str(const ManagedMemory& pw, PasswdHashStrength strength = PasswdHashStrength::Moderate,
+      string crypto_pwhash_str(const MemView& pw, PasswdHashStrength strength = PasswdHashStrength::Moderate,
                                PasswdHashAlgo algo = PasswdHashAlgo::Argon2);
       string crypto_pwhash_str(const string& pw, PasswdHashStrength strength = PasswdHashStrength::Moderate,
                                PasswdHashAlgo algo = PasswdHashAlgo::Argon2);
-      bool crypto_pwhash_str_verify(const ManagedMemory& pw, const string& hashResult, PasswdHashAlgo algo = PasswdHashAlgo::Argon2);
+      bool crypto_pwhash_str_verify(const MemView& pw, const string& hashResult, PasswdHashAlgo algo = PasswdHashAlgo::Argon2);
       bool crypto_pwhash_str_verify(const string& pw, const string& hashResult, PasswdHashAlgo algo = PasswdHashAlgo::Argon2);
 
       // converts password hash strength and algorithm into values for opslimit and memlimit
@@ -648,19 +1357,21 @@ namespace Sloppy
       void *libHandle;
       SodiumPtr sodium;
 
+      bool crypto_secretbox_open_easy__internal(const MemArray& targetBuf, const MemView& cipher, const SecretBoxNonceType& nonce, const SecretBoxKeyType& key);
+
       // generic handler for AEAD encryption, buffer-based
       ManagedBuffer crypto_aead_encrypt(int (*funcPtr)(unsigned char *, unsigned long long *, const unsigned char *,
                                                        unsigned long long, const unsigned char *, unsigned long long,
                                                        const unsigned char *, const unsigned char *,const unsigned char *),
-                                        size_t tagSize, const ManagedMemory& msg, const ManagedMemory& nonce,
-                                        const ManagedMemory& key, const ManagedBuffer& ad = ManagedBuffer{});
+                                        size_t tagSize, const MemView& msg, const MemView& nonce,
+                                        const MemView& key, const ManagedBuffer& ad = ManagedBuffer{});
 
       // generic handler for AEAD decryption, buffer-based
       SodiumSecureMemory crypto_aead_decrypt(int (*funcPtr)(unsigned char *, unsigned long long *, unsigned char *,
                                                             const unsigned char *, unsigned long long, const unsigned char *,
                                                             unsigned long long, const unsigned char *, const unsigned char *),
-                                             size_t tagSize, const ManagedMemory& cipher, const ManagedMemory& nonce,
-                                                              const ManagedMemory& key, const ManagedBuffer& ad = ManagedBuffer{},
+                                             size_t tagSize, const MemView& cipher, const MemView& nonce,
+                                                              const MemView& key, const ManagedBuffer& ad = ManagedBuffer{},
                                                               SodiumSecureMemType clearTextProtection = SodiumSecureMemType::Locked);
       // generic handler for AEAD encryption, string-based
       string crypto_aead_encrypt(int (*funcPtr)(unsigned char *, unsigned long long *, const unsigned char *,
@@ -680,15 +1391,15 @@ namespace Sloppy
       string crypto_aead_encrypt(int (*funcPtr)(unsigned char *, unsigned long long *, const unsigned char *,
                                                        unsigned long long, const unsigned char *, unsigned long long,
                                                        const unsigned char *, const unsigned char *,const unsigned char *),
-                                        size_t tagSize, const string& msg, const ManagedMemory& nonce,
-                                        const ManagedMemory& key, const string& ad = string{});
+                                        size_t tagSize, const string& msg, const MemView& nonce,
+                                        const MemView& key, const string& ad = string{});
 
       // generic handler for AEAD decryption, mixed form
       string crypto_aead_decrypt(int (*funcPtr)(unsigned char *, unsigned long long *, unsigned char *,
                                                             const unsigned char *, unsigned long long, const unsigned char *,
                                                             unsigned long long, const unsigned char *, const unsigned char *),
-                                             size_t tagSize, const string& cipher, const ManagedMemory& nonce,
-                                                              const ManagedMemory& key, const string& ad = string{});
+                                             size_t tagSize, const string& cipher, const MemView& nonce,
+                                                              const MemView& key, const string& ad = string{});
     };
 
     // a template class that provides nonce handling for "crypto boxes"
@@ -754,14 +1465,14 @@ namespace Sloppy
       SodiumSecretBox(const KeyType& _key, const NonceType& _nonce, bool autoIncNonce = false);
 
       // encryption
-      ManagedBuffer encryptCombined(const ManagedMemory& msg);
-      pair<ManagedBuffer, ManagedBuffer> encryptDetached(const ManagedMemory& msg);
+      ManagedBuffer encryptCombined(const MemView& msg);
+      pair<ManagedBuffer, ManagedBuffer> encryptDetached(const MemView& msg);
       string encryptCombined(const string& msg);
       pair<string, string> encryptDetached(const string& msg);
 
       // decryption
-      SodiumSecureMemory decryptCombined(const ManagedMemory& cipher, SodiumSecureMemType clearTextProtection = SodiumSecureMemType::Locked);
-      SodiumSecureMemory decryptDetached(const ManagedMemory& cipher, const ManagedMemory& mac, SodiumSecureMemType clearTextProtection = SodiumSecureMemType::Locked);
+      SodiumSecureMemory decryptCombined(const MemView& cipher, SodiumSecureMemType clearTextProtection = SodiumSecureMemType::Locked);
+      SodiumSecureMemory decryptDetached(const MemView& cipher, const MemView& mac, SodiumSecureMemType clearTextProtection = SodiumSecureMemType::Locked);
       string decryptCombined(const string& cipher);
       string decryptDetached(const string& cipher, const string& mac);
 
@@ -779,7 +1490,7 @@ namespace Sloppy
       GenericHasher();
       GenericHasher(const SodiumLib::GenericHashKey& k);
 
-      bool append(const ManagedMemory& inData);
+      bool append(const MemView& inData);
       bool append(const string& inData);
 
       ManagedBuffer finalize();
@@ -833,7 +1544,7 @@ namespace Sloppy
       PasswordProtectedSecret(const string& data, bool isBase64=false);
 
       // access functions
-      bool setSecret(const ManagedMemory& sec);
+      bool setSecret(const MemView& sec);
       bool setSecret(const string& sec);
       string getSecretAsString();
       SodiumSecureMemory getSecret(SodiumSecureMemType memType = SodiumSecureMemType::Locked);
@@ -865,7 +1576,6 @@ namespace Sloppy
 
       void password2SymKey(const string& pw);
     };
-
   }
 }
 #endif

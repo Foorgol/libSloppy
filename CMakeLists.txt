@@ -27,7 +27,7 @@ set(LIB_SOURCES
     Sloppy/MailAndMIME/MIME_Message.cpp
     Sloppy/ConfigFileParser/ConfigFileParser.cpp
     Sloppy/Crypto/Crypto.cpp
-    #Sloppy/Crypto/Sodium.cpp
+    Sloppy/Crypto/Sodium.cpp
     Sloppy/HTML/StyledElement.cpp
     Sloppy/HTML/BasicElements.cpp
     Sloppy/HTML/Table.cpp

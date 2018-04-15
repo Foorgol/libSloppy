@@ -397,46 +397,67 @@ namespace Sloppy
 
   //----------------------------------------------------------------------------
 
-  /** \brief A class for managed, heap-allocated arrays of any type
+  /** \brief A class for managed, heap-allocated arrays of any type;
+   * derived classes can define their own functions for allocating or releasing memory.
    *
-   * Condition: the type must have a default constructor!
-   *
-   * \note Instances of this class OWN the pointers / memory they are working with.
+   * Can be used with owning as well as with non-owning pointers.
    */
   template <class T>
   class ManagedArray
   {
   public:
-    /** \brief Ctor that allocates a new array with a defined number of elements
+    /** \brief Default ctor that allocates a new array with a defined number of elements
      *
-     * \throws std::runtime_error if the memory allocation failed
+     * Can throw any exception that the custom `allocateMem()` throws.
+     *
+     * \throws std::runtime_error if the custom 'allocateMem()' did not provide a valid memory block
      */
     ManagedArray(
         size_t nElem = 0         ///< number of elements in the array (NOT number of bytes!!)
         )
-      : ptr{nullptr}, cnt{0}
+      : ptr{nullptr}, cnt{0}, owning{false}
     {
       if (nElem == 0) return;
 
-      try
-      {
-        ptr = new T[nElem]();
-      }
-      catch (...)
+      // actually allocate the memory.
+      // Do not catch any exceptions, leave that to the caller
+      ptr = allocateMem(nElem);
+
+      if (ptr == nullptr)
       {
         throw std::runtime_error("ManagedArray: couldn't allocate memory for array!");
       }
 
       cnt = nElem;
+      owning = true;
     }
 
-    /** \brief Dtor; releases the allocated memory
+    /** \brief Ctor from the raw pointer of a previously allocated array of which we can, optionally, take ownership
+     *
+     * \warning Arrays that we take ownership for have to created with anything that is compatible
+     * with the `releaseMem()`-function because we're applying this custom function for releasing the provided pointer.
+     *
+     * If we're not taking ownership, it doesn't matter how the array has been created because
+     * we're not calling `releaseMem()' on the pointer.
+     *
+     */
+    ManagedArray(
+        T* p,      ///< pointer to a previously allocated array
+        size_t n,  ///< number of ELEMENTS (**not Bytes**) in the array
+        bool takeOwnership   ///< if set to `true`, this class will dispose the memory after usage with `delete[]`
+        )
+      :ManagedArray{}
+    {
+      overwritePointer(p, n, takeOwnership);
+    }
+
+    /** \brief Dtor; releases the memory if we're owning it
      */
     virtual ~ManagedArray()
     {
-      if (ptr != nullptr)
+      if ((ptr != nullptr) && owning)
       {
-        delete[] ptr;
+        releaseMem(ptr);
       }
     }
 
@@ -502,23 +523,34 @@ namespace Sloppy
       return ptr[cnt - 1];
     }
 
-    /** \returns an ArrayView for this ManagedArray
+    /** \returns an ArrayView for this array
      */
     ArrayView<T> view() const
     {
       return ArrayView<T>(ptr, cnt);
     }
 
-    /** \brief Copy ctor; creates a DEEP COPY of the array.
+    /** \brief Copy ctor; creates a DEEP COPY of an existing array.
      *
      * \throws std::runtime_error if the memory allocation failed
      */
-    ManagedArray(const ManagedArray<T>& other)
-      :ManagedArray<T>{other.size()}
+    ManagedArray(
+        const ManagedArray& other   ///< the array containing the data to be copied
+        )
+      :ManagedArray{other.view()}
     {
-      void* srcPtr = reinterpret_cast<void *>(other.ptr);
-      void* dstPtr = reinterpret_cast<void *>(ptr);
-      memcpy(dstPtr, srcPtr, byteSize());
+    }
+
+    /** \brief Copy ctor; creates a DEEP COPY of an existing array.
+     *
+     * \throws std::runtime_error if the memory allocation failed
+     */
+    ManagedArray(
+        const ArrayView<T>& other   ///< the array containing the data to be copied
+        )
+      :ManagedArray{other.size()}
+    {
+      memcpy(to_voidPtr(), other.to_voidPtr(), byteSize());
     }
 
     /** \brief Disabled copy assignment operator.
@@ -526,35 +558,50 @@ namespace Sloppy
      * If I need copy assignment, I want to make it explicit using
      * the copy constructor.
      */
-    ManagedArray<T>& operator= (const ManagedArray<T>& other) = delete;
+    ManagedArray& operator= (const ManagedArray& other) = delete;
+
+    /** \brief Releases the currently managed memory if we're owning it
+     *
+     * \throws std::runtime_error if an attempt was made to release memory that we're not owning
+     */
+    void releaseMemory()
+    {
+      if (!owning)
+      {
+        throw std::runtime_error("ManagedArray: attempt to release not-owned memory");
+      }
+
+      if (ptr != nullptr)
+      {
+        releaseMem(ptr);
+      }
+    }
 
     /** \brief Move ctor
      */
     ManagedArray(
-        ManagedArray<T>&& other   ///< the ManagedArray whose content shall be transfered to this instance
+        ManagedArray&& other   ///< the ManagedArray whose content shall be transfered to this instance
         ) noexcept
     {
-      ptr = other.ptr;
-      other.ptr = nullptr;
-      cnt = other.cnt;
-      other.cnt = 0;
+      // take over the other's state
+      overwritePointer(other.ptr, other.cnt, other.owning);
+
+      // clear the other's state
+      other.overwritePointer(nullptr, 0, false);
     }
 
     /** \brief Move assignment
      */
     ManagedArray<T>& operator = (ManagedArray<T>&& other)
     {
-      // release the current memory, if any
-      if (ptr != nullptr)
-      {
-        delete[] ptr;
-      }
+      // free currently owned resources
+      if (owning && (ptr != nullptr)) releaseMem(ptr);
 
-      // take ownership of the other's memory
-      ptr = other.ptr;
-      other.ptr = nullptr;
-      cnt = other.cnt;
-      other.cnt = 0;
+      // take over the other's state
+      overwritePointer(other.ptr, other.cnt, other.owning);
+
+      // clear the other's state
+      other.overwritePointer(nullptr, 0, false);
 
       return *this;
     }
@@ -606,36 +653,41 @@ namespace Sloppy
      * If the new size is larger than the old size, the content
      * of the additional memory is undefined.
      *
-     * If the new size is zero, the currently allocated memory is released.
+     * If the new size is zero, the currently allocated memory is released if we're owning it.
      *
-     * \throws std::runtime_error if the required memory could not be allocated
+     * Unless the new size is zero or it equals the current size, this operation
+     * involves the allocation of a new memory block and copying of data between
+     * the old and the new memory.
+     *
+     * In case that we're **not owning** the memory and the new size is different
+     * than the existing size, the function will fail with an execption.
+     *
+     * \throws std::bad_alloc if the required memory could not be allocated
+     *
+     * \throws std::runtime_error if we were requested to resize an array that we're not owning
      */
     void resize(
         size_t newSize   ///< the new number of elements (NOT BYTES!) in the array
         )
     {
+      if (newSize == cnt) return;  // nothing to do
+
+      if (!owning)
+      {
+        throw std::runtime_error("ManagedArray: attempt to resize a not-owned array");
+      }
+
       if (newSize == 0)
       {
-        if (ptr != nullptr)
-        {
-          delete[] ptr;
-        }
-        ptr = nullptr;
-        cnt = 0;
+        releaseMemory();
         return;
       }
 
-      if (newSize == cnt) return; // nothing to do
-
       // allocate new memory
-      T* tmpPtr{nullptr};
-      try
+      T* tmpPtr = allocateMem(newSize);
+      if (tmpPtr == nullptr)
       {
-        tmpPtr = new T[newSize]();
-      }
-      catch (...)
-      {
-        throw std::runtime_error("ManagedArray: out of memory when resizing");
+        throw std::bad_alloc();
       }
 
       // copy contents over, if any
@@ -647,16 +699,73 @@ namespace Sloppy
         memcpy(dstPtr, srcPtr, nCopyElements * sizeof(T));
 
         // release the current memory
-        delete[] ptr;
+        releaseMem(ptr);
       }
 
-      ptr = tmpPtr;
-      cnt = newSize;
+      overwritePointer(tmpPtr, newSize, true);
+    }
+
+    /** \returns `true` if we're owning the array's memory, `false` otherwise
+     */
+    bool isOwning() const { return owning; }
+
+  protected:
+    /** \brief An internal function that can be used by derived classes
+     * to unconditionally overwrite the currently managed array.
+     *
+     * \warning Calling this function does not release any memory, even
+     * if we were owning the memory! The caller has to ensure that the
+     * previously owned memory has been released properly!
+     */
+    void overwritePointer(
+        T* newPtr,   ///< the new base pointer for the array
+        size_t newSize,    ///< the new number of elements (**not bytes**) in the array
+        bool hasOwnership   ///< set to true if we shall take ownership of the memory
+        ) noexcept
+    {
+      ptr = newPtr;
+      if (ptr == nullptr)
+      {
+        cnt = 0;
+        owning = false;
+      } else {
+        cnt = newSize;
+        owning = hasOwnership;
+      }
+    }
+
+    /** \brief Allocation function that has to be overridden by a derived class.
+     *
+     * Any exceptions that this function throws will be re-thrown by e.g. the
+     * ctor of the derived class.
+     *
+     * \returns a pointer to the newly allocated memory or `nullptr` to indicate an error
+     */
+    virtual T* allocateMem(
+        size_t nElem   ///< number of elements (**not bytes**) to allocate memory for
+        )
+    {
+      return new T[nElem]();
+    }
+
+    /** \brief De-allocation function for freeing memory that has previously been
+     * allocated with `allocateMem()'.
+     *
+     * Has to be overriden by derived classes.
+     *
+     * Will be called from the dtor and should thus preferably not throw exceptions
+     */
+    virtual void releaseMem (
+        T* p   ///< pointer to the memory section that should be freed; **can be `nullptr`**
+        )
+    {
+      if (ptr != nullptr) delete[] ptr;
     }
 
   private:
     T* ptr;
     size_t cnt;
+    bool owning;
   };
 
   //----------------------------------------------------------------------------
@@ -679,7 +788,29 @@ namespace Sloppy
       :ManagedArray<uint8_t>{v.byteSize()}
     {
       memcpy(to_voidPtr(), v.to_voidPtr(), byteSize());
-    }   
+    }
+
+    /** \brief Convenience ctor from a plain, old char pointer
+     *
+     * \warning We **do not** take ownership of this pointer because we can't be sure about its origin
+     */
+    MemArray(
+        char* p,   ///< pointer to a previously allocated array
+        size_t n  ///< array size in bytes
+        )
+      :MemArray(reinterpret_cast<uint8_t*>(p), n, false) {}
+
+    /** \brief Convenience ctor from a plain, old void pointer
+     *
+     * \warning We **do not** take ownership of this pointer because we can't be sure about its
+     * origin and since we're coming from a `void`-pointer that could literally point to anything.
+     */
+    MemArray(
+        void* p,   ///< pointer to a previously allocated array in memory
+        size_t n  ///< array size in bytes
+        )
+      :MemArray(reinterpret_cast<uint8_t*>(p), n, false) {}
+
   };
 }
 

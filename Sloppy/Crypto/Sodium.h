@@ -150,6 +150,13 @@ namespace Sloppy
         :SodiumBasicException{"the conversion between data formats failed", context} {}
     };
 
+    class SodiumAES256GCMUnavail : public SodiumBasicException
+    {
+    public:
+      SodiumAES256GCMUnavail(const string& context = string{})
+        :SodiumBasicException{"AES256-GCM is not supported on this machine", context} {}
+    };
+
     //----------------------------------------------------------------------------
 
     /** An enum that defines different types of secure memory
@@ -601,23 +608,23 @@ namespace Sloppy
                              unsigned long long inlen, const unsigned char *k);
 
       // authenticated encryption with additional data, ChaCha20 with Poly1305
-      int (*crypto_aead_chacha20poly1305_encrypt)(unsigned char *c, unsigned long long *clen,
+      int (*crypto_aead_xchacha20poly1305_ietf_encrypt)(unsigned char *c, unsigned long long *clen,
                                                   const unsigned char *m, unsigned long long mlen,
                                                   const unsigned char *ad, unsigned long long adlen,
                                                   const unsigned char *nsec, const unsigned char *npub,
                                                   const unsigned char *k);
-      int (*crypto_aead_chacha20poly1305_decrypt)(unsigned char *m, unsigned long long *mlen,
+      int (*crypto_aead_xchacha20poly1305_ietf_decrypt)(unsigned char *m, unsigned long long *mlen,
                                                   unsigned char *nsec,
                                                   const unsigned char *c, unsigned long long clen,
                                                   const unsigned char *ad, unsigned long long adlen,
                                                   const unsigned char *npub, const unsigned char *k);
-      int (*crypto_aead_chacha20poly1305_encrypt_detached)(unsigned char *c, unsigned char *mac,
+      int (*crypto_aead_xchacha20poly1305_ietf_encrypt_detached)(unsigned char *c, unsigned char *mac,
                                                            unsigned long long *maclen_p,
                                                            const unsigned char *m, unsigned long long mlen,
                                                            const unsigned char *ad, unsigned long long adlen,
                                                            const unsigned char *nsec, const unsigned char *npub,
                                                            const unsigned char *k);
-      int (*crypto_aead_chacha20poly1305_decrypt_detached)(unsigned char *m, unsigned char *nsec,
+      int (*crypto_aead_xchacha20poly1305_ietf_decrypt_detached)(unsigned char *m, unsigned char *nsec,
                                                            const unsigned char *c, unsigned long long clen,
                                                            const unsigned char *mac,
                                                            const unsigned char *ad, unsigned long long adlen,
@@ -1186,51 +1193,296 @@ namespace Sloppy
       // message authentication
       using AuthKeyType = SodiumKey<SodiumKeyType::Secret, crypto_auth_KEYBYTES>;
       using AuthTagType = SodiumKey<SodiumKeyType::Public, crypto_auth_BYTES>;
-      AuthTagType crypto_auth(const MemView& msg, const AuthKeyType& key);
-      bool crypto_auth_verify(const MemView& msg, const AuthTagType& tag, const AuthKeyType& key);
-      string crypto_auth(const string& msg, const string& key);
-      bool crypto_auth_verify(const string& msg, const string& tag, const string& key);
+
+      /** \brief Computes an authentication tag for a plain text message using a symmetric, secret key;
+       * original documentation [here](https://download.libsodium.org/doc/secret-key_cryptography/secret-key_authentication.html).
+       *
+       * The computed tag can be verified with `crypto_auth_verify()`
+       *
+       * \throws SodiumInvalidMessage if the provided message was empty
+       *
+       * \throws SodiumInvalidKey if the provided key was empty
+       *
+       * \returns a heap-allocated buffer containing the (public) authentication tag
+       */
+      AuthTagType crypto_auth(
+          const MemView& msg,   ///< the input message
+          const AuthKeyType& key   ///< the (confidential) key for computing the authentication tag
+          );
+
+      /** \brief Verifies the authentication tag of a plain text message using a symmetric, secret key;
+       * original documentation [here](https://download.libsodium.org/doc/secret-key_cryptography/secret-key_authentication.html).
+       *
+       * The tag can be computed with `crypto_auth()`
+       *
+       * \throws SodiumInvalidMessage if the provided message was empty
+       *
+       * \throws SodiumInvalidMac if the provided authentication tag was empty
+       *
+       * \throws SodiumInvalidKey if the provided key was empty
+       *
+       * \returns `true` if the combination of message and tag was valid (and thus the message authentic); `false` otherwise
+       */
+      bool crypto_auth_verify(
+          const MemView& msg,   ///< the input message
+          const AuthTagType& tag,   ///< the previously computed authentication tag
+          const AuthKeyType& key   ///< the (confidential) key for verifying the authentication tag
+          );
+
+      /** \brief Computes an authentication tag for a plain text message using a symmetric, secret key;
+       * original documentation [here](https://download.libsodium.org/doc/secret-key_cryptography/secret-key_authentication.html).
+       *
+       * The computed tag can be verified with `crypto_auth_verify()`
+       *
+       * \throws SodiumInvalidMessage if the provided message was empty
+       *
+       * \throws SodiumInvalidKey if the provided key was empty
+       *
+       * \returns a heap-allocated buffer containing the (public) authentication tag
+       */
+      AuthTagType crypto_auth(
+          const string& msg,   ///< the input message
+          const AuthKeyType& key   ///< the (confidential) key for computing the authentication tag
+          );
+
+      /** \brief Verifies the authentication tag of a plain text message using a symmetric, secret key;
+       * original documentation [here](https://download.libsodium.org/doc/secret-key_cryptography/secret-key_authentication.html).
+       *
+       * The tag can be computed with `crypto_auth()`
+       *
+       * \throws SodiumInvalidMessage if the provided message was empty
+       *
+       * \throws SodiumInvalidMac if the provided authentication tag was empty
+       *
+       * \throws SodiumInvalidKey if the provided key was empty
+       *
+       * \returns `true` if the combination of message and tag was valid (and thus the message authentic); `false` otherwise
+       */
+      bool crypto_auth_verify(
+          const string& msg,   ///< the input message
+          const AuthTagType& tag,   ///< the previously computed authentication tag
+          const AuthKeyType& key   ///< the (confidential) key for verifying the authentication tag
+          );
 
       // authenticated encryption with additional data, buffer based
-      using AEAD_ChaCha20Poly1305_KeyType = SodiumKey<SodiumKeyType::Secret, crypto_aead_chacha20poly1305_KEYBYTES>;
-      using AEAD_ChaCha20Poly1305_NonceType = SodiumKey<SodiumKeyType::Public, crypto_aead_chacha20poly1305_NPUBBYTES>;
-      using AEAD_ChaCha20Poly1305_TagType = SodiumKey<SodiumKeyType::Public, crypto_aead_chacha20poly1305_ABYTES>;
-      ManagedBuffer crypto_aead_chacha20poly1305_encrypt(const MemView& msg, const AEAD_ChaCha20Poly1305_NonceType& nonce,
-                                                         const AEAD_ChaCha20Poly1305_KeyType& key, const ManagedBuffer& ad = ManagedBuffer{});
-      SodiumSecureMemory crypto_aead_chacha20poly1305_decrypt(const MemView& cipher, const AEAD_ChaCha20Poly1305_NonceType& nonce,
-                                                              const AEAD_ChaCha20Poly1305_KeyType& key, const ManagedBuffer& ad = ManagedBuffer{},
-                                                              SodiumSecureMemType clearTextProtection = SodiumSecureMemType::Locked);
+      using AEAD_XChaCha20Poly1305_KeyType = SodiumKey<SodiumKeyType::Secret, crypto_aead_xchacha20poly1305_ietf_KEYBYTES>;
+      using AEAD_XChaCha20Poly1305_NonceType = SodiumKey<SodiumKeyType::Public, crypto_aead_xchacha20poly1305_ietf_NPUBBYTES>;
+      using AEAD_XChaCha20Poly1305_TagType = SodiumKey<SodiumKeyType::Public, crypto_aead_xchacha20poly1305_ietf_ABYTES>;
 
-      // authenticated encryption with additional data, string-based
-      string crypto_aead_chacha20poly1305_encrypt(const string& msg, const string& nonce, const string& key, const string& ad = string{});
-      string crypto_aead_chacha20poly1305_decrypt(const string& cipher, const string& nonce, const string& key, const string& ad = string{});
 
-      // authenticated encryption with additional data, mixed form
-      string crypto_aead_chacha20poly1305_encrypt(const string& msg, const AEAD_ChaCha20Poly1305_NonceType& nonce, const AEAD_ChaCha20Poly1305_KeyType& key,
-                                                  const string& ad = string{});
-      string crypto_aead_chacha20poly1305_decrypt(const string& cipher, const AEAD_ChaCha20Poly1305_NonceType& nonce, const AEAD_ChaCha20Poly1305_KeyType& key,
-                                                  const string& ad = string{});
+      /** \brief Symmetric, authenticated encryption with (optional) additional data;
+       * original documentation [here](https://download.libsodium.org/doc/secret-key_cryptography/aead.html)
+       * and especially [here](https://download.libsodium.org/doc/secret-key_cryptography/xchacha20-poly1305_construction.html).
+       *
+       * This function call uses the XChaCha20-Poly1305-IETF algorithm.
+       *
+       * The additional data is optional and will **not** be encrypted but it will be
+       * included in the computation of the authentication tag.
+       *
+       * \throws SodiumInvalidMessage if the provided message was empty
+       *
+       * \throws SodiumInvalidNonce if the provided nonce was empty
+       *
+       * \throws SodiumInvalidKey if the provided key was empty
+       *
+       */
+      MemArray crypto_aead_xchacha20poly1305_encrypt(
+          const MemView& msg,   ///< the plain message for encryption
+          const AEAD_XChaCha20Poly1305_NonceType& nonce,   ///< the nonce to be used for this specific message
+          const AEAD_XChaCha20Poly1305_KeyType& key,   ///< the secret key; the caller has to ensure that the memory is enabled for reading
+          const MemView& ad = MemView{}   ///< optional, additional data to be included in the MAC computation
+          );
+
+      /** \brief Symmetric, authenticated decryption with (optional) additional data;
+       * original documentation [here](https://download.libsodium.org/doc/secret-key_cryptography/aead.html)
+       * and especially [here](https://download.libsodium.org/doc/secret-key_cryptography/xchacha20-poly1305_construction.html).
+       *
+       * This function call uses the XChaCha20-Poly1305-IETF algorithm.
+       *
+       * The additional data is optional will only be
+       * included in the computation of the authentication tag.
+       *
+       * \throws SodiumInvalidCipher if the provided message was empty or too short
+       *
+       * \throws SodiumInvalidNonce if the provided nonce was empty
+       *
+       * \throws SodiumInvalidKey if the provided key was empty
+       *
+       * \returns a secure memory buffer with the plain data
+       * or an empty buffer if the decryption failed, e.g., due to an invalid MAC
+       */
+      SodiumSecureMemory crypto_aead_xchacha20poly1305_decrypt(
+          const MemView& cipher,   ///< buffer with encrypted data and attached MAC
+          const AEAD_XChaCha20Poly1305_NonceType& nonce,   ///< the nonce to be used for this specific message
+          const AEAD_XChaCha20Poly1305_KeyType& key,   ///< the secret key; the caller has to ensure that the memory is enabled for reading
+          const MemView& ad = MemView{},   ///< optional, additional data to be included in the MAC computation
+          SodiumSecureMemType clearTextProtection = SodiumSecureMemType::Locked   ///< the protection class for the resulting plain text
+          );
+
+      /** \brief Symmetric, authenticated encryption with (optional) additional data;
+       * original documentation [here](https://download.libsodium.org/doc/secret-key_cryptography/aead.html)
+       * and especially [here](https://download.libsodium.org/doc/secret-key_cryptography/xchacha20-poly1305_construction.html).
+       *
+       * This function call uses the XChaCha20-Poly1305-IETF algorithm.
+       *
+       * The additional data is optional and will **not** be encrypted but it will be
+       * included in the computation of the authentication tag.
+       *
+       * \throws SodiumInvalidMessage if the provided message was empty
+       *
+       * \throws SodiumInvalidNonce if the provided nonce was empty
+       *
+       * \throws SodiumInvalidKey if the provided key was empty
+       *
+       */
+      string crypto_aead_xchacha20poly1305_encrypt(
+          const string& msg,   ///< the plain message for encryption
+          const AEAD_XChaCha20Poly1305_NonceType& nonce,   ///< the nonce to be used for this specific message
+          const AEAD_XChaCha20Poly1305_KeyType& key,   ///< the secret key; the caller has to ensure that the memory is enabled for reading
+          const string& ad = string{}   ///< optional, additional data to be included in the MAC computation
+          );
+
+      /** \brief Symmetric, authenticated decryption with (optional) additional data;
+       * original documentation [here](https://download.libsodium.org/doc/secret-key_cryptography/aead.html)
+       * and especially [here](https://download.libsodium.org/doc/secret-key_cryptography/xchacha20-poly1305_construction.html).
+       *
+       * This function call uses the XChaCha20-Poly1305-IETF algorithm.
+       *
+       * The additional data is optional will only be
+       * included in the computation of the authentication tag.
+       *
+       * \throws SodiumInvalidCipher if the provided message was empty or too short
+       *
+       * \throws SodiumInvalidNonce if the provided nonce was empty
+       *
+       * \throws SodiumInvalidKey if the provided key was empty
+       *
+       * \returns a secure memory buffer with the plain data
+       * or an empty buffer if the decryption failed, e.g., due to an invalid MAC
+       */
+      string crypto_aead_xchacha20poly1305_decrypt(
+          const string& cipher,   ///< buffer with encrypted data and attached MAC
+          const AEAD_XChaCha20Poly1305_NonceType& nonce,   ///< the nonce to be used for this specific message
+          const AEAD_XChaCha20Poly1305_KeyType& key,   ///< the secret key; the caller has to ensure that the memory is enabled for reading
+          const string& ad = MemView{}   ///< optional, additional data to be included in the MAC computation
+          );
 
       // authenticated encryption with additional data, AES-256 GCM, buffer based
       using AEAD_AES256GCM_KeyType = SodiumKey<SodiumKeyType::Secret, crypto_aead_aes256gcm_KEYBYTES>;
       using AEAD_AES256GCM_NonceType = SodiumKey<SodiumKeyType::Public, crypto_aead_aes256gcm_NPUBBYTES>;
       using AEAD_AES256GCM_TagType = SodiumKey<SodiumKeyType::Public, crypto_aead_aes256gcm_ABYTES>;
+
+      /** \returns `true` if AES256-GCM is available on this CPU, `false` otherwise.
+       *
+       * \warning If this function returns `false` none of the crypto_aead_aes256gcm_* functions
+       * may be used.
+       */
       bool is_AES256GCM_avail();
-      ManagedBuffer crypto_aead_aes256gcm_encrypt(const MemView& msg, const AEAD_AES256GCM_NonceType& nonce,
-                                                         const AEAD_AES256GCM_KeyType& key, const ManagedBuffer& ad = ManagedBuffer{});
-      SodiumSecureMemory crypto_aead_aes256gcm_decrypt(const MemView& cipher, const AEAD_AES256GCM_NonceType& nonce,
-                                                              const AEAD_AES256GCM_KeyType& key, const ManagedBuffer& ad = ManagedBuffer{},
-                                                              SodiumSecureMemType clearTextProtection = SodiumSecureMemType::Locked);
 
-      // authenticated encryption with additional data, AES-256 GCM, string-based
-      string crypto_aead_aes256gcm_encrypt(const string& msg, const string& nonce, const string& key, const string& ad = string{});
-      string crypto_aead_aes256gcm_decrypt(const string& cipher, const string& nonce, const string& key, const string& ad = string{});
+      /** \brief Symmetric, authenticated encryption with (optional) additional data;
+       * original documentation [here](https://download.libsodium.org/doc/secret-key_cryptography/aead.html)
+       * and especially [here](https://download.libsodium.org/doc/secret-key_cryptography/aes-256-gcm.html).
+       *
+       * This function call uses AES256 in Gaulois Counter Mode (GCM).
+       *
+       * The additional data is optional and will **not** be encrypted but it will be
+       * included in the computation of the authentication tag.
+       *
+       * \throws SodiumAES256GCMUnavail if AES256-GCM is not available on this machine
+       *
+       * \throws SodiumInvalidMessage if the provided message was empty
+       *
+       * \throws SodiumInvalidNonce if the provided nonce was empty
+       *
+       * \throws SodiumInvalidKey if the provided key was empty
+       *
+       */
+      MemArray crypto_aead_aes256gcm_encrypt(
+          const MemView& msg,   ///< the plain message for encryption
+          const AEAD_AES256GCM_NonceType& nonce,   ///< the nonce to be used for this specific message
+          const AEAD_AES256GCM_KeyType& key,   ///< the secret key; the caller has to ensure that the memory is enabled for reading
+          const MemView& ad = MemView{}   ///< optional, additional data to be included in the MAC computation
+          );
 
-      // authenticated encryption with additional data, AES-256 GCM, mixed form
-      string crypto_aead_aes256gcm_encrypt(const string& msg, const AEAD_AES256GCM_NonceType& nonce, const AEAD_AES256GCM_KeyType& key,
-                                                  const string& ad = string{});
-      string crypto_aead_aes256gcm_decrypt(const string& cipher, const AEAD_AES256GCM_NonceType& nonce, const AEAD_AES256GCM_KeyType& key,
-                                                  const string& ad = string{});
+      /** \brief Symmetric, authenticated decryption with (optional) additional data;
+       * original documentation [here](https://download.libsodium.org/doc/secret-key_cryptography/aead.html)
+       * and especially [here](https://download.libsodium.org/doc/secret-key_cryptography/aes-256-gcm.html).
+       *
+       * This function call uses AES256 in Gaulois Counter Mode (GCM).
+       *
+       * The additional data is optional will only be
+       * included in the computation of the authentication tag.
+       *
+       * \throws SodiumAES256GCMUnavail if AES256-GCM is not available on this machine
+       *
+       * \throws SodiumInvalidCipher if the provided message was empty or too short
+       *
+       * \throws SodiumInvalidNonce if the provided nonce was empty
+       *
+       * \throws SodiumInvalidKey if the provided key was empty
+       *
+       * \returns a secure memory buffer with the plain data
+       * or an empty buffer if the decryption failed, e.g., due to an invalid MAC
+       */
+      SodiumSecureMemory crypto_aead_aes256gcm_decrypt(
+          const MemView& cipher,   ///< buffer with encrypted data and attached MAC
+          const AEAD_AES256GCM_NonceType& nonce,   ///< the nonce to be used for this specific message
+          const AEAD_AES256GCM_KeyType& key,   ///< the secret key; the caller has to ensure that the memory is enabled for reading
+          const MemView& ad = MemView{},   ///< optional, additional data to be included in the MAC computation
+          SodiumSecureMemType clearTextProtection = SodiumSecureMemType::Locked   ///< the protection class for the resulting plain text
+          );
+
+      /** \brief Symmetric, authenticated encryption with (optional) additional data;
+       * original documentation [here](https://download.libsodium.org/doc/secret-key_cryptography/aead.html)
+       * and especially [here](https://download.libsodium.org/doc/secret-key_cryptography/aes-256-gcm.html).
+       *
+       * This function call uses AES256 in Gaulois Counter Mode (GCM).
+       *
+       * The additional data is optional and will **not** be encrypted but it will be
+       * included in the computation of the authentication tag.
+       *
+       * \throws SodiumAES256GCMUnavail if AES256-GCM is not available on this machine
+       *
+       * \throws SodiumInvalidMessage if the provided message was empty
+       *
+       * \throws SodiumInvalidNonce if the provided nonce was empty
+       *
+       * \throws SodiumInvalidKey if the provided key was empty
+       *
+       */
+      string crypto_aead_aes256gcm_encrypt(
+          const string& msg,   ///< the plain message for encryption
+          const AEAD_AES256GCM_NonceType& nonce,   ///< the nonce to be used for this specific message
+          const AEAD_AES256GCM_KeyType& key,   ///< the secret key; the caller has to ensure that the memory is enabled for reading
+          const string& ad = string{}   ///< optional, additional data to be included in the MAC computation
+          );
+
+      /** \brief Symmetric, authenticated decryption with (optional) additional data;
+       * original documentation [here](https://download.libsodium.org/doc/secret-key_cryptography/aead.html)
+       * and especially [here](https://download.libsodium.org/doc/secret-key_cryptography/aes-256-gcm.html).
+       *
+       * This function call uses AES256 in Gaulois Counter Mode (GCM).
+       *
+       * The additional data is optional will only be
+       * included in the computation of the authentication tag.
+       *
+       * \throws SodiumAES256GCMUnavail if AES256-GCM is not available on this machine
+       *
+       * \throws SodiumInvalidCipher if the provided message was empty or too short
+       *
+       * \throws SodiumInvalidNonce if the provided nonce was empty
+       *
+       * \throws SodiumInvalidKey if the provided key was empty
+       *
+       * \returns a secure memory buffer with the plain data
+       * or an empty buffer if the decryption failed, e.g., due to an invalid MAC
+       */
+      string crypto_aead_aes256gcm_decrypt(
+          const string& cipher,   ///< buffer with encrypted data and attached MAC
+          const AEAD_AES256GCM_NonceType& nonce,   ///< the nonce to be used for this specific message
+          const AEAD_AES256GCM_KeyType& key,   ///< the secret key; the caller has to ensure that the memory is enabled for reading
+          const string& ad = string{}   ///< optional, additional data to be included in the MAC computation
+          );
 
       // public key cryptography, key handling
       using AsymCrypto_PublicKey = SodiumKey<SodiumKeyType::Public, crypto_box_PUBLICKEYBYTES>;
@@ -1359,47 +1611,155 @@ namespace Sloppy
 
       bool crypto_secretbox_open_easy__internal(const MemArray& targetBuf, const MemView& cipher, const SecretBoxNonceType& nonce, const SecretBoxKeyType& key);
 
-      // generic handler for AEAD encryption, buffer-based
-      ManagedBuffer crypto_aead_encrypt(int (*funcPtr)(unsigned char *, unsigned long long *, const unsigned char *,
-                                                       unsigned long long, const unsigned char *, unsigned long long,
-                                                       const unsigned char *, const unsigned char *,const unsigned char *),
-                                        size_t tagSize, const MemView& msg, const MemView& nonce,
-                                        const MemView& key, const ManagedBuffer& ad = ManagedBuffer{});
+      /** \brief An internal, generic handler for AEAD encryption in combined mode
+       *
+       * Takes a function pointer to the actual encryption function (e.g, for
+       * XChaCha20 or AES256-GCM) and a generic set of encryption parameters.
+       *
+       * \note In case the actual tag is shorter than the provided tag size, a
+       * call to this function involves an additional, internal copying of the
+       * encrypted message and its tag into a correctly sized buffer (==> performance).
+       *
+       * \warning It is the caller's responsibility that the provided key and nonce
+       * arrays are of correct size for the selected encryption function! Otherwise,
+       * reads beyond the actual buffer end may occur!
+       *
+       * \throws invalid_argument if the provided function pointer was empty
+       *
+       * \throws SodiumInvalidMac if the provided tag size was zero
+       *
+       * \throws SodiumInvalidMessage if the provided message was empty
+       *
+       * \throws SodiumInvalidNonce if the provided nonce was empty
+       *
+       * \throws SodiumInvalidKey if the provided key was empty
+       *
+       * \returns a string with the combined encrypted data and authentication tag
+       */
+      string crypto_aead_encrypt(
+          int (*funcPtr)(unsigned char *, unsigned long long *, const unsigned char *,
+                         unsigned long long, const unsigned char *, unsigned long long,
+                         const unsigned char *, const unsigned char *,const unsigned char *),   ///< a pointer to the actual encryption function
+          size_t tagSize,   ///< the number of MAC bytes computed by the encryption function
+          const string& msg,   ///< the input message for encryption
+          const MemView& nonce,   ///< the nonce to be used for this specific message
+          const MemView& key,   ///< the secret key; the caller has to ensure that the memory is enabled for reading
+          const string& ad = string{}   ///< optional, additional data to be included in the MAC computation
+          );
 
-      // generic handler for AEAD decryption, buffer-based
-      SodiumSecureMemory crypto_aead_decrypt(int (*funcPtr)(unsigned char *, unsigned long long *, unsigned char *,
-                                                            const unsigned char *, unsigned long long, const unsigned char *,
-                                                            unsigned long long, const unsigned char *, const unsigned char *),
-                                             size_t tagSize, const MemView& cipher, const MemView& nonce,
-                                                              const MemView& key, const ManagedBuffer& ad = ManagedBuffer{},
-                                                              SodiumSecureMemType clearTextProtection = SodiumSecureMemType::Locked);
-      // generic handler for AEAD encryption, string-based
-      string crypto_aead_encrypt(int (*funcPtr)(unsigned char *, unsigned long long *, const unsigned char *,
-                                                       unsigned long long, const unsigned char *, unsigned long long,
-                                                       const unsigned char *, const unsigned char *,const unsigned char *),
-                                        size_t nonceSize, size_t keySize, size_t tagSize, const string& msg, const string& nonce,
-                                        const string& key, const string& ad = string{});
+      /** \brief An internal, generic handler for AEAD encryption in combined mode
+       *
+       * Takes a function pointer to the actual encryption function (e.g, for
+       * XChaCha20 or AES256-GCM) and a generic set of encryption parameters.
+       *
+       * \note In case the actual tag is shorter than the provided tag size, a
+       * call to this function involves an additional, internal copying of the
+       * encrypted message and its tag into a correctly sized buffer (==> performance).
+       *
+       * \warning It is the caller's responsibility that the provided key and nonce
+       * arrays are of correct size for the selected encryption function! Otherwise,
+       * reads beyond the actual buffer end may occur!
+       *
+       * \throws invalid_argument if the provided function pointer was empty
+       *
+       * \throws SodiumInvalidMac if the provided tag size was zero
+       *
+       * \throws SodiumInvalidMessage if the provided message was empty
+       *
+       * \throws SodiumInvalidNonce if the provided nonce was empty
+       *
+       * \throws SodiumInvalidKey if the provided key was empty
+       *
+       * \returns a heap-allocated buffer with the combined encrypted data
+       * and authentication tag
+       */
+      MemArray crypto_aead_encrypt(
+          int (*funcPtr)(unsigned char *, unsigned long long *, const unsigned char *,
+                         unsigned long long, const unsigned char *, unsigned long long,
+                         const unsigned char *, const unsigned char *,const unsigned char *),   ///< a pointer to the actual encryption function
+          size_t tagSize,   ///< the number of MAC bytes computed by the encryption function
+          const MemView& msg,   ///< the input message for encryption
+          const MemView& nonce,   ///< the nonce to be used for this specific message
+          const MemView& key,   ///< the secret key; the caller has to ensure that the memory is enabled for reading
+          const MemView& ad = MemView{}   ///< optional, additional data to be included in the MAC computation
+          );
 
-      // generic handler for AEAD decryption, string-based
-      string crypto_aead_decrypt(int (*funcPtr)(unsigned char *, unsigned long long *, unsigned char *,
-                                                            const unsigned char *, unsigned long long, const unsigned char *,
-                                                            unsigned long long, const unsigned char *, const unsigned char *),
-                                             size_t nonceSize, size_t keySize, size_t tagSize, const string& cipher,
-                                             const string& nonce, const string& key, const string& ad = string{});
+      /** \brief An internal, generic handler for AEAD decryption in combined mode
+       *
+       * Takes a function pointer to the actual decryption function (e.g, for
+       * XChaCha20 or AES256-GCM) and a generic set of decryption parameters.
+       *
+       * \note In case the actual tag is shorter than the provided tag size, a
+       * call to this function involves an additional, internal copying of the
+       * decrypted message into a correctly sized buffer (==> performance).
+       *
+       * \warning It is the caller's responsibility that the provided key and nonce
+       * arrays are of correct size for the selected decryption function! Otherwise,
+       * reads beyond the actual buffer end may occur!
+       *
+       * \throws invalid_argument if the provided function pointer was empty
+       *
+       * \throws SodiumInvalidMac if the provided tag size was zero
+       *
+       * \throws SodiumInvalidCipher if the provided message was empty or too short
+       *
+       * \throws SodiumInvalidNonce if the provided nonce was empty
+       *
+       * \throws SodiumInvalidKey if the provided key was empty
+       *
+       * \returns a heap-allocated buffer with the combined encrypted data
+       * and authentication tag
+       */
+      SodiumSecureMemory crypto_aead_decrypt(
+          int (*funcPtr)(unsigned char *, unsigned long long *, unsigned char *,
+                         const unsigned char *, unsigned long long, const unsigned char *,
+                         unsigned long long, const unsigned char *, const unsigned char *),
+          size_t tagSize,   ///< the number of MAC bytes computed by the encryption function
+          const MemView& cipher,   ///< the combined cipher and authentication tag
+          const MemView& nonce,   ///< the nonce used for this specific message
+          const MemView& key,   ///< the secret key; the caller has to ensure that the memory is enabled for reading
+          const MemView& ad = MemView{},   ///< optional, additional data to be included in the MAC computation
+          SodiumSecureMemType clearTextProtection = SodiumSecureMemType::Locked   ///< the protection class of the unencrypted, plain data
+          );
 
-      // generic handler for AEAD encryption, mixed form
-      string crypto_aead_encrypt(int (*funcPtr)(unsigned char *, unsigned long long *, const unsigned char *,
-                                                       unsigned long long, const unsigned char *, unsigned long long,
-                                                       const unsigned char *, const unsigned char *,const unsigned char *),
-                                        size_t tagSize, const string& msg, const MemView& nonce,
-                                        const MemView& key, const string& ad = string{});
 
-      // generic handler for AEAD decryption, mixed form
-      string crypto_aead_decrypt(int (*funcPtr)(unsigned char *, unsigned long long *, unsigned char *,
-                                                            const unsigned char *, unsigned long long, const unsigned char *,
-                                                            unsigned long long, const unsigned char *, const unsigned char *),
-                                             size_t tagSize, const string& cipher, const MemView& nonce,
-                                                              const MemView& key, const string& ad = string{});
+      /** \brief An internal, generic handler for AEAD decryption in combined mode
+       *
+       * Takes a function pointer to the actual decryption function (e.g, for
+       * XChaCha20 or AES256-GCM) and a generic set of decryption parameters.
+       *
+       * \note In case the actual tag is shorter than the provided tag size, a
+       * call to this function involves an additional, internal copying of the
+       * decrypted message into a correctly sized buffer (==> performance).
+       *
+       * \warning It is the caller's responsibility that the provided key and nonce
+       * arrays are of correct size for the selected decryption function! Otherwise,
+       * reads beyond the actual buffer end may occur!
+       *
+       * \throws invalid_argument if the provided function pointer was empty
+       *
+       * \throws SodiumInvalidMac if the provided tag size was zero
+       *
+       * \throws SodiumInvalidCipher if the provided message was empty or too short
+       *
+       * \throws SodiumInvalidNonce if the provided nonce was empty
+       *
+       * \throws SodiumInvalidKey if the provided key was empty
+       *
+       * \returns a heap-allocated buffer with the combined encrypted data
+       * and authentication tag
+       */
+      string crypto_aead_decrypt(
+          int (*funcPtr)(unsigned char *, unsigned long long *, unsigned char *,
+                         const unsigned char *, unsigned long long, const unsigned char *,
+                         unsigned long long, const unsigned char *, const unsigned char *),
+          size_t tagSize,   ///< the number of MAC bytes computed by the encryption function
+          const string& cipher,   ///< the combined cipher and authentication tag
+          const MemView& nonce,   ///< the nonce used for this specific message
+          const MemView& key,   ///< the secret key; the caller has to ensure that the memory is enabled for reading
+          const string& ad = string{}   ///< optional, additional data to be included in the MAC computation
+          );
+
     };
 
     // a template class that provides nonce handling for "crypto boxes"

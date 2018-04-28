@@ -391,7 +391,7 @@ namespace Sloppy
 
     /** \brief Ctor from a standard string
      */
-    MemView(const string& src)
+    explicit MemView(const string& src)
       :ArrayView(reinterpret_cast<const uint8_t*>(src.c_str()), src.size()) {}
   };
 
@@ -784,7 +784,7 @@ namespace Sloppy
      *
      * \throws std::runtime_error if the memory allocation failed
      */
-    MemArray(const MemView& v)
+    explicit MemArray(const MemView& v)
       :ManagedArray<uint8_t>{v.byteSize()}
     {
       memcpy(to_voidPtr(), v.to_voidPtr(), byteSize());

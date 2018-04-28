@@ -1484,37 +1484,191 @@ namespace Sloppy
           const string& ad = string{}   ///< optional, additional data to be included in the MAC computation
           );
 
-      // public key cryptography, key handling
+      // public key cryptography: keys, nonces, auth tags
       using AsymCrypto_PublicKey = SodiumKey<SodiumKeyType::Public, crypto_box_PUBLICKEYBYTES>;
       using AsymCrypto_SecretKey = SodiumKey<SodiumKeyType::Secret, crypto_box_SECRETKEYBYTES>;
       using AsymCrypto_KeySeed = SodiumKey<SodiumKeyType::Secret, crypto_box_SEEDBYTES>;
-      bool genAsymCryptoKeyPair(AsymCrypto_PublicKey& pk_out, AsymCrypto_SecretKey& sk_out);
-      bool genAsymCryptoKeyPairSeeded(const AsymCrypto_KeySeed& seed, AsymCrypto_PublicKey& pk_out, AsymCrypto_SecretKey& sk_out);
-      bool genPublicCryptoKeyFromSecretKey(const AsymCrypto_SecretKey& sk, AsymCrypto_PublicKey& pk_out);
-
-      // public key cryptography, encryption / decryption, buffer-based
       using AsymCrypto_Nonce = SodiumKey<SodiumKeyType::Public, crypto_box_NONCEBYTES>;
       using AsymCrypto_Tag = SodiumKey<SodiumKeyType::Public, crypto_box_MACBYTES>;
-      ManagedBuffer crypto_box_easy(const MemView& msg, const AsymCrypto_Nonce& nonce,
-                                    const AsymCrypto_PublicKey& recipientKey, const AsymCrypto_SecretKey& senderKey);
-      SodiumSecureMemory crypto_box_open_easy(const MemView& cipher, const AsymCrypto_Nonce& nonce, const AsymCrypto_PublicKey& senderKey,
-                                              const AsymCrypto_SecretKey& recipientKey, SodiumSecureMemType clearTextProtection = SodiumSecureMemType::Locked);
-      pair<ManagedBuffer, AsymCrypto_Tag> crypto_box_detached(const MemView& msg, const AsymCrypto_Nonce& nonce,
-                                    const AsymCrypto_PublicKey& recipientKey, const AsymCrypto_SecretKey& senderKey);
-      SodiumSecureMemory crypto_box_open_detached(const MemView& cipher, const AsymCrypto_Tag& mac, const AsymCrypto_Nonce& nonce, const AsymCrypto_PublicKey& senderKey,
-                                                  const AsymCrypto_SecretKey& recipientKey, SodiumSecureMemType clearTextProtection = SodiumSecureMemType::Locked);
 
-      // public key cryptography, encryption / decryption, string-based
-      // Note: I'll not provide encryption / decryption based on string-keys because
-      // there is point in doing so. Keys have to be specially generated and thus
-      // can't be simple strings
-      string crypto_box_easy(const string& msg, const AsymCrypto_Nonce& nonce,
-                                    const AsymCrypto_PublicKey& recipientKey, const AsymCrypto_SecretKey& senderKey);
-      string crypto_box_open_easy(const string& cipher, const AsymCrypto_Nonce& nonce, const AsymCrypto_PublicKey& senderKey, const AsymCrypto_SecretKey& recipientKey);
-      pair<string, string> crypto_box_detached(const string& msg, const AsymCrypto_Nonce& nonce,
-                                    const AsymCrypto_PublicKey& recipientKey, const AsymCrypto_SecretKey& senderKey);
-      string crypto_box_open_detached(const string& cipher, const string& mac, const AsymCrypto_Nonce& nonce, const AsymCrypto_PublicKey& senderKey,
-                                      const AsymCrypto_SecretKey& recipientKey);
+      /** \brief Generates a new, random public / private key pair for asymetric cryptography;
+       * original documentation [here](https://download.libsodium.org/doc/public-key_cryptography/authenticated_encryption.html).
+       *
+       * \returns `true` if the provided buffers could be filled with the key data; `false` otherwise.
+       */
+      bool genAsymCryptoKeyPair(
+          AsymCrypto_PublicKey& pk_out,   ///< reference to an externally created buffer that will be filled with the public key data
+          AsymCrypto_SecretKey& sk_out   ///< reference to an externally created buffer that will be filled with the secret key data
+          );
+
+      /** \brief Generates a new, seeded public / private key pair for asymetric cryptography;
+       * original documentation [here](https://download.libsodium.org/doc/public-key_cryptography/authenticated_encryption.html).
+       *
+       * \returns `true` if the provided buffers could be filled with the key data; `false` otherwise.
+       */
+      bool genAsymCryptoKeyPairSeeded(
+          const AsymCrypto_KeySeed& seed,   ///< the seed used for the key generation
+          AsymCrypto_PublicKey& pk_out,   ///< reference to an externally created buffer that will be filled with the public key data
+          AsymCrypto_SecretKey& sk_out   ///< reference to an externally created buffer that will be filled with the secret key data
+          );
+
+      /** \brief Computes the public key for asymetric cryptography from the associated secret key;
+       * original documentation [here](https://download.libsodium.org/doc/public-key_cryptography/authenticated_encryption.html).
+       *
+       * \returns `true` if the provided buffer could be filled with the key data; `false` otherwise.
+       */
+      bool genPublicCryptoKeyFromSecretKey(
+          const AsymCrypto_SecretKey& sk,   ///< the secret key from which to derive the public key
+          AsymCrypto_PublicKey& pk_out   ///< reference to an externally created buffer that will be filled with the public key data
+          );
+
+      /** \brief Authenticated, public-key encryption in combined mode;
+       * original documentation [here](https://download.libsodium.org/doc/public-key_cryptography/authenticated_encryption.html).
+       *
+       * \throws SodiumInvalidMessage if the provided message was empty
+       *
+       * \throws SodiumInvalidNonce if the provided nonce was empty
+       *
+       * \throws SodiumInvalidKey if one of the provided key was empty
+       *
+       * \returns a heap-allocated buffer with the encrypted data and an attached authentication tag
+       */
+      MemArray crypto_box_easy(
+          const MemView& msg,   ///< the plain input message
+          const AsymCrypto_Nonce& nonce,   ///< the nonce to be used for this specific message
+          const AsymCrypto_PublicKey& recipientKey,   ///< the recipient's public key
+          const AsymCrypto_SecretKey& senderKey   ///< the sender's private key (for the authentication signature)
+          );
+
+      /** \brief Authenticated, public-key decryption in combined mode;
+       * original documentation [here](https://download.libsodium.org/doc/public-key_cryptography/authenticated_encryption.html).
+       *
+       * \throws SodiumInvalidCipher if the provided message was empty or too short
+       *
+       * \throws SodiumInvalidNonce if the provided nonce was empty
+       *
+       * \throws SodiumInvalidKey if one of the provided key was empty
+       *
+       * \returns a heap-allocated buffer with the decrypted data or an invalid, empty buffer if the decryption failed
+       */
+      SodiumSecureMemory crypto_box_open_easy(
+          const MemView& cipher,   ///< a memory buffer containing the cipher and the attached authentication tag
+          const AsymCrypto_Nonce& nonce,   ///< the nonce to be used for this specific message
+          const AsymCrypto_PublicKey& senderKey,   ///< the sender's public key for verifying the message integrity
+          const AsymCrypto_SecretKey& recipientKey,   ///< the recipient's secret key for decrypting the message
+          SodiumSecureMemType clearTextProtection = SodiumSecureMemType::Locked   ///< the protection class for the plain message
+          );
+
+      /** \brief Authenticated, public-key encryption in detached mode;
+       * original documentation [here](https://download.libsodium.org/doc/public-key_cryptography/authenticated_encryption.html).
+       *
+       * \throws SodiumInvalidMessage if the provided message was empty
+       *
+       * \throws SodiumInvalidNonce if the provided nonce was empty
+       *
+       * \throws SodiumInvalidKey if one of the provided key was empty
+       *
+       * \returns a pair of two heap-allocated buffers with the encrypted data and the authentication tag
+       */
+      pair<MemArray, AsymCrypto_Tag> crypto_box_detached(
+          const MemView& msg,   ///< the plain input message
+          const AsymCrypto_Nonce& nonce,   ///< the nonce to be used for this specific message
+          const AsymCrypto_PublicKey& recipientKey,   ///< the recipient's public key
+          const AsymCrypto_SecretKey& senderKey   ///< the sender's private key (for the authentication signature)
+          );
+
+      /** \brief Authenticated, public-key decryption in detached mode;
+       * original documentation [here](https://download.libsodium.org/doc/public-key_cryptography/authenticated_encryption.html).
+       *
+       * \throws SodiumInvalidCipher if the provided message was empty or too short
+       *
+       * \throws SodiumInvalidNonce if the provided nonce was empty
+       *
+       * \throws SodiumInvalidKey if one of the provided key was empty
+       *
+       * \returns a heap-allocated buffer with the decrypted data or an invalid, empty buffer if the decryption failed
+       */
+      SodiumSecureMemory crypto_box_open_detached(
+          const MemView& cipher,   ///< a memory buffer containing the cipher text
+          const AsymCrypto_Tag& mac,   ///< a memory buffer containing the message authentication tag
+          const AsymCrypto_Nonce& nonce,   ///< the nonce to be used for this specific message
+          const AsymCrypto_PublicKey& senderKey,   ///< the sender's public key for verifying the message integrity
+          const AsymCrypto_SecretKey& recipientKey,   ///< the recipient's secret key for decrypting the message
+          SodiumSecureMemType clearTextProtection = SodiumSecureMemType::Locked   ///< the protection class for the plain message
+          );
+
+      /** \brief Authenticated, public-key encryption in combined mode;
+       * original documentation [here](https://download.libsodium.org/doc/public-key_cryptography/authenticated_encryption.html).
+       *
+       * \throws SodiumInvalidMessage if the provided message was empty
+       *
+       * \throws SodiumInvalidNonce if the provided nonce was empty
+       *
+       * \throws SodiumInvalidKey if one of the provided key was empty
+       *
+       * \returns a string with the encrypted data and an attached authentication tag
+       */
+      string crypto_box_easy(
+          const string& msg,   ///< the plain input message
+          const AsymCrypto_Nonce& nonce,   ///< the nonce to be used for this specific message
+          const AsymCrypto_PublicKey& recipientKey,   ///< the recipient's public key
+          const AsymCrypto_SecretKey& senderKey   ///< the sender's private key (for the authentication signature)
+          );
+
+      /** \brief Authenticated, public-key decryption in combined mode;
+       * original documentation [here](https://download.libsodium.org/doc/public-key_cryptography/authenticated_encryption.html).
+       *
+       * \throws SodiumInvalidCipher if the provided message was empty or too short
+       *
+       * \throws SodiumInvalidNonce if the provided nonce was empty
+       *
+       * \throws SodiumInvalidKey if one of the provided key was empty
+       *
+       * \returns a string containing the decrypted data or an empty string if the decryption failed
+       */
+      string crypto_box_open_easy(
+          const string& cipher,   ///< a string containing the cipher and the attached authentication tag
+          const AsymCrypto_Nonce& nonce,   ///< the nonce to be used for this specific message
+          const AsymCrypto_PublicKey& senderKey,   ///< the sender's public key for verifying the message integrity
+          const AsymCrypto_SecretKey& recipientKey   ///< the recipient's secret key for decrypting the message
+          );
+
+      /** \brief Authenticated, public-key encryption in detached mode;
+       * original documentation [here](https://download.libsodium.org/doc/public-key_cryptography/authenticated_encryption.html).
+       *
+       * \throws SodiumInvalidMessage if the provided message was empty
+       *
+       * \throws SodiumInvalidNonce if the provided nonce was empty
+       *
+       * \throws SodiumInvalidKey if one of the provided key was empty
+       *
+       * \returns a pair of a string with the encrypted data and a heap-allocated authentication tag
+       */
+      pair<string, AsymCrypto_Tag> crypto_box_detached(
+          const string& msg,   ///< the plain input message
+          const AsymCrypto_Nonce& nonce,   ///< the nonce to be used for this specific message
+          const AsymCrypto_PublicKey& recipientKey,   ///< the recipient's public key
+          const AsymCrypto_SecretKey& senderKey   ///< the sender's private key (for the authentication signature)
+          );
+
+      /** \brief Authenticated, public-key decryption in detached mode;
+       * original documentation [here](https://download.libsodium.org/doc/public-key_cryptography/authenticated_encryption.html).
+       *
+       * \throws SodiumInvalidCipher if the provided message was empty or too short
+       *
+       * \throws SodiumInvalidNonce if the provided nonce was empty
+       *
+       * \throws SodiumInvalidKey if one of the provided key was empty
+       *
+       * \returns a string containing the decrypted data or an empty string if the decryption failed
+       */
+      string crypto_box_open_detached(
+          const string& cipher,   ///< the encrypted cipher text
+          const AsymCrypto_Tag& mac,   ///< a memory buffer containing the message authentication tag
+          const AsymCrypto_Nonce& nonce,   ///< the nonce to be used for this specific message
+          const AsymCrypto_PublicKey& senderKey,   ///< the sender's public key for verifying the message integrity
+          const AsymCrypto_SecretKey& recipientKey   ///< the recipient's secret key for decrypting the message
+          );
 
       // signatures, key handling
       using AsymSign_PublicKey = SodiumKey<SodiumKeyType::Public, crypto_sign_PUBLICKEYBYTES>;

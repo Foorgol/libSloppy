@@ -1853,18 +1853,25 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    void SodiumLib::genAsymSignKeyPair(SodiumLib::AsymSign_PublicKey& pk_out, SodiumLib::AsymSign_SecretKey& sk_out)
+    bool SodiumLib::genAsymSignKeyPair(SodiumLib::AsymSign_PublicKey& pk_out, SodiumLib::AsymSign_SecretKey& sk_out)
     {
-      sodium.crypto_sign_keypair(pk_out.get_uc(), sk_out.get_uc());
+      if (pk_out.empty()) return false;
+      if (sk_out.empty()) return false;
+
+      sodium.crypto_sign_keypair(pk_out.to_ucPtr_rw(), sk_out.to_ucPtr_rw());
+
+      return true;
     }
 
     //----------------------------------------------------------------------------
 
     bool SodiumLib::genAsymSignKeyPairSeeded(const SodiumLib::AsymSign_KeySeed& seed, SodiumLib::AsymSign_PublicKey& pk_out, SodiumLib::AsymSign_SecretKey& sk_out)
     {
-      if (!(seed.isValid())) return false;
+      if (seed.empty()) return false;
+      if (pk_out.empty()) return false;
+      if (sk_out.empty()) return false;
 
-      sodium.crypto_sign_seed_keypair(pk_out.get_uc(), sk_out.get_uc(), seed.get_uc());
+      sodium.crypto_sign_seed_keypair(pk_out.to_ucPtr_rw(), sk_out.to_ucPtr_rw(), seed.to_ucPtr_ro());
       return true;
     }
 
@@ -1872,9 +1879,10 @@ namespace Sloppy
 
     bool SodiumLib::genPublicSignKeyFromSecretKey(const SodiumLib::AsymSign_SecretKey& sk, SodiumLib::AsymSign_PublicKey& pk_out)
     {
-      if (!(sk.isValid())) return false;
+      if (pk_out.empty()) return false;
+      if (sk.empty()) return false;
 
-      sodium.crypto_sign_ed25519_sk_to_pk(pk_out.get_uc(), sk.get_uc());
+      sodium.crypto_sign_ed25519_sk_to_pk(pk_out.to_ucPtr_rw(), sk.to_ucPtr_ro());
       return true;
     }
 
@@ -1882,72 +1890,96 @@ namespace Sloppy
 
     bool SodiumLib::genSignKeySeedFromSecretKey(const SodiumLib::AsymSign_SecretKey& sk, SodiumLib::AsymSign_KeySeed& seed_out)
     {
-      if (!(sk.isValid())) return false;
+      if (sk.empty()) return false;
+      if (seed_out.empty()) return false;
 
-      sodium.crypto_sign_ed25519_sk_to_seed(seed_out.get_uc(), sk.get_uc());
+      sodium.crypto_sign_ed25519_sk_to_seed(seed_out.to_ucPtr_rw(), sk.to_ucPtr_ro());
       return true;
     }
 
     //----------------------------------------------------------------------------
 
-    ManagedBuffer SodiumLib::crypto_sign(const MemView& msg, const SodiumLib::AsymSign_SecretKey& sk)
+    MemArray SodiumLib::crypto_sign(const MemView& msg, const SodiumLib::AsymSign_SecretKey& sk)
     {
-      // check input validity
-      if (!(msg.isValid())) return ManagedBuffer{};
-      if (!(sk.isValid())) return ManagedBuffer{};
+      if (msg.empty())
+      {
+        throw SodiumInvalidMessage("crypto_sign");
+      }
+      if (sk.empty())
+      {
+        throw SodiumInvalidKey("crypto_sign");
+      }
 
       // allocate space for the result
-      ManagedBuffer signedMsg{crypto_sign_BYTES + msg.getSize()};
+      MemArray signedMsg{crypto_sign_BYTES + msg.size()};
 
       // sign
-      sodium.crypto_sign(signedMsg.get_uc(), nullptr, msg.get_uc(), msg.getSize(), sk.get_uc());
+      sodium.crypto_sign(signedMsg.to_ucPtr(), nullptr, msg.to_ucPtr(), msg.size(), sk.to_ucPtr_ro());
 
       return signedMsg;
     }
 
     //----------------------------------------------------------------------------
 
-    ManagedBuffer SodiumLib::crypto_sign_open(const MemView& signedMsg, const SodiumLib::AsymSign_PublicKey& pk)
+    MemArray SodiumLib::crypto_sign_open(const MemView& signedMsg, const SodiumLib::AsymSign_PublicKey& pk)
     {
-      // check input validity
-      if (!(signedMsg.isValid())) return ManagedBuffer{};
-      if (!(pk.isValid())) return ManagedBuffer{};
-      if (signedMsg.getSize() <= crypto_sign_BYTES) return ManagedBuffer{};
+      if ((signedMsg.empty()) || (signedMsg.size() <= crypto_sign_BYTES))
+      {
+        throw SodiumInvalidMessage("crypto_sign_open");
+      }
+      if (pk.empty())
+      {
+        throw SodiumInvalidKey("crypto_sign_open");
+      }
 
       // allocate space for the result
-      ManagedBuffer msg{signedMsg.getSize() - crypto_sign_BYTES};
+      MemArray msg{signedMsg.size() - crypto_sign_BYTES};
 
       // check signature and remove it from the signed message
-      int rc = sodium.crypto_sign_open(msg.get_uc(), nullptr, signedMsg.get_uc(), signedMsg.getSize(), pk.get_uc());
+      int rc = sodium.crypto_sign_open(msg.to_ucPtr(), nullptr, signedMsg.to_ucPtr(), signedMsg.size(), pk.to_ucPtr_ro());
 
-      return (rc == 0) ? std::move(msg) : ManagedBuffer{};
+      return (rc == 0) ? std::move(msg) : MemArray{};
     }
 
     //----------------------------------------------------------------------------
 
-    bool SodiumLib::crypto_sign_detached(const MemView& msg, const SodiumLib::AsymSign_SecretKey& sk, SodiumLib::AsymSign_Signature& sig_out)
+    SodiumLib::AsymSign_Signature SodiumLib::crypto_sign_detached(const MemView& msg, const SodiumLib::AsymSign_SecretKey& sk)
     {
-      // check input validity
-      if (!(msg.isValid())) return false;
-      if (!(sk.isValid())) return false;
+      if (msg.empty())
+      {
+        throw SodiumInvalidMessage("crypto_sign");
+      }
+      if (sk.empty())
+      {
+        throw SodiumInvalidKey("crypto_sign");
+      }
 
       // sign
-      sodium.crypto_sign_detached(sig_out.get_uc(), nullptr, msg.get_uc(), msg.getSize(), sk.get_uc());
+      AsymSign_Signature sig;
+      sodium.crypto_sign_detached(sig.to_ucPtr_rw(), nullptr, msg.to_ucPtr(), msg.size(), sk.to_ucPtr_ro());
 
-      return true;
+      return sig;
     }
 
     //----------------------------------------------------------------------------
 
     bool SodiumLib::crypto_sign_verify_detached(const MemView& msg, const AsymSign_Signature& sig, const SodiumLib::AsymSign_PublicKey& pk)
     {
-      // check input validity
-      if (!(msg.isValid())) return false;
-      if (!(sig.isValid())) return false;
-      if (!(pk.isValid())) return false;
+      if (msg.empty())
+      {
+        throw SodiumInvalidMessage("crypto_sign_verify_detached");
+      }
+      if (sig.empty())
+      {
+        throw SodiumInvalidMac("crypto_sign_verify_detached");
+      }
+      if (pk.empty())
+      {
+        throw SodiumInvalidKey("crypto_sign_verify_detached");
+      }
 
       // check signature
-      int rc = sodium.crypto_sign_verify_detached(sig.get_uc(), msg.get_uc(), msg.getSize(), pk.get_uc());
+      int rc = sodium.crypto_sign_verify_detached(sig.to_ucPtr_ro(), msg.to_ucPtr(), msg.size(), pk.to_ucPtr_ro());
 
       return (rc == 0);
     }
@@ -1956,16 +1988,21 @@ namespace Sloppy
 
     string SodiumLib::crypto_sign(const string& msg, const SodiumLib::AsymSign_SecretKey& sk)
     {
-      // check input validity
-      if (msg.empty()) return string{};
-      if (!(sk.isValid())) return string{};
+      if (msg.empty())
+      {
+        throw SodiumInvalidMessage("crypto_sign");
+      }
+      if (sk.empty())
+      {
+        throw SodiumInvalidKey("crypto_sign");
+      }
 
       // allocate space for the result
       string signedMsg;
       signedMsg.resize(crypto_sign_BYTES + msg.size());
 
       // sign
-      sodium.crypto_sign((unsigned char*)signedMsg.c_str(), nullptr, (const unsigned char*)msg.c_str(), msg.size(), sk.get_uc());
+      sodium.crypto_sign((unsigned char*)signedMsg.c_str(), nullptr, reinterpret_cast<const unsigned char*>(msg.c_str()), msg.size(), sk.to_ucPtr_ro());
 
       return signedMsg;
     }
@@ -1975,50 +2012,40 @@ namespace Sloppy
     string SodiumLib::crypto_sign_open(const string& signedMsg, const SodiumLib::AsymSign_PublicKey& pk)
     {
       // check input validity
-      if (signedMsg.size() <= crypto_sign_BYTES) return string{};
-      if (!(pk.isValid())) return string{};
+      if (signedMsg.size() <= crypto_sign_BYTES)
+      {
+        throw SodiumInvalidMessage("crypto_sign_open");
+      }
+      if (pk.empty())
+      {
+        throw SodiumInvalidKey("crypto_sign_open");
+      }
 
       // allocate space for the result
       string msg;
       msg.resize(signedMsg.size() - crypto_sign_BYTES);
 
       // check signature and remove it from the signed message
-      int rc = sodium.crypto_sign_open((unsigned char*)msg.c_str(), nullptr, (const unsigned char*)signedMsg.c_str(), signedMsg.size(), pk.get_uc());
+      int rc = sodium.crypto_sign_open((unsigned char*)msg.c_str(), nullptr, reinterpret_cast<const unsigned char*>(signedMsg.c_str()),
+                                       signedMsg.size(), pk.to_ucPtr_ro());
 
       return (rc == 0) ? msg : string{};
     }
 
     //----------------------------------------------------------------------------
 
-    string SodiumLib::crypto_sign_detached(const string& msg, const SodiumLib::AsymSign_SecretKey& sk)
+    SodiumLib::AsymSign_Signature SodiumLib::crypto_sign_detached(const string& msg, const SodiumLib::AsymSign_SecretKey& sk)
     {
-      // check input validity
-      if (msg.empty()) return string{};
-      if (!(sk.isValid())) return string{};
-
-      // allocate space for the result
-      string sig;
-      sig.resize(crypto_sign_BYTES);
-
-      // sign
-      sodium.crypto_sign_detached((unsigned char*)sig.c_str(), nullptr, (const unsigned char*)msg.c_str(), msg.size(), sk.get_uc());
-
-      return sig;
+      MemView mv{msg};
+      return crypto_sign_detached(mv, sk);
     }
 
     //----------------------------------------------------------------------------
 
-    bool SodiumLib::crypto_sign_verify_detached(const string& msg, const string& sig, const SodiumLib::AsymSign_PublicKey& pk)
+    bool SodiumLib::crypto_sign_verify_detached(const string& msg, const AsymSign_Signature& sig, const SodiumLib::AsymSign_PublicKey& pk)
     {
-      // check input validity
-      if (msg.empty()) return false;
-      if (!(pk.isValid())) return false;
-      if (sig.size() != crypto_sign_BYTES) return false;
-
-      // check signature
-      int rc = sodium.crypto_sign_verify_detached((const unsigned char*)sig.c_str(), (const unsigned char*)msg.c_str(), msg.size(), pk.get_uc());
-
-      return (rc == 0);
+      MemView mv{msg};
+      return crypto_sign_verify_detached(mv, sig, pk);
     }
 
     //----------------------------------------------------------------------------

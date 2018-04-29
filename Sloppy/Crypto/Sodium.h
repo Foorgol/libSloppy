@@ -1674,23 +1674,162 @@ namespace Sloppy
       using AsymSign_PublicKey = SodiumKey<SodiumKeyType::Public, crypto_sign_PUBLICKEYBYTES>;
       using AsymSign_SecretKey = SodiumKey<SodiumKeyType::Secret, crypto_sign_SECRETKEYBYTES>;
       using AsymSign_KeySeed = SodiumKey<SodiumKeyType::Public, crypto_sign_SEEDBYTES>;
-      void genAsymSignKeyPair(AsymSign_PublicKey& pk_out, AsymSign_SecretKey& sk_out);
-      bool genAsymSignKeyPairSeeded(const AsymSign_KeySeed& seed, AsymSign_PublicKey& pk_out, AsymSign_SecretKey& sk_out);
-      bool genPublicSignKeyFromSecretKey(const AsymSign_SecretKey& sk, AsymSign_PublicKey& pk_out);
-      bool genSignKeySeedFromSecretKey(const AsymSign_SecretKey& sk, AsymSign_KeySeed& seed_out);
-
-      // signatures, buffer-based
       using AsymSign_Signature = SodiumKey<SodiumKeyType::Public, crypto_sign_BYTES>;
-      ManagedBuffer crypto_sign(const MemView& msg, const AsymSign_SecretKey& sk);
-      ManagedBuffer crypto_sign_open(const MemView& signedMsg, const AsymSign_PublicKey& pk);
-      bool crypto_sign_detached(const MemView& msg, const AsymSign_SecretKey& sk, AsymSign_Signature& sig_out);
-      bool crypto_sign_verify_detached(const MemView& msg, const AsymSign_Signature& sig, const AsymSign_PublicKey& pk);
 
-      // signatures, string-based
-      string crypto_sign(const string& msg, const AsymSign_SecretKey& sk);
-      string crypto_sign_open(const string& signedMsg, const AsymSign_PublicKey& pk);
-      string crypto_sign_detached(const string& msg, const AsymSign_SecretKey& sk);
-      bool crypto_sign_verify_detached(const string& msg, const string& sig, const AsymSign_PublicKey& pk);
+      /** \brief Generates a new, random public / private key pair for public key signatures;
+       * original documentation [here](https://download.libsodium.org/doc/public-key_cryptography/public-key_signatures.html).
+       *
+       * \returns `true` if the provided buffers could be filled with the key data; `false` otherwise.
+       */
+      bool genAsymSignKeyPair(
+          AsymSign_PublicKey& pk_out,   ///< reference to an externally created buffer that will be filled with the public key data
+          AsymSign_SecretKey& sk_out   ///< reference to an externally created buffer that will be filled with the secret key data
+          );
+
+      /** \brief Generates a new, seeded public / private key pair for public key signatures;
+       * original documentation [here](https://download.libsodium.org/doc/public-key_cryptography/public-key_signatures.html).
+       *
+       * \returns `true` if the provided buffers could be filled with the key data; `false` otherwise.
+       */
+      bool genAsymSignKeyPairSeeded(
+          const AsymSign_KeySeed& seed,   ///< the seed to be used for the key generation
+          AsymSign_PublicKey& pk_out,   ///< reference to an externally created buffer that will be filled with the public key data
+          AsymSign_SecretKey& sk_out   ///< reference to an externally created buffer that will be filled with the secret key data
+          );
+
+      /** \brief Computes the public key for asymetric signatures from the associated secret key;
+       * original documentation [here](https://download.libsodium.org/doc/public-key_cryptography/public-key_signatures.html).
+       *
+       * \returns `true` if the provided buffer could be filled with the key data; `false` otherwise.
+       */
+      bool genPublicSignKeyFromSecretKey(
+          const AsymSign_SecretKey& sk,   ///< the secret key from which to derive the public key
+          AsymSign_PublicKey& pk_out   ///< reference to an externally created buffer that will be filled with the public key data
+          );
+
+      /** \brief Computes the seed that has been used for the generation signature key pair from the associated secret key;
+       * original documentation [here](https://download.libsodium.org/doc/public-key_cryptography/public-key_signatures.html).
+       *
+       * \returns `true` if the provided buffer could be filled with the key data; `false` otherwise.
+       */
+      bool genSignKeySeedFromSecretKey(
+          const AsymSign_SecretKey& sk,   ///< the secret signature key
+          AsymSign_KeySeed& seed_out   ///< reference to an externally created buffer that will be filled with the seed data
+          );
+
+      /** \brief Signes a messages using the private key of an asymetric key pair;
+       * original documentation [here](https://download.libsodium.org/doc/public-key_cryptography/public-key_signatures.html).
+       *
+       * \throws SodiumInvalidMessage if the provided message is empty
+       *
+       * \throws SodiumInvalidKey if the provided key is empty
+       *
+       * \returns a heap-allocated buffer containing the signature followed by a copy of the input message
+       */
+      MemArray crypto_sign(
+          const MemView& msg,   ///< the input message for the signature
+          const AsymSign_SecretKey& sk   ///< the secret key for signing the message
+          );
+
+      /** \brief Checks the signature of a messages using the public key of an asymetric key pair;
+       * original documentation [here](https://download.libsodium.org/doc/public-key_cryptography/public-key_signatures.html).
+       *
+       * \throws SodiumInvalidMessage if the provided message is empty or too short
+       *
+       * \throws SodiumInvalidKey if the provided key is empty
+       *
+       * \returns a heap-allocated buffer containing the message if the signature was successfully verified; an empty buffer otherwise
+       */
+      MemArray crypto_sign_open(
+          const MemView& signedMsg,   ///< a memory buffer containing the signature followed by the message itself
+          const AsymSign_PublicKey& pk   ///< the public key for checking the signature
+          );
+
+      /** \brief Signes a messages using the private key of an asymetric key pair;
+       * original documentation [here](https://download.libsodium.org/doc/public-key_cryptography/public-key_signatures.html).
+       *
+       * \throws SodiumInvalidMessage if the provided message is empty
+       *
+       * \throws SodiumInvalidKey if the provided key is empty
+       *
+       * \returns a heap-allocated buffer containing the signature
+       */
+      AsymSign_Signature crypto_sign_detached(
+          const MemView& msg,   ///< the input message for the signature
+          const AsymSign_SecretKey& sk   ///< the secret key for signing the message
+          );
+
+      /** \brief Checks the signature of a messages using the public key of an asymetric key pair;
+       * original documentation [here](https://download.libsodium.org/doc/public-key_cryptography/public-key_signatures.html).
+       *
+       * \throws SodiumInvalidMessage if the provided message is empty
+       *
+       * \throws SodiumInvalidMac if the provided signature is empty
+       *
+       * \throws SodiumInvalidKey if the provided key is empty
+       *
+       * \returns `true` if the message could be verified by the signature; `false` otherwise
+       */
+      bool crypto_sign_verify_detached(
+          const MemView& msg,   ///< the message that shall be verified
+          const AsymSign_Signature& sig,   ///< the signature to be used for the verification
+          const AsymSign_PublicKey& pk   ///< the public key for checking the signature
+          );
+
+      /** \brief Signes a messages using the private key of an asymetric key pair;
+       * original documentation [here](https://download.libsodium.org/doc/public-key_cryptography/public-key_signatures.html).
+       *
+       * \throws SodiumInvalidMessage if the provided message is empty
+       *
+       * \throws SodiumInvalidKey if the provided key is empty
+       *
+       * \returns a string containing the signature followed by a copy of the input message
+       */
+      string crypto_sign(
+          const string& msg,   ///< the input message for the signature
+          const AsymSign_SecretKey& sk   ///< the secret key for signing the message
+          );
+
+      /** \brief Checks the signature of a messages using the public key of an asymetric key pair;
+       * original documentation [here](https://download.libsodium.org/doc/public-key_cryptography/public-key_signatures.html).
+       *
+       * \throws SodiumInvalidMessage if the provided message is empty or too short
+       *
+       * \throws SodiumInvalidKey if the provided key is empty
+       *
+       * \returns a string containing the message if the signature was successfully verified; an empty string otherwise
+       */
+      string crypto_sign_open(
+          const string& signedMsg,   ///< a string containing the signature followed by the message itself
+          const AsymSign_PublicKey& pk   ///< the public key for checking the signature
+          );
+
+      /** \brief Signes a messages using the private key of an asymetric key pair;
+       * original documentation [here](https://download.libsodium.org/doc/public-key_cryptography/public-key_signatures.html).
+       *
+       * \throws SodiumInvalidMessage if the provided message is empty
+       *
+       * \throws SodiumInvalidKey if the provided key is empty
+       *
+       * \returns a string containing the signature
+       */
+      AsymSign_Signature crypto_sign_detached(
+          const string& msg,   ///< the input message for the signature
+          const AsymSign_SecretKey& sk   ///< the secret key for signing the message
+          );
+
+      /** \brief Checks the signature of a messages using the public key of an asymetric key pair;
+       * original documentation [here](https://download.libsodium.org/doc/public-key_cryptography/public-key_signatures.html).
+       *
+       * \throws SodiumInvalidMessage if the provided message is empty
+       *
+       * \throws SodiumInvalidMac if the provided signature is empty
+       *
+       * \throws SodiumInvalidKey if the provided key is empty
+       *
+       * \returns `true` if the message could be verified by the signature; `false` otherwise
+       */
+      bool crypto_sign_verify_detached(const string& msg, const AsymSign_Signature& sig, const AsymSign_PublicKey& pk);
 
       // hashing
       using GenericHashKey = SodiumKey<SodiumKeyType::Secret, crypto_generichash_KEYBYTES>;

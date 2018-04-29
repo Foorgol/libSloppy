@@ -1834,18 +1834,243 @@ namespace Sloppy
       // hashing
       using GenericHashKey = SodiumKey<SodiumKeyType::Secret, crypto_generichash_KEYBYTES>;
       using ShorthashKey = SodiumKey<SodiumKeyType::Secret, crypto_shorthash_KEYBYTES>;
-      ManagedBuffer crypto_generichash(const MemView& inData);
-      ManagedBuffer crypto_generichash(const MemView& inData, const GenericHashKey& key);
-      string crypto_generichash(const string& inData);
-      string crypto_generichash(const string& inData, const GenericHashKey& key);
-      bool crypto_generichash_init(crypto_generichash_state *state);
-      bool crypto_generichash_init(crypto_generichash_state *state, const GenericHashKey& k);
-      bool crypto_generichash_update(crypto_generichash_state *state, const MemView& inData);
-      bool crypto_generichash_update(crypto_generichash_state *state, const string& inData);
-      ManagedBuffer crypto_generichash_final(crypto_generichash_state *state);
-      string crypto_generichash_final_string(crypto_generichash_state *state);
-      ManagedBuffer crypto_shorthash(const MemView& inData, const ShorthashKey& k);
-      string crypto_shorthash(const string& inData, const ShorthashKey& k);
+
+      /** \brief Computes a fingerprint for a given memory buffer;
+       * original documentation [here](https://download.libsodium.org/doc/hashing/generic_hashing.html).
+       *
+       * The hash size can be anything between and including
+       * `crypto_generichash_BYTES_MIN` (currently 16 bytes / 128 bit) and
+       * `crypto_generichash_BYTES_MAX` (64 bytes / 512 bit) and
+       * is recommended to be `crypto_generichash_BYTES` (32 bytes / 256 bit).
+       *
+       * \warning This hashing function is **not suitable for password hashing** because
+       * is not sufficiently computation- and memory-heavy!
+       *
+       * \throws SodiumInvalidMessage if the provided data is empty
+       *
+       * \throws std::range_error if the provided hash length is out of range
+       *
+       * \returns a heap-allocated buffer containg the hash data
+       */
+      MemArray crypto_generichash(
+          const MemView& inData,   ///< the data that is to be hashed
+          size_t hashLen = crypto_generichash_BYTES   ///< the size of the resulting hash in bytes
+          );
+
+      /** \brief Computes a fingerprint for a given memory buffer;
+       * original documentation [here](https://download.libsodium.org/doc/hashing/generic_hashing.html).
+       *
+       * The hash size can be anything between and including
+       * `crypto_generichash_BYTES_MIN` (currently 16 bytes / 128 bit) and
+       * `crypto_generichash_BYTES_MAX` (64 bytes / 512 bit) and
+       * is recommended to be `crypto_generichash_BYTES` (32 bytes / 256 bit).
+       *
+       * \warning This hashing function is **not suitable for password hashing** because
+       * is not sufficiently computation- and memory-heavy!
+       *
+       * \throws SodiumInvalidMessage if the provided data is empty
+       *
+       * \throws SodiumInvalidKey if the provided key is empty
+       *
+       * \throws std::range_error if the provided hash length is out of range
+       *
+       * \returns a heap-allocated buffer containg the hash data
+       */
+      MemArray crypto_generichash(
+          const MemView& inData,   ///< the data that is to be hashed
+          const GenericHashKey& key,   ///< the key that shall be used for the hash computation
+          size_t hashLen = crypto_generichash_BYTES   ///< the size of the resulting hash in bytes
+          );
+
+      /** \brief Computes a fingerprint for a given string;
+       * original documentation [here](https://download.libsodium.org/doc/hashing/generic_hashing.html).
+       *
+       * The hash size can be anything between and including
+       * `crypto_generichash_BYTES_MIN` (currently 16 bytes / 128 bit) and
+       * `crypto_generichash_BYTES_MAX` (64 bytes / 512 bit) and
+       * is recommended to be `crypto_generichash_BYTES` (32 bytes / 256 bit).
+       *
+       * \warning This hashing function is **not suitable for password hashing** because
+       * is not sufficiently computation- and memory-heavy!
+       *
+       * \throws SodiumInvalidMessage if the provided data is empty
+       *
+       * \throws std::range_error if the provided hash length is out of range
+       *
+       * \returns a string containg the hash data
+       */
+      string crypto_generichash(
+          const string& inData,    ///< the data that is to be hashed
+          size_t hashLen = crypto_generichash_BYTES   ///< the size of the resulting hash in bytes
+          );
+
+      /** \brief Computes a fingerprint for a given string;
+       * original documentation [here](https://download.libsodium.org/doc/hashing/generic_hashing.html).
+       *
+       * The hash size can be anything between and including
+       * `crypto_generichash_BYTES_MIN` (currently 16 bytes / 128 bit) and
+       * `crypto_generichash_BYTES_MAX` (64 bytes / 512 bit) and
+       * is recommended to be `crypto_generichash_BYTES` (32 bytes / 256 bit).
+       *
+       * \warning This hashing function is **not suitable for password hashing** because
+       * is not sufficiently computation- and memory-heavy!
+       *
+       * \throws SodiumInvalidMessage if the provided data is empty
+       *
+       * \throws SodiumInvalidKey if the provided key is empty
+       *
+       * \throws std::range_error if the provided hash length is out of range
+       *
+       * \returns a string containg the hash data
+       */
+      string crypto_generichash(
+          const string& inData,
+          const GenericHashKey& key,   ///< the key that shall be used for the hash computation
+          size_t hashLen = crypto_generichash_BYTES   ///< the size of the resulting hash in bytes
+          );
+
+      /** \brief Initializes a hashing operation with multiple data chunks;
+       * original documentation [here](https://download.libsodium.org/doc/hashing/generic_hashing.html).
+       *
+       * The hash size can be anything between and including
+       * `crypto_generichash_BYTES_MIN` (currently 16 bytes / 128 bit) and
+       * `crypto_generichash_BYTES_MAX` (64 bytes / 512 bit) and
+       * is recommended to be `crypto_generichash_BYTES` (32 bytes / 256 bit).
+       *
+       * \warning This hashing function is **not suitable for password hashing** because
+       * is not sufficiently computation- and memory-heavy!
+       *
+       * \throws std::invalid_argument if the provided pointer to a hash state variable is `nullptr'
+       *
+       * \throws std::range_error if the provided hash length is out of range
+       */
+      void crypto_generichash_init(
+          crypto_generichash_state *state,   ///< pointer to an externally owned hash state variable
+          size_t hashLen = crypto_generichash_BYTES   ///< the size of the resulting hash in bytes
+          );
+
+      /** \brief Initializes a hashing operation with multiple data chunks;
+       * original documentation [here](https://download.libsodium.org/doc/hashing/generic_hashing.html).
+       *
+       * The hash size can be anything between and including
+       * `crypto_generichash_BYTES_MIN` (currently 16 bytes / 128 bit) and
+       * `crypto_generichash_BYTES_MAX` (64 bytes / 512 bit) and
+       * is recommended to be `crypto_generichash_BYTES` (32 bytes / 256 bit).
+       *
+       * \warning This hashing function is **not suitable for password hashing** because
+       * is not sufficiently computation- and memory-heavy!
+       *
+       * \throws std::invalid_argument if the provided pointer to a hash state variable is `nullptr'
+       *
+       * \throws SodiumInvalidKey if the provided key is empty
+       *
+       * \throws std::range_error if the provided hash length is out of range
+       */
+      void crypto_generichash_init(
+          crypto_generichash_state *state,   ///< pointer to an externally owned hash state variable
+          const GenericHashKey& key,   ///< the key that shall be used for the hash computation
+          size_t hashLen = crypto_generichash_BYTES   ///< the size of the resulting hash in bytes
+          );
+
+      /** \brief Hashes a chunk of data as part of a multi-chunk hashing operation;
+       * original documentation [here](https://download.libsodium.org/doc/hashing/generic_hashing.html).
+       *
+       * Prior to calling this function, the hashing state has to be initialized
+       * using `crypto_generichash_init()`.
+       *
+       * \throws std::invalid_argument if the provided pointer to a hash state variable is `nullptr'
+       *
+       * \throws SodiumInvalidMessage if the provided data is empty
+       */
+      void crypto_generichash_update(
+          crypto_generichash_state *state,   ///< pointer to an externally owned hash state variable
+          const MemView& inData   ///< the data that shall be hashed
+          );
+
+      /** \brief Hashes a chunk of data as part of a multi-chunk hashing operation;
+       * original documentation [here](https://download.libsodium.org/doc/hashing/generic_hashing.html).
+       *
+       * Prior to calling this function, the hashing state has to be initialized
+       * using `crypto_generichash_init()`.
+       *
+       * \throws std::invalid_argument if the provided pointer to a hash state variable is `nullptr'
+       *
+       * \throws SodiumInvalidMessage if the provided data is empty
+       */
+      void crypto_generichash_update(
+          crypto_generichash_state *state,   ///< pointer to an externally owned hash state variable
+          const string& inData   ///< the data that shall be hashed
+          );
+
+      /** \brief Finalizes a multi-chunk hashing operation and returns the hash;
+       * original documentation [here](https://download.libsodium.org/doc/hashing/generic_hashing.html).
+       *
+       * \note The `hashLen` should be the same that been provided to `crypto_generichash_init()`.
+       *
+       * \throws std::invalid_argument if the provided pointer to a hash state variable is `nullptr'
+       *
+       * \throws std::range_error if the provided hash length is out of range
+       *
+       * \returns a heap-allocated buffer containg the hash data
+       */
+      MemArray crypto_generichash_final(
+          crypto_generichash_state *state,   ///< pointer to an externally owned hash state variable
+          size_t hashLen = crypto_generichash_BYTES   ///< the size of the resulting hash in bytes
+          );
+
+      /** \brief Finalizes a multi-chunk hashing operation and returns the hash;
+       * original documentation [here](https://download.libsodium.org/doc/hashing/generic_hashing.html).
+       *
+       * \note The `hashLen` should be the same that been provided to `crypto_generichash_init()`.
+       *
+       * \throws std::invalid_argument if the provided pointer to a hash state variable is `nullptr'
+       *
+       * \throws std::range_error if the provided hash length is out of range
+       *
+       * \returns a heap-string containg the hash data
+       */
+      string crypto_generichash_final_string(
+          crypto_generichash_state *state,   ///< pointer to an externally owned hash state variable
+          size_t hashLen = crypto_generichash_BYTES   ///< the size of the resulting hash in bytes
+          );
+
+      /** \brief Computes a short, 64-bit hash, e.g., for building hash tables;
+       * original documentation [here](https://download.libsodium.org/doc/hashing/short-input_hashing.html).
+       *
+       * The key has to be initialized by the user by using a stored value or by
+       * filling it with random data, for instance.
+       *
+       * The key has to remain secret (see libsodium docs for details).
+       *
+       * \throws SodiumInvalidMessage if the provided data is empty
+       *
+       * \throws SodiumInvalidKey if the provided key is empty
+       *
+       * \returns a heap-allocated buffer containg the hash data
+       */
+      MemArray crypto_shorthash(
+          const MemView& inData,   ///< the data that shall be hashed
+          const ShorthashKey& key    ///< a mandatory, fixed size key
+          );
+
+      /** \brief Computes a short, 64-bit hash, e.g., for building hash tables;
+       * original documentation [here](https://download.libsodium.org/doc/hashing/short-input_hashing.html).
+       *
+       * The key has to be initialized by the user by using a stored value or by
+       * filling it with random data, for instance.
+       *
+       * The key has to remain secret (see libsodium docs for details).
+       *
+       * \throws SodiumInvalidMessage if the provided data is empty
+       *
+       * \throws SodiumInvalidKey if the provided key is empty
+       *
+       * \returns a string containg the hash data
+       */
+      string crypto_shorthash(
+          const string& inData,   ///< the data that shall be hashed
+          const ShorthashKey& key    ///< a mandatory, fixed size key
+          );
 
       // password hashing and key derivation
       enum class PasswdHashStrength

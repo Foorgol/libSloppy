@@ -2050,172 +2050,245 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    ManagedBuffer SodiumLib::crypto_generichash(const MemView& inData)
+    MemArray SodiumLib::crypto_generichash(const MemView& inData, size_t hashLen)
     {
-      if (!(inData.isValid())) return ManagedBuffer{};
+      if (inData.empty())
+      {
+        throw SodiumInvalidMessage("crypto_generichash");
+      }
+      if ((hashLen < crypto_generichash_BYTES_MIN) || (hashLen > crypto_generichash_BYTES_MAX))
+      {
+        throw std::range_error("crypto_generichash: invalid hash length requested");
+      }
 
       // allocate space for the result
-      ManagedBuffer hash{crypto_generichash_BYTES};
+      MemArray hash{hashLen};
 
       // calculate the hash
-      sodium.crypto_generichash(hash.get_uc(), crypto_generichash_BYTES, inData.get_uc(), inData.getSize(), nullptr, 0);
+      sodium.crypto_generichash(hash.to_ucPtr(), hashLen, inData.to_ucPtr(), inData.size(), nullptr, 0);
 
       return hash;
     }
 
     //----------------------------------------------------------------------------
 
-    ManagedBuffer SodiumLib::crypto_generichash(const MemView& inData, const SodiumLib::GenericHashKey& key)
+    MemArray SodiumLib::crypto_generichash(const MemView& inData, const SodiumLib::GenericHashKey& key, size_t hashLen)
     {
-      if (!(inData.isValid())) return ManagedBuffer{};
-      if (!(key.isValid())) return ManagedBuffer{};
+      if (inData.empty())
+      {
+        throw SodiumInvalidMessage("crypto_generichash");
+      }
+      if (key.empty())
+      {
+        throw SodiumInvalidKey("crypto_generichash");
+      }
+      if ((hashLen < crypto_generichash_BYTES_MIN) || (hashLen > crypto_generichash_BYTES_MAX))
+      {
+        throw std::range_error("crypto_generichash: invalid hash length requested");
+      }
 
       // allocate space for the result
-      ManagedBuffer hash{crypto_generichash_BYTES};
+      MemArray hash{hashLen};
 
       // calculate the hash
-      sodium.crypto_generichash(hash.get_uc(), crypto_generichash_BYTES, inData.get_uc(), inData.getSize(),
-                                key.get_uc(), key.getSize());
+      sodium.crypto_generichash(hash.to_ucPtr(), hashLen, inData.to_ucPtr(), inData.size(),
+                                key.to_ucPtr_ro(), key.size());
 
       return hash;
     }
 
     //----------------------------------------------------------------------------
 
-    string SodiumLib::crypto_generichash(const string& inData)
+    string SodiumLib::crypto_generichash(const string& inData, size_t hashLen)
     {
-      if (inData.empty()) return string{};
+      if (inData.empty())
+      {
+        throw SodiumInvalidMessage("crypto_generichash");
+      }
+      if ((hashLen < crypto_generichash_BYTES_MIN) || (hashLen > crypto_generichash_BYTES_MAX))
+      {
+        throw std::range_error("crypto_generichash: invalid hash length requested");
+      }
+
+      string hash;
+      hash.resize(hashLen);
+
+      sodium.crypto_generichash((unsigned char*)hash.c_str(), hashLen,
+                                reinterpret_cast<const unsigned char*>(inData.c_str()), inData.size(), nullptr, 0);
+
+      return hash;
+    }
+
+    //----------------------------------------------------------------------------
+
+    string SodiumLib::crypto_generichash(const string& inData, const SodiumLib::GenericHashKey& key, size_t hashLen)
+    {
+      if (inData.empty())
+      {
+        throw SodiumInvalidMessage("crypto_generichash");
+      }
+      if (key.empty())
+      {
+        throw SodiumInvalidKey("crypto_generichash");
+      }
+      if ((hashLen < crypto_generichash_BYTES_MIN) || (hashLen > crypto_generichash_BYTES_MAX))
+      {
+        throw std::range_error("crypto_generichash: invalid hash length requested");
+      }
 
       string hash;
       hash.resize(crypto_generichash_BYTES);
 
       sodium.crypto_generichash((unsigned char*)hash.c_str(), crypto_generichash_BYTES,
-                                (const unsigned char*)inData.c_str(), inData.size(), nullptr, 0);
+                                reinterpret_cast<const unsigned char*>(inData.c_str()), inData.size(),
+                                key.to_ucPtr_ro(), key.size());
 
       return hash;
     }
 
     //----------------------------------------------------------------------------
 
-    string SodiumLib::crypto_generichash(const string& inData, const SodiumLib::GenericHashKey& key)
+    void SodiumLib::crypto_generichash_init(crypto_generichash_state* state, size_t hashLen)
     {
-      if (inData.empty()) return string{};
-      if (!(key.isValid())) return string{};
+      if (state == nullptr)
+      {
+        throw std::invalid_argument("crypto_generichash_init() received nullptr for state variable");
+      }
 
-      string hash;
-      hash.resize(crypto_generichash_BYTES);
-
-      sodium.crypto_generichash((unsigned char*)hash.c_str(), crypto_generichash_BYTES, (const unsigned char*)inData.c_str(), inData.size(),
-                                key.get_uc(), key.getSize());
-
-      return hash;
+      sodium.crypto_generichash_init(state, nullptr, 0, hashLen);
     }
 
     //----------------------------------------------------------------------------
 
-    bool SodiumLib::crypto_generichash_init(crypto_generichash_state* state)
+    void SodiumLib::crypto_generichash_init(crypto_generichash_state* state, const GenericHashKey& key, size_t hashLen)
     {
-      if (state == nullptr) return false;
+      if (state == nullptr)
+      {
+        throw std::invalid_argument("crypto_generichash_init() received nullptr for state variable");
+      }
+      if (key.empty())
+      {
+        throw SodiumInvalidKey("crypto_generichash");
+      }
+      if ((hashLen < crypto_generichash_BYTES_MIN) || (hashLen > crypto_generichash_BYTES_MAX))
+      {
+        throw std::range_error("crypto_generichash: invalid hash length requested");
+      }
 
-      sodium.crypto_generichash_init(state, nullptr, 0, crypto_generichash_BYTES);
-
-      return true;
+      sodium.crypto_generichash_init(state, key.to_ucPtr_ro(), key.size(), hashLen);
     }
 
     //----------------------------------------------------------------------------
 
-    bool SodiumLib::crypto_generichash_init(crypto_generichash_state* state, const GenericHashKey& k)
+    void SodiumLib::crypto_generichash_update(crypto_generichash_state* state, const MemView& inData)
     {
-      if (state == nullptr) return false;
-      if (!(k.isValid())) return false;
+      if (state == nullptr)
+      {
+        throw std::invalid_argument("crypto_generichash_update() received nullptr for state variable");
+      }
+      if (inData.empty())
+      {
+        throw SodiumInvalidMessage("crypto_generichash_update");
+      }
 
-      sodium.crypto_generichash_init(state, k.get_uc(), k.getSize(), crypto_generichash_BYTES);
-
-      return true;
+      sodium.crypto_generichash_update(state, inData.to_ucPtr(), inData.size());
     }
 
     //----------------------------------------------------------------------------
 
-    bool SodiumLib::crypto_generichash_update(crypto_generichash_state* state, const MemView& inData)
+    void SodiumLib::crypto_generichash_update(crypto_generichash_state* state, const string& inData)
     {
-      if (state == nullptr) return false;
-      if (!(inData.isValid())) return false;
-
-      sodium.crypto_generichash_update(state, inData.get_uc(), inData.getSize());
-      return true;
+      crypto_generichash_update(state, MemView{inData});
     }
 
     //----------------------------------------------------------------------------
 
-    bool SodiumLib::crypto_generichash_update(crypto_generichash_state* state, const string& inData)
+    MemArray SodiumLib::crypto_generichash_final(crypto_generichash_state* state, size_t hashLen)
     {
-      if (state == nullptr) return false;
-      if (inData.empty()) return false;
-
-      sodium.crypto_generichash_update(state, (const unsigned char*)inData.c_str(), inData.size());
-      return true;
-    }
-
-    //----------------------------------------------------------------------------
-
-    ManagedBuffer SodiumLib::crypto_generichash_final(crypto_generichash_state* state)
-    {
-      if (state == nullptr) return ManagedBuffer{};
+      if (state == nullptr)
+      {
+        throw std::invalid_argument("crypto_generichash_final() received nullptr for state variable");
+      }
+      if ((hashLen < crypto_generichash_BYTES_MIN) || (hashLen > crypto_generichash_BYTES_MAX))
+      {
+        throw std::range_error("crypto_generichash: invalid hash length requested");
+      }
 
       // allocate space for the result
-      ManagedBuffer hash{crypto_generichash_BYTES};
+      MemArray hash{crypto_generichash_BYTES};
 
       // finalize and get the hash
-      sodium.crypto_generichash_final(state, hash.get_uc(), crypto_generichash_BYTES);
+      sodium.crypto_generichash_final(state, hash.to_ucPtr(), hashLen);
 
       return hash;
     }
 
     //----------------------------------------------------------------------------
 
-    string SodiumLib::crypto_generichash_final_string(crypto_generichash_state* state)
+    string SodiumLib::crypto_generichash_final_string(crypto_generichash_state* state, size_t hashLen)
     {
-      if (state == nullptr) return string{};
+      if (state == nullptr)
+      {
+        throw std::invalid_argument("crypto_generichash_final() received nullptr for state variable");
+      }
+      if ((hashLen < crypto_generichash_BYTES_MIN) || (hashLen > crypto_generichash_BYTES_MAX))
+      {
+        throw std::range_error("crypto_generichash: invalid hash length requested");
+      }
 
       // allocate space for the result
       string hash;
-      hash.resize(crypto_generichash_BYTES);
+      hash.resize(hashLen);
 
       // finalize and get the hash
-      sodium.crypto_generichash_final(state, (unsigned char*)hash.c_str(), crypto_generichash_BYTES);
+      sodium.crypto_generichash_final(state, (unsigned char*)hash.c_str(), hashLen);
 
       return hash;
     }
 
     //----------------------------------------------------------------------------
 
-    ManagedBuffer SodiumLib::crypto_shorthash(const MemView& inData, const SodiumLib::ShorthashKey& k)
+    MemArray SodiumLib::crypto_shorthash(const MemView& inData, const SodiumLib::ShorthashKey& key)
     {
-      if (!(inData.isValid())) return ManagedBuffer{};
-      if (!(k.isValid())) return ManagedBuffer{};
+      if (inData.empty())
+      {
+        throw SodiumInvalidMessage("crypto_shorthash");
+      }
+      if (key.empty())
+      {
+        throw SodiumInvalidKey("crypto_shorthash");
+      }
 
       // allocate space for the result
-      ManagedBuffer hash{crypto_shorthash_BYTES};
+      MemArray hash{crypto_shorthash_BYTES};
 
       // get the hash
-      sodium.crypto_shorthash(hash.get_uc(), inData.get_uc(), inData.getSize(), k.get_uc());
+      sodium.crypto_shorthash(hash.to_ucPtr(), inData.to_ucPtr(), inData.size(), key.to_ucPtr_ro());
 
       return hash;
     }
 
     //----------------------------------------------------------------------------
 
-    string SodiumLib::crypto_shorthash(const string& inData, const SodiumLib::ShorthashKey& k)
+    string SodiumLib::crypto_shorthash(const string& inData, const SodiumLib::ShorthashKey& key)
     {
-      if (inData.empty()) return string{};
-      if (!(k.isValid())) return string{};
+      if (inData.empty())
+      {
+        throw SodiumInvalidMessage("crypto_shorthash");
+      }
+      if (key.empty())
+      {
+        throw SodiumInvalidKey("crypto_shorthash");
+      }
 
       // allocate space for the result
       string hash;
       hash.resize(crypto_shorthash_BYTES);
 
       // get the hash
-      sodium.crypto_shorthash((unsigned char*)hash.c_str(), (const unsigned char*)inData.c_str(), inData.size(), k.get_uc());
+      sodium.crypto_shorthash((unsigned char*)hash.c_str(),
+                              reinterpret_cast<const unsigned char*>(inData.c_str()), inData.size(),
+                              key.to_ucPtr_ro());
 
       return hash;
     }

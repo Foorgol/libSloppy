@@ -2073,44 +2073,161 @@ namespace Sloppy
           );
 
       // password hashing and key derivation
+      using Argon_Salt = SodiumKey<SodiumKeyType::Public, crypto_pwhash_SALTBYTES>;
       enum class PasswdHashStrength
       {
         Interactive,
         Moderate,
         High
       };
+
       enum class PasswdHashAlgo
       {
-        Argon2,
-        Scrypt
+        Default,   ///< libsodium's default algorithm (currently Argon2id)
+        Argon2i,   ///< Argon2i (multiple-pass, iterative Argon2)
+        Argon2id   ///< Argon2id (iterative combined with data-independant memory useage
       };
+      int PasswdHashAlgo2Int(PasswdHashAlgo alg)
+      {
+        if (alg == PasswdHashAlgo::Argon2id) return crypto_pwhash_ALG_ARGON2ID13;
+        if (alg == PasswdHashAlgo::Argon2i) return crypto_pwhash_ALG_ARGON2I13;
+        return crypto_pwhash_ALG_DEFAULT;
+      }
+
       struct PwHashData
       {
-        ManagedBuffer salt;
-        unsigned long long opslimit;
-        size_t memlimit;
-        PasswdHashAlgo algo;
+        Argon_Salt salt;   ///< the salt for the password hash
+        unsigned long long opslimit;   ///< the number of hashing iterations (e.g., 3)
+        size_t memlimit;   ///< the amount of memory to be used by the hashing algo in bytes
+        PasswdHashAlgo algo;   ///< the selected hashing algorithm
       };
 
-      pair<SodiumSecureMemory, PwHashData> crypto_pwhash(const MemView& pw, size_t hashLen,
-                                                            PasswdHashStrength strength = PasswdHashStrength::Moderate,
-                                                            PasswdHashAlgo algo = PasswdHashAlgo::Argon2,
-                                                            SodiumSecureMemType memType = SodiumSecureMemType::Locked);
-      SodiumSecureMemory crypto_pwhash(const MemView& pw, size_t hashLen, PwHashData& hDat,
-                                       SodiumSecureMemType memType = SodiumSecureMemType::Locked);
-      pair<string, string> crypto_pwhash(const string& pw, size_t hashLen,
-                                         PasswdHashStrength strength = PasswdHashStrength::Moderate,
-                                         PasswdHashAlgo algo = PasswdHashAlgo::Argon2,
-                                         SodiumSecureMemType memType = SodiumSecureMemType::Locked);
-      string crypto_pwhash_str(const MemView& pw, PasswdHashStrength strength = PasswdHashStrength::Moderate,
-                               PasswdHashAlgo algo = PasswdHashAlgo::Argon2);
-      string crypto_pwhash_str(const string& pw, PasswdHashStrength strength = PasswdHashStrength::Moderate,
-                               PasswdHashAlgo algo = PasswdHashAlgo::Argon2);
-      bool crypto_pwhash_str_verify(const MemView& pw, const string& hashResult, PasswdHashAlgo algo = PasswdHashAlgo::Argon2);
-      bool crypto_pwhash_str_verify(const string& pw, const string& hashResult, PasswdHashAlgo algo = PasswdHashAlgo::Argon2);
+      /** \brief Computes a memory- and CPU-hard hash value from a given clear text password;
+       * original documentation [here](https://download.libsodium.org/doc/password_hashing)
+       * and especially [here](https://download.libsodium.org/doc/password_hashing/the_argon2i_function.html).
+       *
+       * Can also be used to derive keys from passwords.
+       *
+       * The password length should be between `crypto_pwhash_PASSWD_MIN` and
+       * `crypto_pwhash_PASSWD_MAX`.
+       *
+       * The length of the resulting hash can be between
+       * `crypto_pwhash_BYTES_MIN' (currently 16 bytes / 128 bits) and
+       * `crypto_pwhash_BYTES_MAX` ().
+       *
+       * \throws SodiumInvalidBuffer if the clear text password has no valid length
+       *
+       * \throws std::range_error if the requested hash length is invalid
+       *
+       * \returns a pair of the hash itself and the actual, numeric parameters used for its computation;
+       * in case of libsodium-internal errors, the resulting hash is empty!
+       */
+      pair<SodiumSecureMemory, PwHashData> crypto_pwhash(
+          const MemView& pw,   ///< a memory buffer containing the plain text password
+          size_t hashLen,   ///< the number of bytes for the resulting hash
+          PasswdHashStrength strength = PasswdHashStrength::Moderate,   ///< the required complexity (--> security) for the hashing
+          PasswdHashAlgo algo = PasswdHashAlgo::Default,   ///< the algorithm to be used for the hashing
+          SodiumSecureMemType memType = SodiumSecureMemType::Locked   ///< the protection class for the resulting hash / key
+          );
 
-      // converts password hash strength and algorithm into values for opslimit and memlimit
-      pair<unsigned long long, size_t> pwHashConfigToValues(PasswdHashStrength strength, PasswdHashAlgo algo);
+      /** \brief Computes a memory- and CPU-hard hash value from a given clear text password;
+       * original documentation [here](https://download.libsodium.org/doc/password_hashing)
+       * and especially [here](https://download.libsodium.org/doc/password_hashing/the_argon2i_function.html).
+       *
+       * Can also be used to derive keys from passwords.
+       *
+       * \note The salt part of PwHashData **has to be initialized by the caller** before
+       * calling this function. 'randombytes_buf()' is a good candidate for that purpose.
+       *
+       * The length of the resulting hash can be between
+       * `crypto_pwhash_BYTES_MIN' (currently 16 bytes / 128 bits) and
+       * `crypto_pwhash_BYTES_MAX` (4294967295 bytes).
+       *
+       * \throws SodiumInvalidBuffer if the clear text password is empty
+       *
+       * \throws std::range_error if the requested hash length is invalid
+       *
+       * \returns the hash; in case of libsodium-internal errors, the resulting hash is empty!
+       */
+      SodiumSecureMemory crypto_pwhash(
+          const MemView& pw,   ///< a memory buffer containing the plain text password
+          size_t hashLen,   ///< the number of bytes for the resulting hash
+          PwHashData& hDat,   ///< the numeric hashing parameters
+          SodiumSecureMemType memType = SodiumSecureMemType::Locked   ///< the protection class for the resulting hash / key
+          );
+
+      /** \brief Computes a memory- and CPU-hard hash value from a given clear text password and stores the hash
+       * along with its computation parameters in an ASCII-only string, e.g. for storage in a database;
+       * original documentation [here](https://download.libsodium.org/doc/password_hashing)
+       * and especially [here](https://download.libsodium.org/doc/password_hashing/the_argon2i_function.html).
+       *
+       * The resulting string can be used for password verification using `crypto_pwhash_str_verify()`.
+       *
+       * \throws SodiumInvalidBuffer if the clear text password is empty
+       *
+       * \returns an ASCII-only string that contains the hash and its computation parameters;
+       * if libsodium failed to compute the string, the string is empty.
+       */
+      string crypto_pwhash_str(
+          const MemView& pw,   ///< a memory buffer containing the plain text password
+          PasswdHashStrength strength = PasswdHashStrength::Moderate,   ///< the required complexity (--> security) for the hashing
+          PasswdHashAlgo algo = PasswdHashAlgo::Default   ///< the algorithm to be used for the hashing
+          );
+
+      /** \brief Computes a memory- and CPU-hard hash value from a given clear text password and stores the hash
+       * along with its computation parameters in an ASCII-only string, e.g. for storage in a database;
+       * original documentation [here](https://download.libsodium.org/doc/password_hashing)
+       * and especially [here](https://download.libsodium.org/doc/password_hashing/the_argon2i_function.html).
+       *
+       * The resulting string can be used for password verification using `crypto_pwhash_str_verify()`.
+       *
+       * \throws SodiumInvalidBuffer if the clear text password is empty
+       *
+       * \returns an ASCII-only string that contains the hash and its computation parameters;
+       * if libsodium failed to compute the string, the string is empty.
+       */
+      string crypto_pwhash_str(
+          const string& pw,   ///< a string containing the plain text password
+          PasswdHashStrength strength = PasswdHashStrength::Moderate,   ///< the required complexity (--> security) for the hashing
+          PasswdHashAlgo algo = PasswdHashAlgo::Default   ///< the algorithm to be used for the hashing
+          );
+
+      /** \brief Verifies a given clear text password against a previously computed password hash;
+       * original documentation [here](https://download.libsodium.org/doc/password_hashing)
+       * and especially [here](https://download.libsodium.org/doc/password_hashing/the_argon2i_function.html).
+       *
+       * The hash string has to be generated using `crypto_pwhash_str()` in order to include
+       * all necessary computation parameters.
+       *
+       * \returns `true` if the password verification succeeded; `false` if it failed
+       * because the password was wrong or because an error occurred.
+       */
+      bool crypto_pwhash_str_verify(
+          const MemView& pw,   ///< the plain text password that shall be verified
+          const string& hashResult   ///< the hash of the "true" password computed via `crypto_pwhash_str()`
+          );
+
+      /** \brief Verifies a given clear text password against a previously computed password hash;
+       * original documentation [here](https://download.libsodium.org/doc/password_hashing)
+       * and especially [here](https://download.libsodium.org/doc/password_hashing/the_argon2i_function.html).
+       *
+       * The hash string has to be generated using `crypto_pwhash_str()` in order to include
+       * all necessary computation parameters.
+       *
+       * \returns `true` if the password verification succeeded; `false` if it failed
+       * because the password was wrong or because an error occurred.
+       */
+      bool crypto_pwhash_str_verify(
+          const string& pw,   ///< the plain text password that shall be verified
+          const string& hashResult   ///< the hash of the "true" password computed via `crypto_pwhash_str()`
+          );
+
+      /** \brief Translates the enums in `PasswdHashStrength' into numerical
+       * values for `opslimit` and `memlimit' based on the constants defined by libsodium.
+       *
+       * \returns a pair of `opslimit` and `memlimit` values for the given hash strength
+       */
+      pair<unsigned long long, size_t> pwHashConfigToValues(PasswdHashStrength strength);
 
       // Diffie-Hellmann key exchange
       using DH_PublicKey = SodiumKey<SodiumKeyType::Public, crypto_scalarmult_BYTES>;

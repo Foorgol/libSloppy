@@ -2376,35 +2376,44 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    bool SodiumLib::genDHKeyPair(SodiumLib::DH_PublicKey& pk_out, SodiumLib::DH_SecretKey& sk_out)
+    pair<SodiumLib::DH_SecretKey, SodiumLib::DH_PublicKey> SodiumLib::genDHKeyPair()
     {
-      if (!(sk_out.isValid())) return false;
-      randombytes_buf(sk_out);
+      DH_SecretKey sk;
+      randombytes_buf(sk.toNotOwningArray());
 
-      genPublicDHKeyFromSecretKey(sk_out, pk_out);
-      return true;
+      DH_PublicKey pk = genPublicDHKeyFromSecretKey(sk);
+      return make_pair(std::move(sk), std::move(pk));
     }
 
     //----------------------------------------------------------------------------
 
-    bool SodiumLib::genDHSharedSecret(const SodiumLib::DH_SecretKey& mySecretKey, const SodiumLib::DH_PublicKey& othersPublicKey, SodiumLib::DH_SharedSecret& sh_out)
+    SodiumLib::DH_SharedSecret SodiumLib::genDHSharedSecret(const DH_SecretKey& mySecretKey, const DH_PublicKey& othersPublicKey)
     {
-      if (!(mySecretKey.isValid())) return false;
-      if (!(othersPublicKey.isValid())) return false;
-      if (!(sh_out.isValid())) return false;
+      if (mySecretKey.empty() || othersPublicKey.empty())
+      {
+        throw SodiumInvalidKey("genDHSharedSecret");
+      }
 
-      sodium.crypto_scalarmult(sh_out.get_uc(), mySecretKey.get_uc(), othersPublicKey.get_uc());
-      return true;
+      DH_SharedSecret sh;
+
+      sodium.crypto_scalarmult(sh.to_ucPtr_rw(), mySecretKey.to_ucPtr_ro(), othersPublicKey.to_ucPtr_ro());
+      return std::move(sh);
     }
 
     //----------------------------------------------------------------------------
 
-    bool SodiumLib::genPublicDHKeyFromSecretKey(const SodiumLib::DH_SecretKey& sk, SodiumLib::DH_PublicKey& pk_out)
+    SodiumLib::DH_PublicKey SodiumLib::genPublicDHKeyFromSecretKey(const SodiumLib::DH_SecretKey& sk)
     {
-      if (!(sk.isValid())) return false;
+      if (sk.empty())
+      {
+        throw SodiumInvalidKey("genPublicDHKeyFromSecretKey");
+      }
 
-      sodium.crypto_scalarmult_base(pk_out.get_uc(), sk.get_uc());
-      return true;
+      DH_PublicKey pk;
+
+      sodium.crypto_scalarmult_base(pk.to_ucPtr_rw(), sk.to_ucPtr_ro());
+
+      return std::move(pk);
     }
 
 

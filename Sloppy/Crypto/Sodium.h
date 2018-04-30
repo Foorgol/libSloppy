@@ -1364,7 +1364,7 @@ namespace Sloppy
           const string& cipher,   ///< buffer with encrypted data and attached MAC
           const AEAD_XChaCha20Poly1305_NonceType& nonce,   ///< the nonce to be used for this specific message
           const AEAD_XChaCha20Poly1305_KeyType& key,   ///< the secret key; the caller has to ensure that the memory is enabled for reading
-          const string& ad = MemView{}   ///< optional, additional data to be included in the MAC computation
+          const string& ad = string{}   ///< optional, additional data to be included in the MAC computation
           );
 
       // authenticated encryption with additional data, AES-256 GCM, buffer based
@@ -2233,9 +2233,45 @@ namespace Sloppy
       using DH_PublicKey = SodiumKey<SodiumKeyType::Public, crypto_scalarmult_BYTES>;
       using DH_SecretKey = SodiumKey<SodiumKeyType::Secret, crypto_scalarmult_SCALARBYTES>;
       using DH_SharedSecret = SodiumKey<SodiumKeyType::Secret, crypto_scalarmult_BYTES>;
-      bool genDHKeyPair(DH_PublicKey& pk_out, DH_SecretKey& sk_out);
-      bool genDHSharedSecret(const DH_SecretKey& mySecretKey, const DH_PublicKey& othersPublicKey, DH_SharedSecret& sh_out);
-      bool genPublicDHKeyFromSecretKey(const DH_SecretKey& sk, DH_PublicKey& pk_out);
+
+      /** \brief Generates a public / private key pair for the Diffie-Hellmann key exchange;
+       * original documentation [here](https://download.libsodium.org/doc/advanced/scalar_multiplication.html)
+       *
+       * The secret key is initialized from random data.
+       *
+       * \note This call uses a deprecated API of libsodium; for new implementations,
+       * use the 'crypto_kx_*'-API instead.
+       *
+       * \returns a pair of secret and public key for DH key exchange
+       */
+      pair<DH_SecretKey, DH_PublicKey> genDHKeyPair();
+
+      /** \brief Computes the shared secret for the Diffie-Hellmann key exchange;
+       * original documentation [here](https://download.libsodium.org/doc/advanced/scalar_multiplication.html)
+       *
+       * \note This call uses a deprecated API of libsodium; for new implementations,
+       * use the 'crypto_kx_*'-API instead.
+       *
+       * \throws SodiumInvalidKey if either the secret and/or the public key are empty
+       *
+       * \returns The resulting shared secret between the key exchange parties
+       */
+      DH_SharedSecret genDHSharedSecret(
+          const DH_SecretKey& mySecretKey,   ///< the secret key of the local peer
+          const DH_PublicKey& othersPublicKey   ///< the public key of the remote peer
+          );
+
+      /** \brief Computes the public key that belongs to a secret key for the Diffie-Hellmann key exchange;
+       * original documentation [here](https://download.libsodium.org/doc/advanced/scalar_multiplication.html)
+       *
+       * \note This call uses a deprecated API of libsodium; for new implementations,
+       * use the 'crypto_kx_*'-API instead.
+       *
+       * \throws SodiumInvalidKey if the secret key is empty
+       *
+       * \returns The public key that belongs to a secret key for the DH key exchange
+       */
+      DH_PublicKey genPublicDHKeyFromSecretKey(const DH_SecretKey& sk);
 
 
     protected:

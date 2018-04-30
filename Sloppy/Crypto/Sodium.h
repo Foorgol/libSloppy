@@ -2711,24 +2711,81 @@ namespace Sloppy
       bool autoIncrementNonce;
     };
 
-    // a class that calculates a hash over multiple chunks of data
+    /** \brief A class that supports hashing multiple chunks of data
+     */
     class GenericHasher
     {
     public:
-      GenericHasher();
-      GenericHasher(const SodiumLib::GenericHashKey& k);
+      /** \brief Default ctor for a new hasher instance with a libsodium-internal standard key.
+       *
+       * The `hashLen` parameter shall be between `crypto_generichash_BYTES_MIN` (16 bytes / 128 bit)
+       * and `crypto_generichash_BYTES_MAX` (64 bytes / 512 bit).
+       *
+       * \throws SodiumNotAvailableException if the sodium wrapper singleton could be initialized / retrieved
+       *
+       * \throws std::range_error if the requested hash length is invalid
+       */
+      GenericHasher(
+          size_t hashLen = crypto_generichash_BYTES   ///< number of bytes for the resulting hash value
+          );
 
-      bool append(const MemView& inData);
-      bool append(const string& inData);
+      /** \brief Special ctor for a new hasher instance with a user provided key.
+       *
+       * The `hashLen` parameter shall be between `crypto_generichash_BYTES_MIN` (16 bytes / 128 bit)
+       * and `crypto_generichash_BYTES_MAX` (64 bytes / 512 bit).
+       *
+       * \throws SodiumNotAvailableException if the sodium wrapper singleton could be initialized / retrieved
+       *
+       * \throws SodiumInvalidKey if the provided key is empty
+       *
+       * \throws std::range_error if the requested hash length is invalid
+       */
+      GenericHasher(
+          const SodiumLib::GenericHashKey& k,
+          size_t hashLen = crypto_generichash_BYTES
+          );
 
-      ManagedBuffer finalize();
+      /** \brief Hashes another chunk of data
+       *
+       * If the hashing has already been finished by calling `finalize()`,
+       * a call to this function simply does nothing.
+       *
+       * \throws SodiumInvalidMessage if the provided data is empty
+       */
+      void append(
+          const MemView& inData   ///< the data to append to the hash calculation
+          );
+
+      /** \brief Hashes another chunk of data
+       *
+       * If the hashing has already been finished by calling `finalize()`,
+       * a call to this function simply does nothing.
+       *
+       * \throws SodiumInvalidMessage if the provided data is empty
+       */
+      void append(
+          const string& inData   ///< the data to append to the hash calculation
+          );
+
+      /** \brief Terminates the hash calculation and returns the hash value.
+       *
+       * \returns a heap-allocated memory buffer containing the hash or an
+       * empty buffer if `finalize()` or `finalize_string()` has been called before.
+       */
+      MemArray finalize();
+
+      /** \brief Terminates the hash calculation and returns the hash value.
+       *
+       * \returns a string containing the hash or an
+       * empty string if `finalize()` or `finalize_string()` has been called before.
+       */
       string finalize_string();
 
     private:
+      SodiumLib* lib;
+      size_t outLen;
       crypto_generichash_state state;
       bool isFinalized;
-      SodiumLib* lib;
-
     };
 
     // a helper class for Diffie-Hellmann key exchange

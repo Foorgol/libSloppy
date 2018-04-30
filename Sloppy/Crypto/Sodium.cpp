@@ -2554,58 +2554,56 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    GenericHasher::GenericHasher()
-      :isFinalized{false}, lib{SodiumLib::getInstance()}
+    GenericHasher::GenericHasher(size_t hashLen)
+      :lib{SodiumLib::getInstance()}, outLen{hashLen}, isFinalized{false}
     {
       if (lib == nullptr)
       {
         throw SodiumNotAvailableException{};
       }
 
-      lib->crypto_generichash_init(&state);
+      lib->crypto_generichash_init(&state, outLen);
     }
 
     //----------------------------------------------------------------------------
 
-    GenericHasher::GenericHasher(const SodiumLib::GenericHashKey& k)
-      :isFinalized{false}, lib{SodiumLib::getInstance()}
+    GenericHasher::GenericHasher(const SodiumLib::GenericHashKey& k, size_t hashLen)
+      :lib{SodiumLib::getInstance()}, outLen{hashLen}, isFinalized{false}
     {
       if (lib == nullptr)
       {
         throw SodiumNotAvailableException{};
       }
 
-      lib->crypto_generichash_init(&state, k);
+      lib->crypto_generichash_init(&state, k, outLen);
     }
 
     //----------------------------------------------------------------------------
 
-    bool GenericHasher::append(const MemView& inData)
+    void GenericHasher::append(const MemView& inData)
     {
-      if (isFinalized) return false;
+      if (isFinalized) return;
 
-      return lib->crypto_generichash_update(&state, inData);
+      lib->crypto_generichash_update(&state, inData);
     }
 
     //----------------------------------------------------------------------------
 
-    bool GenericHasher::append(const string& inData)
+    void GenericHasher::append(const string& inData)
     {
-      if (isFinalized) return false;
+      if (isFinalized) return;
 
-      return lib->crypto_generichash_update(&state, inData);
+      lib->crypto_generichash_update(&state, inData);
     }
 
     //----------------------------------------------------------------------------
 
-    ManagedBuffer GenericHasher::finalize()
+    MemArray GenericHasher::finalize()
     {
-      if (isFinalized) return ManagedBuffer{};
+      if (isFinalized) return MemArray{};
 
-      auto hash = lib->crypto_generichash_final(&state);
       isFinalized = true;
-
-      return hash;
+      return lib->crypto_generichash_final(&state, outLen);
     }
 
     //----------------------------------------------------------------------------
@@ -2614,10 +2612,8 @@ namespace Sloppy
     {
       if (isFinalized) return string{};
 
-      auto hash = lib->crypto_generichash_final_string(&state);
       isFinalized = true;
-
-      return hash;
+      return lib->crypto_generichash_final_string(&state, outLen);
     }
 
     //----------------------------------------------------------------------------

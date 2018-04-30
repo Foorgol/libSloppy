@@ -821,7 +821,7 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    MemArray SodiumLib::crypto_secretbox_easy(const MemView& msg, const SecretBoxNonceType& nonce, const SecretBoxKeyType& key)
+    MemArray SodiumLib::crypto_secretbox_easy(const MemView& msg, const SecretBoxNonce& nonce, const SecretBoxKey& key)
     {
       // the message and the other parameters should be valid
       if (msg.empty())
@@ -849,7 +849,7 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    bool SodiumLib::crypto_secretbox_open_easy__internal(const MemArray& targetBuf, const MemView& cipher, const SodiumLib::SecretBoxNonceType& nonce, const SodiumLib::SecretBoxKeyType& key)
+    bool SodiumLib::crypto_secretbox_open_easy__internal(const MemArray& targetBuf, const MemView& cipher, const SodiumLib::SecretBoxNonce& nonce, const SodiumLib::SecretBoxKey& key)
     {
       // the parameters should be valid
       if (cipher.empty() || (cipher.size() <= crypto_secretbox_MACBYTES))
@@ -878,7 +878,7 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    MemArray SodiumLib::crypto_secretbox_open_easy(const MemView& cipher, const SodiumLib::SecretBoxNonceType& nonce, const SodiumLib::SecretBoxKeyType& key)
+    MemArray SodiumLib::crypto_secretbox_open_easy(const MemView& cipher, const SodiumLib::SecretBoxNonce& nonce, const SodiumLib::SecretBoxKey& key)
     {
       // we need at least one message byte, so just the MAC is
       // not sufficient
@@ -899,7 +899,7 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    SodiumSecureMemory SodiumLib::crypto_secretbox_open_easy__secure(const MemView& cipher, const SecretBoxNonceType& nonce, const SecretBoxKeyType& key, SodiumSecureMemType clearTextProtection)
+    SodiumSecureMemory SodiumLib::crypto_secretbox_open_easy__secure(const MemView& cipher, const SecretBoxNonce& nonce, const SecretBoxKey& key, SodiumSecureMemType clearTextProtection)
     {
       // we need at least one message byte, so just the MAC is
       // not sufficient
@@ -920,7 +920,7 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    pair<MemArray, SodiumLib::SecretBoxMacType> SodiumLib::crypto_secretbox_detached(const MemView& msg, const SecretBoxNonceType& nonce, const SecretBoxKeyType& key)
+    pair<MemArray, SodiumLib::SecretBoxMac> SodiumLib::crypto_secretbox_detached(const MemView& msg, const SecretBoxNonce& nonce, const SecretBoxKey& key)
     {
       // the message and the other parameters should be valid
       if (msg.empty())
@@ -938,7 +938,7 @@ namespace Sloppy
 
       // allocate space for the result
       MemArray cipher{msg.size()};
-      SodiumLib::SecretBoxMacType mac;
+      SodiumLib::SecretBoxMac mac;
 
       // do the actual encryption
       sodium.crypto_secretbox_detached(cipher.to_ucPtr(), mac.to_ucPtr_rw(), msg.to_ucPtr(), msg.size(), nonce.to_ucPtr_ro(), key.to_ucPtr_ro());
@@ -949,7 +949,7 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    SodiumSecureMemory SodiumLib::crypto_secretbox_open_detached(const MemView& cipher, const SecretBoxMacType& mac, const SecretBoxNonceType& nonce, const SecretBoxKeyType& key, SodiumSecureMemType clearTextProtection)
+    SodiumSecureMemory SodiumLib::crypto_secretbox_open_detached(const MemView& cipher, const SecretBoxMac& mac, const SecretBoxNonce& nonce, const SecretBoxKey& key, SodiumSecureMemType clearTextProtection)
     {
       // the parameters should be valid
       if (cipher.empty())
@@ -981,7 +981,7 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    string SodiumLib::crypto_secretbox_easy(const string& msg, const SecretBoxNonceType& nonce, const SecretBoxKeyType& key)
+    string SodiumLib::crypto_secretbox_easy(const string& msg, const SecretBoxNonce& nonce, const SecretBoxKey& key)
     {
       if (msg.empty())
       {
@@ -1012,7 +1012,7 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    string SodiumLib::crypto_secretbox_open_easy(const string& cipher, const SecretBoxNonceType& nonce, const SecretBoxKeyType& key)
+    string SodiumLib::crypto_secretbox_open_easy(const string& cipher, const SecretBoxNonce& nonce, const SecretBoxKey& key)
     {
       if (nonce.empty())
       {
@@ -1045,7 +1045,7 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    pair<string, SodiumLib::SecretBoxMacType> SodiumLib::crypto_secretbox_detached(const string& msg, const SecretBoxNonceType& nonce, const SecretBoxKeyType& key)
+    pair<string, SodiumLib::SecretBoxMac> SodiumLib::crypto_secretbox_detached(const string& msg, const SecretBoxNonce& nonce, const SecretBoxKey& key)
     {
       // the message and the other parameters should be valid
       if (msg.empty())
@@ -1064,7 +1064,7 @@ namespace Sloppy
       // allocate space for the result
       string cipher;
       cipher.resize(msg.size());
-      SecretBoxMacType mac;
+      SecretBoxMac mac;
 
       // do the actual encryption
       sodium.crypto_secretbox_detached((unsigned char *)cipher.c_str(), mac.to_ucPtr_rw(),
@@ -1077,7 +1077,7 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    string SodiumLib::crypto_secretbox_open_detached(const string& cipher, const SecretBoxMacType& mac, const SecretBoxNonceType& nonce, const SecretBoxKeyType& key)
+    string SodiumLib::crypto_secretbox_open_detached(const string& cipher, const SecretBoxMac& mac, const SecretBoxNonce& nonce, const SecretBoxKey& key)
     {
       // the parameters should be valid
       if (cipher.empty())
@@ -2421,39 +2421,43 @@ namespace Sloppy
     //----------------------------------------------------------------------------
     //----------------------------------------------------------------------------
 
-    SodiumSecretBox::SodiumSecretBox(const SodiumSecretBox::KeyType& _key, const SodiumSecretBox::NonceType& _nonce, bool autoIncNonce)
-      :NonceBox<SodiumKey<SodiumKeyType::Public, crypto_secretbox_NONCEBYTES>>{_nonce, autoIncNonce}
+    SodiumSecretBox::SodiumSecretBox(const SodiumLib::SecretBoxKey& _key, const SodiumLib::SecretBoxNonce& _nonce, bool autoIncNonce)
+      :lib{SodiumLib::getInstance()}, nonce{_nonce}, autoIncrementNonce{autoIncNonce}
     {
+      if (key.empty())
+      {
+        throw SodiumInvalidKey("ctor SodiumSecretBox");
+      }
       key = _key.copy();
 
       if (!(key.setAccess(SodiumSecureMemAccess::NoAccess)))
       {
-        throw SodiumMemoryManagementException{"ctor SecretBox, could not guard private key"};
+        throw SodiumMemoryGuardException{"ctor SodiumSecretBox, could not guard private key"};
       }
     }
 
     //----------------------------------------------------------------------------
 
-    ManagedBuffer SodiumSecretBox::encryptCombined(const MemView& msg)
+    MemArray SodiumSecretBox::encryptCombined(const MemView& msg)
     {
       setKeyLockState(false);
-      auto result = lib->crypto_secretbox_easy(msg, nextNonce, key);
+      MemArray result = lib->crypto_secretbox_easy(msg, nonce.getNonceAsRef(), key);
       setKeyLockState(true);
 
-      if (autoIncrementNonce) incrementNonce();
+      if (autoIncrementNonce) nonce.increment();
 
       return result;
     }
 
     //----------------------------------------------------------------------------
 
-    pair<ManagedBuffer, ManagedBuffer> SodiumSecretBox::encryptDetached(const MemView& msg)
+    pair<MemArray, SodiumLib::SecretBoxMac> SodiumSecretBox::encryptDetached(const MemView& msg)
     {
       setKeyLockState(false);
-      auto result = lib->crypto_secretbox_detached(msg, nextNonce, key);
+      auto result = lib->crypto_secretbox_detached(msg, nonce.getNonceAsRef(), key);
       setKeyLockState(true);
 
-      if (autoIncrementNonce) incrementNonce();
+      if (autoIncrementNonce) nonce.increment();
 
       return result;
     }
@@ -2463,23 +2467,23 @@ namespace Sloppy
     string SodiumSecretBox::encryptCombined(const string& msg)
     {
       setKeyLockState(false);
-      string result = lib->crypto_secretbox_easy(msg, nextNonce, key);
+      string result = lib->crypto_secretbox_easy(msg, nonce.getNonceAsRef(), key);
       setKeyLockState(true);
 
-      if (autoIncrementNonce) incrementNonce();
+      if (autoIncrementNonce) nonce.increment();
 
       return result;
     }
 
     //----------------------------------------------------------------------------
 
-    pair<string, string> SodiumSecretBox::encryptDetached(const string& msg)
+    pair<string, SodiumLib::SecretBoxMac> SodiumSecretBox::encryptDetached(const string& msg)
     {
       setKeyLockState(false);
-      auto result = lib->crypto_secretbox_detached(msg, nextNonce, key);
+      auto result = lib->crypto_secretbox_detached(msg, nonce.getNonceAsRef(), key);
       setKeyLockState(true);
 
-      if (autoIncrementNonce) incrementNonce();
+      if (autoIncrementNonce) nonce.increment();
 
       return make_pair(result.first, result.second);
     }
@@ -2489,23 +2493,23 @@ namespace Sloppy
     SodiumSecureMemory SodiumSecretBox::decryptCombined(const MemView& cipher, SodiumSecureMemType clearTextProtection)
     {
       setKeyLockState(false);
-      SodiumSecureMemory result = lib->crypto_secretbox_open_easy__secure(cipher, nextNonce, key, clearTextProtection);
+      SodiumSecureMemory result = lib->crypto_secretbox_open_easy__secure(cipher, nonce.getNonceAsRef(), key, clearTextProtection);
       setKeyLockState(true);
 
-      if (autoIncrementNonce) incrementNonce();
+      if (autoIncrementNonce) nonce.increment();
 
       return result;
     }
 
     //----------------------------------------------------------------------------
 
-    SodiumSecureMemory SodiumSecretBox::decryptDetached(const MemView& cipher, const MemView& mac, SodiumSecureMemType clearTextProtection)
+    SodiumSecureMemory SodiumSecretBox::decryptDetached(const MemView& cipher, const SodiumLib::SecretBoxMac& mac, SodiumSecureMemType clearTextProtection)
     {
       setKeyLockState(false);
-      SodiumSecureMemory result = lib->crypto_secretbox_open_detached(cipher, mac, nextNonce, key, clearTextProtection);
+      SodiumSecureMemory result = lib->crypto_secretbox_open_detached(cipher, mac, nonce.getNonceAsRef(), key, clearTextProtection);
       setKeyLockState(true);
 
-      if (autoIncrementNonce) incrementNonce();
+      if (autoIncrementNonce) nonce.increment();
 
       return result;
     }
@@ -2515,23 +2519,23 @@ namespace Sloppy
     string SodiumSecretBox::decryptCombined(const string& cipher)
     {
       setKeyLockState(false);
-      string msg = lib->crypto_secretbox_open_easy(cipher, nextNonce, key);
+      string msg = lib->crypto_secretbox_open_easy(cipher, nonce.getNonceAsRef(), key);
       setKeyLockState(true);
 
-      if (autoIncrementNonce) incrementNonce();
+      if (autoIncrementNonce) nonce.increment();
 
       return msg;
     }
 
     //----------------------------------------------------------------------------
 
-    string SodiumSecretBox::decryptDetached(const string& cipher, const string& mac)
+    string SodiumSecretBox::decryptDetached(const string& cipher, const SodiumLib::SecretBoxMac& mac)
     {
       setKeyLockState(false);
-      string result = lib->crypto_secretbox_open_detached(cipher, mac, nextNonce, key);
+      string result = lib->crypto_secretbox_open_detached(cipher, mac, nonce.getNonceAsRef(), key);
       setKeyLockState(true);
 
-      if (autoIncrementNonce) incrementNonce();
+      if (autoIncrementNonce) nonce.increment();
 
       return result;
     }
@@ -2544,7 +2548,7 @@ namespace Sloppy
 
       if (!(key.setAccess(newState)))
       {
-        throw SodiumMemoryManagementException{"SecretBox, could not guard / unlock secret key"};
+        throw SodiumMemoryGuardException{"SecretBox, could not guard / unlock secret key"};
       }
     }
 
@@ -2921,7 +2925,7 @@ namespace Sloppy
     {
       // convert the pw into a hash; the hash will be used as the secret key for
       // encrypting the secret
-      SodiumLib::SecretBoxKeyType sk;
+      SodiumLib::SecretBoxKey sk;
       SodiumSecureMemory pwSecure{pw, SodiumSecureMemType::Normal};
       sk = lib->crypto_pwhash(pwSecure, sk.getSize(), hashConfig, sk.getType());
       if (!(sk.isValid()))

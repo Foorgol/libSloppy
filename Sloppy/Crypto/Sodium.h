@@ -1019,9 +1019,9 @@ namespace Sloppy
       void randombytes_buf(const MemArray& buf) const;
 
       // symmetric encryption based on MemView
-      using SecretBoxKeyType = SodiumKey<SodiumKeyType::Secret, crypto_secretbox_KEYBYTES>;
-      using SecretBoxNonceType = SodiumKey<SodiumKeyType::Public, crypto_secretbox_NONCEBYTES>;
-      using SecretBoxMacType = SodiumKey<SodiumKeyType::Public, crypto_secretbox_MACBYTES>;
+      using SecretBoxKey = SodiumKey<SodiumKeyType::Secret, crypto_secretbox_KEYBYTES>;
+      using SecretBoxNonce = SodiumKey<SodiumKeyType::Public, crypto_secretbox_NONCEBYTES>;
+      using SecretBoxMac = SodiumKey<SodiumKeyType::Public, crypto_secretbox_MACBYTES>;
 
       /** \brief Symmetric, authenticated encryption of a plain message with the auth tag being attached to the cipher;
        * original documentation [here](https://download.libsodium.org/doc/secret-key_cryptography/authenticated_encryption.html).
@@ -1036,8 +1036,8 @@ namespace Sloppy
        */
       MemArray crypto_secretbox_easy(
           const MemView& msg,   ///< the plain message for encryption
-          const SecretBoxNonceType& nonce,   ///< the nonce to be used for this specific message
-          const SecretBoxKeyType& key        ///< the secret key; the caller has to ensure that the memory is enabled for reading
+          const SecretBoxNonce& nonce,   ///< the nonce to be used for this specific message
+          const SecretBoxKey& key        ///< the secret key; the caller has to ensure that the memory is enabled for reading
           );
 
       /** \brief Symmetric, authenticated decryption of a cipher with attached auth tag;
@@ -1054,8 +1054,8 @@ namespace Sloppy
        */
       SodiumSecureMemory crypto_secretbox_open_easy__secure(
           const MemView& cipher,   ///< the buffer with the encrypted message and the attached MAC
-          const SecretBoxNonceType& nonce,   ///< the nonce to be used for this specific message
-          const SecretBoxKeyType& key,        ///< the secret key; the caller has to ensure that the memory is enabled for reading
+          const SecretBoxNonce& nonce,   ///< the nonce to be used for this specific message
+          const SecretBoxKey& key,        ///< the secret key; the caller has to ensure that the memory is enabled for reading
           SodiumSecureMemType clearTextProtection = SodiumSecureMemType::Locked   ///< the proctection class for the returned plain data buffer
           );
 
@@ -1073,8 +1073,8 @@ namespace Sloppy
        */
       MemArray crypto_secretbox_open_easy(
           const MemView& cipher,   ///< the buffer with the encrypted message and the attached MAC
-          const SecretBoxNonceType& nonce,   ///< the nonce to be used for this specific message
-          const SecretBoxKeyType& key        ///< the secret key; the caller has to ensure that the memory is enabled for reading
+          const SecretBoxNonce& nonce,   ///< the nonce to be used for this specific message
+          const SecretBoxKey& key        ///< the secret key; the caller has to ensure that the memory is enabled for reading
           );
 
       /** \brief Symmetric, authenticated encryption of a plain message with the a separate, detached auth tag;
@@ -1088,10 +1088,10 @@ namespace Sloppy
        *
        * \returns two heap-allocated buffers, the first one containing the encrypted data and the second one the authentication tag
        */
-      pair<MemArray, SecretBoxMacType> crypto_secretbox_detached(
+      pair<MemArray, SecretBoxMac> crypto_secretbox_detached(
           const MemView& msg,   ///< the plain message for encryption
-          const SecretBoxNonceType& nonce,   ///< the nonce to be used for this specific message
-          const SecretBoxKeyType& key        ///< the secret key; the caller has to ensure that the memory is enabled for reading
+          const SecretBoxNonce& nonce,   ///< the nonce to be used for this specific message
+          const SecretBoxKey& key        ///< the secret key; the caller has to ensure that the memory is enabled for reading
           );
 
       /** \brief Symmetric, authenticated decryption of a cipher with separate, detached auth tag;
@@ -1110,9 +1110,9 @@ namespace Sloppy
        */
       SodiumSecureMemory crypto_secretbox_open_detached(
           const MemView& cipher,   ///< a buffer with the pure, encrypted message without MAC attachment
-          const SecretBoxMacType& mac,   ///< the MAC for the message
-          const SecretBoxNonceType& nonce,   ///< the nonce to be used for this specific message
-          const SecretBoxKeyType& key,        ///< the secret key; the caller has to ensure that the memory is enabled for reading
+          const SecretBoxMac& mac,   ///< the MAC for the message
+          const SecretBoxNonce& nonce,   ///< the nonce to be used for this specific message
+          const SecretBoxKey& key,        ///< the secret key; the caller has to ensure that the memory is enabled for reading
           SodiumSecureMemType clearTextProtection = SodiumSecureMemType::Locked   ///< the proctection class for the returned plain data buffer
           );
 
@@ -1129,8 +1129,8 @@ namespace Sloppy
        */
       string crypto_secretbox_easy(
           const string& msg,   ///< a string with the plain text message for encryption
-          const SecretBoxNonceType& nonce,   ///< the nonce to be used for this specific message
-          const SecretBoxKeyType& key        ///< the secret key; the caller has to ensure that the memory is enabled for reading
+          const SecretBoxNonce& nonce,   ///< the nonce to be used for this specific message
+          const SecretBoxKey& key        ///< the secret key; the caller has to ensure that the memory is enabled for reading
           );
 
       /** \brief Symmetric, authenticated decryption of a cipher with attached auth tag;
@@ -1147,8 +1147,8 @@ namespace Sloppy
        */
       string crypto_secretbox_open_easy(
           const string& cipher,   ///< a string with the encrypted message and the attached MAC
-          const SecretBoxNonceType& nonce,   ///< the nonce to be used for this specific message
-          const SecretBoxKeyType& key        ///< the secret key; the caller has to ensure that the memory is enabled for reading
+          const SecretBoxNonce& nonce,   ///< the nonce to be used for this specific message
+          const SecretBoxKey& key        ///< the secret key; the caller has to ensure that the memory is enabled for reading
           );
 
       /** \brief Symmetric, authenticated encryption of a plain message with the a separate, detached auth tag;
@@ -1162,10 +1162,10 @@ namespace Sloppy
        *
        * \returns a string with the encrypted message and a heap-allocated buffer containing the authentication tag
        */
-      pair<string, SecretBoxMacType> crypto_secretbox_detached(
+      pair<string, SecretBoxMac> crypto_secretbox_detached(
           const string& msg,   ///< the plain message for encryption
-          const SecretBoxNonceType& nonce,   ///< the nonce to be used for this specific message
-          const SecretBoxKeyType& key        ///< the secret key; the caller has to ensure that the memory is enabled for reading
+          const SecretBoxNonce& nonce,   ///< the nonce to be used for this specific message
+          const SecretBoxKey& key        ///< the secret key; the caller has to ensure that the memory is enabled for reading
           );
 
 
@@ -1185,9 +1185,9 @@ namespace Sloppy
        */
       string crypto_secretbox_open_detached(
           const string& cipher,   ///< a string with the pure, encrypted message without MAC attachment
-          const SecretBoxMacType& mac,   ///< the MAC for the message
-          const SecretBoxNonceType& nonce,   ///< the nonce to be used for this specific message
-          const SecretBoxKeyType& key        ///< the secret key; the caller has to ensure that the memory is enabled for reading
+          const SecretBoxMac& mac,   ///< the MAC for the message
+          const SecretBoxNonce& nonce,   ///< the nonce to be used for this specific message
+          const SecretBoxKey& key        ///< the secret key; the caller has to ensure that the memory is enabled for reading
           );
 
       // message authentication
@@ -2275,12 +2275,40 @@ namespace Sloppy
 
 
     protected:
-      SodiumLib(void* _libHandle);
-      static unique_ptr<SodiumLib> inst;
-      void *libHandle;
-      SodiumPtr sodium;
+      /** \brief Ctor for the lib wrapper; loads all necessary symbols / function pointers
+       * from the lib at runtime.
+       *
+       * The ctor is only called once from the static `getInstance()` function when the
+       * singleton is initialized.
+       */
+      SodiumLib(
+          void* _libHandle   ///< handle to the dynamically loaded libsodium as returned by `dlopen()`
+          );
 
-      bool crypto_secretbox_open_easy__internal(const MemArray& targetBuf, const MemView& cipher, const SecretBoxNonceType& nonce, const SecretBoxKeyType& key);
+      static unique_ptr<SodiumLib> inst;   ///< the singleton instance of the lib wrapper
+
+      void *libHandle;      ///< handle to the dynamically loaded libsodium as returned by `dlopen()`
+
+      SodiumPtr sodium;   ///< a table of function pointers for libsodium calls
+
+      /** \brief An internal wrapper for providing a harmonized interface for 'secretbox_open_easy'-calls (combined mode).
+       *
+       * \throws SodiumInvalidCipher if the provided cipher text is empty or too short
+       *
+       * \throws SodiumInvalidNonce if the provided nonce is empty
+       *
+       * \throws SodiumInvalidKey if the provided secret key is empty
+       *
+       * \throws SodiumInvalidBuffer if the provided target data buffer is empty or too small
+       *
+       * \returns `true` if the decryption call succeeded
+       */
+      bool crypto_secretbox_open_easy__internal(
+          const MemArray& targetBuf,   ///< the target buffer for the decrypted data
+          const MemView& cipher,   ///< the encrypted data including authentication MAC
+          const SecretBoxNonce& nonce,   ///< the nonce for this specific message
+          const SecretBoxKey& key   ///< the secret key used for encryption / decryption
+          );
 
       /** \brief An internal, generic handler for AEAD encryption in combined mode
        *
@@ -2433,85 +2461,254 @@ namespace Sloppy
 
     };
 
-    // a template class that provides nonce handling for "crypto boxes"
+    /** \brief A template class that provides nonce handling for "crypto boxes"
+     */
     template <typename NonceType>
     class NonceBox
     {
     public:
-      NonceBox(const NonceType& _nonce, bool autoIncNonce = false)
-      :nonceIncrementCount{0}, autoIncrementNonce{autoIncNonce}, lib{SodiumLib::getInstance()}
+      /** \brief Ctor; initializes the internal nonce handling with an initial nonce
+       *
+       * \throws SodiumNotAvailableException if the SodiumLib could be not be initialized
+       *
+       * \throws SodiumInvalidNonce if the provided initial nonce is empty
+       */
+      NonceBox(
+          const NonceType& _nonce   ///< the initial nonce
+          )
+      :nonceIncrementCount{0}, lib{SodiumLib::getInstance()}
       {
         if (lib == nullptr)
         {
           throw SodiumNotAvailableException{};
         }
+        if (_nonce.empty())
+        {
+          throw SodiumInvalidNonce("ctor NonceBox");
+        }
 
         initialNonce = _nonce.copy();
-        nextNonce = _nonce.copy();
-        lastNonce = _nonce.copy();
+        curNonce = _nonce.copy();
+        prevNonce = _nonce.copy();
       }
 
-      void incrementNonce()
+      /** \brief Increments the nonce by one.
+       */
+      void increment()
       {
-        if (nonceIncrementCount > 0) lib->increment(lastNonce);
+        if (nonceIncrementCount > 0) lib->increment(prevNonce.toNotOwningArray());
 
-        lib->increment(nextNonce);
+        lib->increment(curNonce.toNotOwningArray());
 
         ++nonceIncrementCount;
       }
 
-      NonceType getLastNonce() const { return NonceType::asCopy(lastNonce); }
+      /** \returns the nonce **before** the last increment operation or the initial nonce
+       * if no increment took place so far.
+       */
+      NonceType getPrevNonce() const { return NonceType::asCopy(prevNonce); }
 
+      /** \returns the a copy of the current nonce (e.g., after the last increment call)
+       * or the initial nonce if no increment took place so far.
+       */
+      NonceType getNonce() const { return NonceType::asCopy(curNonce); }
+
+      /** \returns the a read-only reference to the current nonce (e.g., after the last increment call)
+       * or to the initial nonce if no increment took place so far.
+       *
+       * This avoids the copy operation employed by `getNonce()`.
+       */
+      const NonceType& getNonceAsRef() const { return curNonce; }
+
+      /** \returns the number of calls to the `increment()` function
+       */
       size_t getNonceIncrementCount() const { return nonceIncrementCount; }
 
+      /** \brief Resets the nonce to its initial value as provided to the ctor
+       * or as defined by calling `setNonce()`.
+       */
       void resetNonce()
       {
-        nextNonce = initialNonce.copy();
-        lastNonce = initialNonce.copy();
+        curNonce = initialNonce.copy();
+        prevNonce = initialNonce.copy();
         nonceIncrementCount = 0;
       }
 
+      /** \brief Sets the nonce to a provided value and also overrides the
+       * initial nonce value that has been provided to the ctor.
+       *
+       * \throws SodiumInvalidNonce if the provided nonce is empty
+       */
       void setNonce(const NonceType& n)
       {
+        if (n.empty())
+        {
+          throw SodiumInvalidNonce("NonceBox::setNonce");
+        }
+
         initialNonce = n.copy();
         resetNonce();
       }
 
     protected:
       NonceType initialNonce;
-      NonceType lastNonce;
-      NonceType nextNonce;
+      NonceType prevNonce;
+      NonceType curNonce;
       size_t nonceIncrementCount;
-      bool autoIncrementNonce;
       SodiumLib* lib;
     };
 
-    // a wrapper class for easy symmetric encryption / decryption
-    class SodiumSecretBox : public NonceBox<SodiumKey<SodiumKeyType::Public, crypto_secretbox_NONCEBYTES>>
+    /** \brief A class for easy symmetric encryption / decryption including nonce handling and
+     * automatic locking / unlocking of the memory that stores the secret key
+     *
+     * This class uses libsodium's secretbox-API.
+     */
+    class SodiumSecretBox
     {
     public:
-      using KeyType = SodiumKey<SodiumKeyType::Secret, crypto_secretbox_KEYBYTES>;
-      using NonceType = SodiumKey<SodiumKeyType::Public, crypto_secretbox_NONCEBYTES>;
+      /** \brief Ctor for a new secret box.
+       *
+       * \throws SodiumNotAvailableException if the SodiumLib could be not be initialized
+       *
+       * \throws SodiumInvalidKey if the provided secret key is empty
+       *
+       * \throws SodiumInvalidNonce if the provided initial nonce is empty
+       *
+       * \throws SodiumMemoryGuardException if the internal copy of the secret key could not be locked
+       */
+      SodiumSecretBox(
+          const SodiumLib::SecretBoxKey& _key,   ///< the shared, secret key for the symmetric encryption
+          const SodiumLib::SecretBoxNonce& _nonce,   ///< the initial once that will be used for the first encryption / decryption operation
+          bool autoIncNonce = false   ///< if set to `true` the nonce will be automatically incremented after each encryption / decryption operation
+          );
 
-      SodiumSecretBox(const KeyType& _key, const NonceType& _nonce, bool autoIncNonce = false);
+      /** \brief Encrypts a memory buffer using the secret key and the current nonce.
+       *
+       * \throws SodiumInvalidMessage if the input buffer is empty.
+       *
+       * \returns a heap-allocated buffer containing the encrypted data and an message authentication tag.
+       */
+      MemArray encryptCombined(
+          const MemView& msg   ///< the input data that shall be encrypted
+          );
 
-      // encryption
-      ManagedBuffer encryptCombined(const MemView& msg);
-      pair<ManagedBuffer, ManagedBuffer> encryptDetached(const MemView& msg);
-      string encryptCombined(const string& msg);
-      pair<string, string> encryptDetached(const string& msg);
+      /** \brief Encrypts a memory buffer using the secret key the current nonce.
+       *
+       * \throws SodiumInvalidMessage if the input buffer is empty.
+       *
+       * \returns a pair of a heap-allocated buffer containing the encrypted data and an message authentication tag.
+       */
+      pair<MemArray, SodiumLib::SecretBoxMac> encryptDetached(
+          const MemView& msg   ///< the input data that shall be encrypted
+          );
 
-      // decryption
-      SodiumSecureMemory decryptCombined(const MemView& cipher, SodiumSecureMemType clearTextProtection = SodiumSecureMemType::Locked);
-      SodiumSecureMemory decryptDetached(const MemView& cipher, const MemView& mac, SodiumSecureMemType clearTextProtection = SodiumSecureMemType::Locked);
-      string decryptCombined(const string& cipher);
-      string decryptDetached(const string& cipher, const string& mac);
+      /** \brief Encrypts a string using the secret key the current nonce.
+       *
+       * \throws SodiumInvalidMessage if the input string is empty.
+       *
+       * \returns a string containing the encrypted data and an message authentication tag.
+       */
+      string encryptCombined(
+          const string& msg   ///< the input string that shall be encrypted
+          );
+
+      /** \brief Encrypts a string using the secret key the current nonce.
+       *
+       * \throws SodiumInvalidMessage if the input string is empty.
+       *
+       * \returns a pair of a string containing the encrypted data and an message authentication tag.
+       */
+      pair<string, SodiumLib::SecretBoxMac> encryptDetached(
+          const string& msg   ///< the input string that shall be encrypted
+          );
+
+      /** \brief Decrypts a memory buffer using the secret key the current nonce.
+       *
+       * \throws SodiumInvalidCipher if the input buffer is empty or too short
+       *
+       * \returns a heap-allocated, protected buffer containing the decrypted data or an empty buffer
+       * if the decryption failed (e.g., because the MAC verification failed).
+       */
+      SodiumSecureMemory decryptCombined(
+          const MemView& cipher,   ///< the cipher text with the attached MAC
+          SodiumSecureMemType clearTextProtection = SodiumSecureMemType::Locked   ///< the protection class for the decrypted data buffer
+          );
+
+      /** \brief Decrypts a memory buffer using the secret key the current nonce.
+       *
+       * \throws SodiumInvalidCipher if the input buffer is empty or too short
+       *
+       * \throws SodiumInvalidMac if the MAC is empty
+       *
+       * \returns a heap-allocated, protected buffer containing the decrypted data or an empty buffer
+       * if the decryption failed (e.g., because the MAC verification failed).
+       */
+      SodiumSecureMemory decryptDetached(
+          const MemView& cipher,   ///< the pure cipher text
+          const SodiumLib::SecretBoxMac& mac,   ///< the MAC for verifying the cipher text
+          SodiumSecureMemType clearTextProtection = SodiumSecureMemType::Locked   ///< the protection class for the decrypted data buffer
+          );
+
+      /** \brief Decrypts a string using the secret key the current nonce.
+       *
+       * \throws SodiumInvalidCipher if the input string is empty or too short
+       *
+       * \returns a string containing the decrypted data or an empty string
+       * if the decryption failed (e.g., because the MAC verification failed).
+       */
+      string decryptCombined(
+          const string& cipher   ///< the cipher text with the attached MAC
+          );
+
+      /** \brief Decrypts a string using the secret key the current nonce.
+       *
+       * \throws SodiumInvalidCipher if the input string is empty
+       *
+       * \throws SodiumInvalidMac if the MAC is empty
+       *
+       * \returns a string containing the decrypted data or an empty string
+       * if the decryption failed (e.g., because the MAC verification failed).
+       */
+      string decryptDetached(
+          const string& cipher,   ///< the pure cipher text
+          const SodiumLib::SecretBoxMac& mac   ///< the MAC for verifying the cipher text
+          );
+
+      /** \brief Increments the internal nonce
+       */
+      void incrementNonce()
+      {
+        nonce.increment();
+      }
+
+      /** \returns a copy of the current nonce
+       */
+      SodiumLib::SecretBoxNonce currentNonce() const
+      {
+        return nonce.getNonce();
+      }
+
+      /** \returns a copy of the previous nonce
+       */
+      SodiumLib::SecretBoxNonce prevNonce() const
+      {
+        return nonce.getPrevNonce();
+      }
 
     protected:
-      void setKeyLockState(bool setGuard);
+      /** \brief Internal convenience function for locking / unlocking of the secret key.
+       *
+       * \throws SodiumMemoryGuardException if the locking / unlocking failed
+       */
+      void setKeyLockState(
+          bool setGuard   ///< if `true` the secret key will be locked (no access), if `false` the key will be set to read-only
+          );
 
     private:
-      KeyType key;
+      SodiumLib* lib;
+      SodiumLib::SecretBoxKey key;
+      NonceBox<SodiumLib::SecretBoxNonce> nonce;
+      bool autoIncrementNonce;
     };
 
     // a class that calculates a hash over multiple chunks of data
@@ -2601,9 +2798,9 @@ namespace Sloppy
       SodiumLib* lib;
       SodiumLib::PwHashData hashConfig;
       ManagedBuffer cipher;
-      SodiumLib::SecretBoxNonceType nonce;
+      SodiumLib::SecretBoxNonce nonce;
       SodiumSecureMemory pwClear;
-      SodiumLib::SecretBoxKeyType symKey;
+      SodiumLib::SecretBoxKey symKey;
 
       void password2SymKey(const string& pw);
     };

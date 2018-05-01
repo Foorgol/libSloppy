@@ -1030,7 +1030,7 @@ namespace Sloppy
        *
        * \returns a heap-allocated buffer with the encrypted data and an attached authentication tag
        */
-      MemArray crypto_secretbox_easy(
+      MemArray secretbox_easy(
           const MemView& msg,   ///< the plain message for encryption
           const SecretBoxNonce& nonce,   ///< the nonce to be used for this specific message
           const SecretBoxKey& key        ///< the secret key; the caller has to ensure that the memory is enabled for reading
@@ -1048,7 +1048,7 @@ namespace Sloppy
        * \returns a secure memory buffer with the plain data
        * or an empty buffer if the decryption failed, e.g., due to an invalid MAC
        */
-      SodiumSecureMemory crypto_secretbox_open_easy__secure(
+      SodiumSecureMemory secretbox_open_easy__secure(
           const MemView& cipher,   ///< the buffer with the encrypted message and the attached MAC
           const SecretBoxNonce& nonce,   ///< the nonce to be used for this specific message
           const SecretBoxKey& key,        ///< the secret key; the caller has to ensure that the memory is enabled for reading
@@ -1067,7 +1067,7 @@ namespace Sloppy
        * \returns a heap-allocated standard buffer with the plain data
        * or an empty buffer if the decryption failed, e.g., due to an invalid MAC
        */
-      MemArray crypto_secretbox_open_easy(
+      MemArray secretbox_open_easy(
           const MemView& cipher,   ///< the buffer with the encrypted message and the attached MAC
           const SecretBoxNonce& nonce,   ///< the nonce to be used for this specific message
           const SecretBoxKey& key        ///< the secret key; the caller has to ensure that the memory is enabled for reading
@@ -1084,7 +1084,7 @@ namespace Sloppy
        *
        * \returns two heap-allocated buffers, the first one containing the encrypted data and the second one the authentication tag
        */
-      pair<MemArray, SecretBoxMac> crypto_secretbox_detached(
+      pair<MemArray, SecretBoxMac> secretbox_detached(
           const MemView& msg,   ///< the plain message for encryption
           const SecretBoxNonce& nonce,   ///< the nonce to be used for this specific message
           const SecretBoxKey& key        ///< the secret key; the caller has to ensure that the memory is enabled for reading
@@ -1104,7 +1104,7 @@ namespace Sloppy
        * \returns a secure memory buffer with the plain data
        * or an empty buffer if the decryption failed, e.g., due to an invalid MAC
        */
-      SodiumSecureMemory crypto_secretbox_open_detached(
+      SodiumSecureMemory secretbox_open_detached(
           const MemView& cipher,   ///< a buffer with the pure, encrypted message without MAC attachment
           const SecretBoxMac& mac,   ///< the MAC for the message
           const SecretBoxNonce& nonce,   ///< the nonce to be used for this specific message
@@ -1123,7 +1123,7 @@ namespace Sloppy
        *
        * \returns a string with the encrypted data and an attached authentication tag
        */
-      string crypto_secretbox_easy(
+      string secretbox_easy(
           const string& msg,   ///< a string with the plain text message for encryption
           const SecretBoxNonce& nonce,   ///< the nonce to be used for this specific message
           const SecretBoxKey& key        ///< the secret key; the caller has to ensure that the memory is enabled for reading
@@ -1141,7 +1141,7 @@ namespace Sloppy
        * \returns a string with the plain data
        * or an empty buffer if the decryption failed, e.g., due to an invalid MAC
        */
-      string crypto_secretbox_open_easy(
+      string secretbox_open_easy(
           const string& cipher,   ///< a string with the encrypted message and the attached MAC
           const SecretBoxNonce& nonce,   ///< the nonce to be used for this specific message
           const SecretBoxKey& key        ///< the secret key; the caller has to ensure that the memory is enabled for reading
@@ -1158,7 +1158,7 @@ namespace Sloppy
        *
        * \returns a string with the encrypted message and a heap-allocated buffer containing the authentication tag
        */
-      pair<string, SecretBoxMac> crypto_secretbox_detached(
+      pair<string, SecretBoxMac> secretbox_detached(
           const string& msg,   ///< the plain message for encryption
           const SecretBoxNonce& nonce,   ///< the nonce to be used for this specific message
           const SecretBoxKey& key        ///< the secret key; the caller has to ensure that the memory is enabled for reading
@@ -1179,7 +1179,7 @@ namespace Sloppy
        * \returns a string with the plain data
        * or an empty string if the decryption failed, e.g., due to an invalid MAC
        */
-      string crypto_secretbox_open_detached(
+      string secretbox_open_detached(
           const string& cipher,   ///< a string with the pure, encrypted message without MAC attachment
           const SecretBoxMac& mac,   ///< the MAC for the message
           const SecretBoxNonce& nonce,   ///< the nonce to be used for this specific message
@@ -1201,7 +1201,7 @@ namespace Sloppy
        *
        * \returns a heap-allocated buffer containing the (public) authentication tag
        */
-      AuthTagType crypto_auth(
+      AuthTagType auth(
           const MemView& msg,   ///< the input message
           const AuthKeyType& key   ///< the (confidential) key for computing the authentication tag
           );
@@ -1219,7 +1219,7 @@ namespace Sloppy
        *
        * \returns `true` if the combination of message and tag was valid (and thus the message authentic); `false` otherwise
        */
-      bool crypto_auth_verify(
+      bool auth_verify(
           const MemView& msg,   ///< the input message
           const AuthTagType& tag,   ///< the previously computed authentication tag
           const AuthKeyType& key   ///< the (confidential) key for verifying the authentication tag
@@ -1236,7 +1236,7 @@ namespace Sloppy
        *
        * \returns a heap-allocated buffer containing the (public) authentication tag
        */
-      AuthTagType crypto_auth(
+      AuthTagType auth(
           const string& msg,   ///< the input message
           const AuthKeyType& key   ///< the (confidential) key for computing the authentication tag
           );
@@ -1254,7 +1254,7 @@ namespace Sloppy
        *
        * \returns `true` if the combination of message and tag was valid (and thus the message authentic); `false` otherwise
        */
-      bool crypto_auth_verify(
+      bool auth_verify(
           const string& msg,   ///< the input message
           const AuthTagType& tag,   ///< the previously computed authentication tag
           const AuthKeyType& key   ///< the (confidential) key for verifying the authentication tag
@@ -1282,7 +1282,7 @@ namespace Sloppy
        * \throws SodiumInvalidKey if the provided key was empty
        *
        */
-      MemArray crypto_aead_xchacha20poly1305_encrypt(
+      MemArray aead_xchacha20poly1305_encrypt(
           const MemView& msg,   ///< the plain message for encryption
           const AEAD_XChaCha20Poly1305_NonceType& nonce,   ///< the nonce to be used for this specific message
           const AEAD_XChaCha20Poly1305_KeyType& key,   ///< the secret key; the caller has to ensure that the memory is enabled for reading
@@ -1307,7 +1307,7 @@ namespace Sloppy
        * \returns a secure memory buffer with the plain data
        * or an empty buffer if the decryption failed, e.g., due to an invalid MAC
        */
-      SodiumSecureMemory crypto_aead_xchacha20poly1305_decrypt(
+      SodiumSecureMemory aead_xchacha20poly1305_decrypt(
           const MemView& cipher,   ///< buffer with encrypted data and attached MAC
           const AEAD_XChaCha20Poly1305_NonceType& nonce,   ///< the nonce to be used for this specific message
           const AEAD_XChaCha20Poly1305_KeyType& key,   ///< the secret key; the caller has to ensure that the memory is enabled for reading
@@ -1331,7 +1331,7 @@ namespace Sloppy
        * \throws SodiumInvalidKey if the provided key was empty
        *
        */
-      string crypto_aead_xchacha20poly1305_encrypt(
+      string aead_xchacha20poly1305_encrypt(
           const string& msg,   ///< the plain message for encryption
           const AEAD_XChaCha20Poly1305_NonceType& nonce,   ///< the nonce to be used for this specific message
           const AEAD_XChaCha20Poly1305_KeyType& key,   ///< the secret key; the caller has to ensure that the memory is enabled for reading
@@ -1356,7 +1356,7 @@ namespace Sloppy
        * \returns a secure memory buffer with the plain data
        * or an empty buffer if the decryption failed, e.g., due to an invalid MAC
        */
-      string crypto_aead_xchacha20poly1305_decrypt(
+      string aead_xchacha20poly1305_decrypt(
           const string& cipher,   ///< buffer with encrypted data and attached MAC
           const AEAD_XChaCha20Poly1305_NonceType& nonce,   ///< the nonce to be used for this specific message
           const AEAD_XChaCha20Poly1305_KeyType& key,   ///< the secret key; the caller has to ensure that the memory is enabled for reading
@@ -1393,7 +1393,7 @@ namespace Sloppy
        * \throws SodiumInvalidKey if the provided key was empty
        *
        */
-      MemArray crypto_aead_aes256gcm_encrypt(
+      MemArray aead_aes256gcm_encrypt(
           const MemView& msg,   ///< the plain message for encryption
           const AEAD_AES256GCM_NonceType& nonce,   ///< the nonce to be used for this specific message
           const AEAD_AES256GCM_KeyType& key,   ///< the secret key; the caller has to ensure that the memory is enabled for reading
@@ -1420,7 +1420,7 @@ namespace Sloppy
        * \returns a secure memory buffer with the plain data
        * or an empty buffer if the decryption failed, e.g., due to an invalid MAC
        */
-      SodiumSecureMemory crypto_aead_aes256gcm_decrypt(
+      SodiumSecureMemory aead_aes256gcm_decrypt(
           const MemView& cipher,   ///< buffer with encrypted data and attached MAC
           const AEAD_AES256GCM_NonceType& nonce,   ///< the nonce to be used for this specific message
           const AEAD_AES256GCM_KeyType& key,   ///< the secret key; the caller has to ensure that the memory is enabled for reading
@@ -1446,7 +1446,7 @@ namespace Sloppy
        * \throws SodiumInvalidKey if the provided key was empty
        *
        */
-      string crypto_aead_aes256gcm_encrypt(
+      string aead_aes256gcm_encrypt(
           const string& msg,   ///< the plain message for encryption
           const AEAD_AES256GCM_NonceType& nonce,   ///< the nonce to be used for this specific message
           const AEAD_AES256GCM_KeyType& key,   ///< the secret key; the caller has to ensure that the memory is enabled for reading
@@ -1473,7 +1473,7 @@ namespace Sloppy
        * \returns a secure memory buffer with the plain data
        * or an empty buffer if the decryption failed, e.g., due to an invalid MAC
        */
-      string crypto_aead_aes256gcm_decrypt(
+      string aead_aes256gcm_decrypt(
           const string& cipher,   ///< buffer with encrypted data and attached MAC
           const AEAD_AES256GCM_NonceType& nonce,   ///< the nonce to be used for this specific message
           const AEAD_AES256GCM_KeyType& key,   ///< the secret key; the caller has to ensure that the memory is enabled for reading
@@ -1529,7 +1529,7 @@ namespace Sloppy
        *
        * \returns a heap-allocated buffer with the encrypted data and an attached authentication tag
        */
-      MemArray crypto_box_easy(
+      MemArray box_easy(
           const MemView& msg,   ///< the plain input message
           const AsymCrypto_Nonce& nonce,   ///< the nonce to be used for this specific message
           const AsymCrypto_PublicKey& recipientKey,   ///< the recipient's public key
@@ -1547,7 +1547,7 @@ namespace Sloppy
        *
        * \returns a heap-allocated buffer with the decrypted data or an invalid, empty buffer if the decryption failed
        */
-      SodiumSecureMemory crypto_box_open_easy(
+      SodiumSecureMemory box_open_easy(
           const MemView& cipher,   ///< a memory buffer containing the cipher and the attached authentication tag
           const AsymCrypto_Nonce& nonce,   ///< the nonce to be used for this specific message
           const AsymCrypto_PublicKey& senderKey,   ///< the sender's public key for verifying the message integrity
@@ -1566,7 +1566,7 @@ namespace Sloppy
        *
        * \returns a pair of two heap-allocated buffers with the encrypted data and the authentication tag
        */
-      pair<MemArray, AsymCrypto_Tag> crypto_box_detached(
+      pair<MemArray, AsymCrypto_Tag> box_detached(
           const MemView& msg,   ///< the plain input message
           const AsymCrypto_Nonce& nonce,   ///< the nonce to be used for this specific message
           const AsymCrypto_PublicKey& recipientKey,   ///< the recipient's public key
@@ -1584,7 +1584,7 @@ namespace Sloppy
        *
        * \returns a heap-allocated buffer with the decrypted data or an invalid, empty buffer if the decryption failed
        */
-      SodiumSecureMemory crypto_box_open_detached(
+      SodiumSecureMemory box_open_detached(
           const MemView& cipher,   ///< a memory buffer containing the cipher text
           const AsymCrypto_Tag& mac,   ///< a memory buffer containing the message authentication tag
           const AsymCrypto_Nonce& nonce,   ///< the nonce to be used for this specific message
@@ -1604,7 +1604,7 @@ namespace Sloppy
        *
        * \returns a string with the encrypted data and an attached authentication tag
        */
-      string crypto_box_easy(
+      string box_easy(
           const string& msg,   ///< the plain input message
           const AsymCrypto_Nonce& nonce,   ///< the nonce to be used for this specific message
           const AsymCrypto_PublicKey& recipientKey,   ///< the recipient's public key
@@ -1622,7 +1622,7 @@ namespace Sloppy
        *
        * \returns a string containing the decrypted data or an empty string if the decryption failed
        */
-      string crypto_box_open_easy(
+      string box_open_easy(
           const string& cipher,   ///< a string containing the cipher and the attached authentication tag
           const AsymCrypto_Nonce& nonce,   ///< the nonce to be used for this specific message
           const AsymCrypto_PublicKey& senderKey,   ///< the sender's public key for verifying the message integrity
@@ -1640,7 +1640,7 @@ namespace Sloppy
        *
        * \returns a pair of a string with the encrypted data and a heap-allocated authentication tag
        */
-      pair<string, AsymCrypto_Tag> crypto_box_detached(
+      pair<string, AsymCrypto_Tag> box_detached(
           const string& msg,   ///< the plain input message
           const AsymCrypto_Nonce& nonce,   ///< the nonce to be used for this specific message
           const AsymCrypto_PublicKey& recipientKey,   ///< the recipient's public key
@@ -1658,7 +1658,7 @@ namespace Sloppy
        *
        * \returns a string containing the decrypted data or an empty string if the decryption failed
        */
-      string crypto_box_open_detached(
+      string box_open_detached(
           const string& cipher,   ///< the encrypted cipher text
           const AsymCrypto_Tag& mac,   ///< a memory buffer containing the message authentication tag
           const AsymCrypto_Nonce& nonce,   ///< the nonce to be used for this specific message
@@ -1722,7 +1722,7 @@ namespace Sloppy
        *
        * \returns a heap-allocated buffer containing the signature followed by a copy of the input message
        */
-      MemArray crypto_sign(
+      MemArray sign(
           const MemView& msg,   ///< the input message for the signature
           const AsymSign_SecretKey& sk   ///< the secret key for signing the message
           );
@@ -1736,7 +1736,7 @@ namespace Sloppy
        *
        * \returns a heap-allocated buffer containing the message if the signature was successfully verified; an empty buffer otherwise
        */
-      MemArray crypto_sign_open(
+      MemArray sign_open(
           const MemView& signedMsg,   ///< a memory buffer containing the signature followed by the message itself
           const AsymSign_PublicKey& pk   ///< the public key for checking the signature
           );
@@ -1750,7 +1750,7 @@ namespace Sloppy
        *
        * \returns a heap-allocated buffer containing the signature
        */
-      AsymSign_Signature crypto_sign_detached(
+      AsymSign_Signature sign_detached(
           const MemView& msg,   ///< the input message for the signature
           const AsymSign_SecretKey& sk   ///< the secret key for signing the message
           );
@@ -1766,7 +1766,7 @@ namespace Sloppy
        *
        * \returns `true` if the message could be verified by the signature; `false` otherwise
        */
-      bool crypto_sign_verify_detached(
+      bool sign_verify_detached(
           const MemView& msg,   ///< the message that shall be verified
           const AsymSign_Signature& sig,   ///< the signature to be used for the verification
           const AsymSign_PublicKey& pk   ///< the public key for checking the signature
@@ -1781,7 +1781,7 @@ namespace Sloppy
        *
        * \returns a string containing the signature followed by a copy of the input message
        */
-      string crypto_sign(
+      string sign(
           const string& msg,   ///< the input message for the signature
           const AsymSign_SecretKey& sk   ///< the secret key for signing the message
           );
@@ -1795,7 +1795,7 @@ namespace Sloppy
        *
        * \returns a string containing the message if the signature was successfully verified; an empty string otherwise
        */
-      string crypto_sign_open(
+      string sign_open(
           const string& signedMsg,   ///< a string containing the signature followed by the message itself
           const AsymSign_PublicKey& pk   ///< the public key for checking the signature
           );
@@ -1809,7 +1809,7 @@ namespace Sloppy
        *
        * \returns a string containing the signature
        */
-      AsymSign_Signature crypto_sign_detached(
+      AsymSign_Signature sign_detached(
           const string& msg,   ///< the input message for the signature
           const AsymSign_SecretKey& sk   ///< the secret key for signing the message
           );
@@ -1825,7 +1825,7 @@ namespace Sloppy
        *
        * \returns `true` if the message could be verified by the signature; `false` otherwise
        */
-      bool crypto_sign_verify_detached(const string& msg, const AsymSign_Signature& sig, const AsymSign_PublicKey& pk);
+      bool sign_verify_detached(const string& msg, const AsymSign_Signature& sig, const AsymSign_PublicKey& pk);
 
       // hashing
       using GenericHashKey = SodiumKey<SodiumKeyType::Secret, crypto_generichash_KEYBYTES>;
@@ -1848,7 +1848,7 @@ namespace Sloppy
        *
        * \returns a heap-allocated buffer containg the hash data
        */
-      MemArray crypto_generichash(
+      MemArray generichash(
           const MemView& inData,   ///< the data that is to be hashed
           size_t hashLen = crypto_generichash_BYTES   ///< the size of the resulting hash in bytes
           );
@@ -1872,7 +1872,7 @@ namespace Sloppy
        *
        * \returns a heap-allocated buffer containg the hash data
        */
-      MemArray crypto_generichash(
+      MemArray generichash(
           const MemView& inData,   ///< the data that is to be hashed
           const GenericHashKey& key,   ///< the key that shall be used for the hash computation
           size_t hashLen = crypto_generichash_BYTES   ///< the size of the resulting hash in bytes
@@ -1895,7 +1895,7 @@ namespace Sloppy
        *
        * \returns a string containg the hash data
        */
-      string crypto_generichash(
+      string generichash(
           const string& inData,    ///< the data that is to be hashed
           size_t hashLen = crypto_generichash_BYTES   ///< the size of the resulting hash in bytes
           );
@@ -1919,7 +1919,7 @@ namespace Sloppy
        *
        * \returns a string containg the hash data
        */
-      string crypto_generichash(
+      string generichash(
           const string& inData,
           const GenericHashKey& key,   ///< the key that shall be used for the hash computation
           size_t hashLen = crypto_generichash_BYTES   ///< the size of the resulting hash in bytes
@@ -1940,7 +1940,7 @@ namespace Sloppy
        *
        * \throws std::range_error if the provided hash length is out of range
        */
-      void crypto_generichash_init(
+      void generichash_init(
           crypto_generichash_state *state,   ///< pointer to an externally owned hash state variable
           size_t hashLen = crypto_generichash_BYTES   ///< the size of the resulting hash in bytes
           );
@@ -1962,7 +1962,7 @@ namespace Sloppy
        *
        * \throws std::range_error if the provided hash length is out of range
        */
-      void crypto_generichash_init(
+      void generichash_init(
           crypto_generichash_state *state,   ///< pointer to an externally owned hash state variable
           const GenericHashKey& key,   ///< the key that shall be used for the hash computation
           size_t hashLen = crypto_generichash_BYTES   ///< the size of the resulting hash in bytes
@@ -1978,7 +1978,7 @@ namespace Sloppy
        *
        * \throws SodiumInvalidMessage if the provided data is empty
        */
-      void crypto_generichash_update(
+      void generichash_update(
           crypto_generichash_state *state,   ///< pointer to an externally owned hash state variable
           const MemView& inData   ///< the data that shall be hashed
           );
@@ -1993,7 +1993,7 @@ namespace Sloppy
        *
        * \throws SodiumInvalidMessage if the provided data is empty
        */
-      void crypto_generichash_update(
+      void generichash_update(
           crypto_generichash_state *state,   ///< pointer to an externally owned hash state variable
           const string& inData   ///< the data that shall be hashed
           );
@@ -2009,7 +2009,7 @@ namespace Sloppy
        *
        * \returns a heap-allocated buffer containg the hash data
        */
-      MemArray crypto_generichash_final(
+      MemArray generichash_final(
           crypto_generichash_state *state,   ///< pointer to an externally owned hash state variable
           size_t hashLen = crypto_generichash_BYTES   ///< the size of the resulting hash in bytes
           );
@@ -2025,7 +2025,7 @@ namespace Sloppy
        *
        * \returns a heap-string containg the hash data
        */
-      string crypto_generichash_final_string(
+      string generichash_final_string(
           crypto_generichash_state *state,   ///< pointer to an externally owned hash state variable
           size_t hashLen = crypto_generichash_BYTES   ///< the size of the resulting hash in bytes
           );
@@ -2044,7 +2044,7 @@ namespace Sloppy
        *
        * \returns a heap-allocated buffer containg the hash data
        */
-      MemArray crypto_shorthash(
+      MemArray shorthash(
           const MemView& inData,   ///< the data that shall be hashed
           const ShorthashKey& key    ///< a mandatory, fixed size key
           );
@@ -2063,7 +2063,7 @@ namespace Sloppy
        *
        * \returns a string containg the hash data
        */
-      string crypto_shorthash(
+      string shorthash(
           const string& inData,   ///< the data that shall be hashed
           const ShorthashKey& key    ///< a mandatory, fixed size key
           );
@@ -2118,7 +2118,7 @@ namespace Sloppy
        * \returns a pair of the hash itself and the actual, numeric parameters used for its computation;
        * in case of libsodium-internal errors, the resulting hash is empty!
        */
-      pair<SodiumSecureMemory, PwHashData> crypto_pwhash(
+      pair<SodiumSecureMemory, PwHashData> pwhash(
           const MemView& pw,   ///< a memory buffer containing the plain text password
           size_t hashLen,   ///< the number of bytes for the resulting hash
           PasswdHashStrength strength = PasswdHashStrength::Moderate,   ///< the required complexity (--> security) for the hashing
@@ -2145,7 +2145,7 @@ namespace Sloppy
        *
        * \returns the hash; in case of libsodium-internal errors, the resulting hash is empty!
        */
-      SodiumSecureMemory crypto_pwhash(
+      SodiumSecureMemory pwhash(
           const MemView& pw,   ///< a memory buffer containing the plain text password
           size_t hashLen,   ///< the number of bytes for the resulting hash
           PwHashData& hDat,   ///< the numeric hashing parameters
@@ -2164,7 +2164,7 @@ namespace Sloppy
        * \returns an ASCII-only string that contains the hash and its computation parameters;
        * if libsodium failed to compute the string, the string is empty.
        */
-      string crypto_pwhash_str(
+      string pwhash_str(
           const MemView& pw,   ///< a memory buffer containing the plain text password
           PasswdHashStrength strength = PasswdHashStrength::Moderate   ///< the required complexity (--> security) for the hashing
           );
@@ -2181,7 +2181,7 @@ namespace Sloppy
        * \returns an ASCII-only string that contains the hash and its computation parameters;
        * if libsodium failed to compute the string, the string is empty.
        */
-      string crypto_pwhash_str(
+      string pwhash_str(
           const string& pw,   ///< a string containing the plain text password
           PasswdHashStrength strength = PasswdHashStrength::Moderate   ///< the required complexity (--> security) for the hashing
           );
@@ -2196,7 +2196,7 @@ namespace Sloppy
        * \returns `true` if the password verification succeeded; `false` if it failed
        * because the password was wrong or because an error occurred.
        */
-      bool crypto_pwhash_str_verify(
+      bool pwhash_str_verify(
           const MemView& pw,   ///< the plain text password that shall be verified
           const string& hashResult   ///< the hash of the "true" password computed via `crypto_pwhash_str()`
           );
@@ -2211,7 +2211,7 @@ namespace Sloppy
        * \returns `true` if the password verification succeeded; `false` if it failed
        * because the password was wrong or because an error occurred.
        */
-      bool crypto_pwhash_str_verify(
+      bool pwhash_str_verify(
           const string& pw,   ///< the plain text password that shall be verified
           const string& hashResult   ///< the hash of the "true" password computed via `crypto_pwhash_str()`
           );
@@ -2297,7 +2297,7 @@ namespace Sloppy
        *
        * \returns `true` if the decryption call succeeded
        */
-      bool crypto_secretbox_open_easy__internal(
+      bool secretbox_open_easy__internal(
           const MemArray& targetBuf,   ///< the target buffer for the decrypted data
           const MemView& cipher,   ///< the encrypted data including authentication MAC
           const SecretBoxNonce& nonce,   ///< the nonce for this specific message
@@ -2329,7 +2329,7 @@ namespace Sloppy
        *
        * \returns a string with the combined encrypted data and authentication tag
        */
-      string crypto_aead_encrypt(
+      string aead_encrypt(
           int (*funcPtr)(unsigned char *, unsigned long long *, const unsigned char *,
                          unsigned long long, const unsigned char *, unsigned long long,
                          const unsigned char *, const unsigned char *,const unsigned char *),   ///< a pointer to the actual encryption function
@@ -2366,7 +2366,7 @@ namespace Sloppy
        * \returns a heap-allocated buffer with the combined encrypted data
        * and authentication tag
        */
-      MemArray crypto_aead_encrypt(
+      MemArray aead_encrypt(
           int (*funcPtr)(unsigned char *, unsigned long long *, const unsigned char *,
                          unsigned long long, const unsigned char *, unsigned long long,
                          const unsigned char *, const unsigned char *,const unsigned char *),   ///< a pointer to the actual encryption function
@@ -2403,7 +2403,7 @@ namespace Sloppy
        * \returns a heap-allocated buffer with the combined encrypted data
        * and authentication tag
        */
-      SodiumSecureMemory crypto_aead_decrypt(
+      SodiumSecureMemory aead_decrypt(
           int (*funcPtr)(unsigned char *, unsigned long long *, unsigned char *,
                          const unsigned char *, unsigned long long, const unsigned char *,
                          unsigned long long, const unsigned char *, const unsigned char *),
@@ -2442,7 +2442,7 @@ namespace Sloppy
        * \returns a heap-allocated buffer with the combined encrypted data
        * and authentication tag
        */
-      string crypto_aead_decrypt(
+      string aead_decrypt(
           int (*funcPtr)(unsigned char *, unsigned long long *, unsigned char *,
                          const unsigned char *, unsigned long long, const unsigned char *,
                          unsigned long long, const unsigned char *, const unsigned char *),

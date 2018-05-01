@@ -343,6 +343,39 @@ namespace Sloppy
        */
       vector<InMessage> getMessageList();
 
+      /** \brief Extracts a data block as a plain memory buffer.
+       *
+       * The memory block has to be preceeded by a UI64 length tag.
+       *
+       * The returned data is a DEEP COPY of the source data.
+       *
+       * \throws std::out_of_range if the message does not contain sufficient bytes for the read operation.
+       *
+       * \returns a heap-allocated buffer containing a copy the next `n` bytes
+       * of the source data where `n` is derived from a UI64 length tag at the
+       * current read position.
+       */
+      MemArray getMemArray();
+
+      /** \brief Extracts a data block as a plain memory buffer.
+       *
+       * The memory block has to be preceeded by a UI64 length tag.
+       *
+       * The returned data is a VIEW of the source data that becomes invalid
+       * when the source data block becomes invalid.
+       *
+       * The purpose of this call is to pass the resulting view to e.g., other
+       * Ctors that create a copy of the view themselves. This saves one
+       * copy operation compared to calling `getMemArray()`.
+       *
+       * \throws std::out_of_range if the message does not contain sufficient bytes for the read operation.
+       *
+       * \returns a view on the next `n` bytes
+       * of the source data where `n` is derived from a UI64 length tag at the
+       * current read position.
+       */
+      MemView getMemView();
+
     private:
       MemView fullView;   ///< contains the full data view as passed to the ctor
       MemView curView;    ///< contains a partial view that always starts at the next read position

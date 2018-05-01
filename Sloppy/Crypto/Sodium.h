@@ -33,10 +33,6 @@ using namespace std;
 
 namespace Sloppy
 {
-  namespace Net {
-    class MessageBuilder;
-  }
-
   namespace Crypto
   {
     // forward declaration
@@ -542,7 +538,7 @@ namespace Sloppy
       {
         if (data.size() != keySize) return false;
         if (!(canWrite())) return false;
-        memcpy(rawPtr, data.to_voidPtr(), keySize);
+        memcpy(to_ucPtr_rw(), data.to_voidPtr(), keySize);
         return true;
       }
 
@@ -2170,8 +2166,7 @@ namespace Sloppy
        */
       string crypto_pwhash_str(
           const MemView& pw,   ///< a memory buffer containing the plain text password
-          PasswdHashStrength strength = PasswdHashStrength::Moderate,   ///< the required complexity (--> security) for the hashing
-          PasswdHashAlgo algo = PasswdHashAlgo::Default   ///< the algorithm to be used for the hashing
+          PasswdHashStrength strength = PasswdHashStrength::Moderate   ///< the required complexity (--> security) for the hashing
           );
 
       /** \brief Computes a memory- and CPU-hard hash value from a given clear text password and stores the hash
@@ -2188,8 +2183,7 @@ namespace Sloppy
        */
       string crypto_pwhash_str(
           const string& pw,   ///< a string containing the plain text password
-          PasswdHashStrength strength = PasswdHashStrength::Moderate,   ///< the required complexity (--> security) for the hashing
-          PasswdHashAlgo algo = PasswdHashAlgo::Default   ///< the algorithm to be used for the hashing
+          PasswdHashStrength strength = PasswdHashStrength::Moderate   ///< the required complexity (--> security) for the hashing
           );
 
       /** \brief Verifies a given clear text password against a previously computed password hash;
@@ -2788,17 +2782,37 @@ namespace Sloppy
       bool isFinalized;
     };
 
-    // a helper class for Diffie-Hellmann key exchange
-    // including additional hashing of the calculated
-    // shared secret
+    /** \brief A class that facilitates the Diffie-Hellmann key exchange between
+     * a client and a server.
+     *
+     * \note Internally, this class uses the older DH API of libsodium and
+     * not the new `crypto_kx_*` functions.
+     */
     class DiffieHellmannExchanger
     {
     public:
-      using SharedSecret = SodiumKey<SodiumKeyType::Secret, crypto_generichash_BYTES>;
+      /** \brief Ctor for a new instance; generates a new public / private key pair
+       * for the key exchange.
+       *
+       * \throws SodiumNotAvailableException if the sodium wrapper singleton could be initialized / retrieved
+       */
+      DiffieHellmannExchanger(
+          bool _isClient   ///< set to `true` if we're on the client side or to `false` if we're on the server side
+          );
 
-      DiffieHellmannExchanger(bool _isClient);
+      /** \returns the public key for sending it to the communication peer
+       */
       SodiumLib::DH_PublicKey getMyPublicKey();
-      SharedSecret getSharedSecret(const SodiumLib::DH_PublicKey& othersPublicKey);
+
+      /** \brief Computes the shared secret between client and server.
+       *
+       * \throws SodiumInvalidKey if the peer's public key is empty
+       *
+       * \returns the secret key shared between client and server
+       */
+      SodiumLib::DH_SharedSecret getSharedSecret(
+          const SodiumLib::DH_PublicKey& othersPublicKey   ///< the public key of the communication partner
+          );
 
     private:
       bool isClient;
@@ -2807,11 +2821,10 @@ namespace Sloppy
       SodiumLib::DH_PublicKey pk;
     };
 
-    // a class that encapsulates a secret (e.g., a symmetric key)
-    // in a password protected container.
-    //
-    // the password can be changed without changing the
-    // secret itself.
+    /** A class that encapsulates a secret (e.g., a symmetric key) in a password protected container.
+     *
+     * The password can be changed without changing the secret itself.
+     */
     class PasswordProtectedSecret
     {
     public:
@@ -2821,40 +2834,139 @@ namespace Sloppy
       class NoPasswordSet{};
       class WrongPassword{};
 
-      // constructor for a new, empty secret
-      PasswordProtectedSecret(SodiumLib::PasswdHashStrength pwStrength = SodiumLib::PasswdHashStrength::Moderate,
-                              SodiumLib::PasswdHashAlgo pwAlgo = SodiumLib::PasswdHashAlgo::Argon2);
+      /** \brief Constructor for a new, empty secret that has no password set.
+       */
+      PasswordProtectedSecret(
+          SodiumLib::PasswdHashStrength pwStrength = SodiumLib::PasswdHashStrength::Moderate,   ///< the hashing strength for the password
+          SodiumLib::PasswdHashAlgo pwAlgo = SodiumLib::PasswdHashAlgo::Argon2id   ///< the algorithm to use for hashing the password
+          );
 
-      // constructor for an existing, encrypted secret
-      PasswordProtectedSecret(const string& data, bool isBase64=false);
+      /** \brief Constructor for an existing, encrypted secret that has previously
+       * been stored in our own, internal data format as returned by `asString()`.
+       */
+      PasswordProtectedSecret(
+          const string& data,   ///< the encrypted data as returned by `asString()`
+          bool isBase64=false   ///< set to true if the data is Base64 encoded
+          );
 
-      // access functions
+      /** \brief Sets the secret to the provided data or erase the current secret
+       * if the provided data buffer is empty.
+       *
+       * Before calling this function with non-empty data, a password has to be
+       * set by calling `setPassword()`.
+       *
+       * \throws NoPasswordSet if there is no valid password available
+       *
+       * \returns `true` if the secret data has set / cleared successfully.
+       */
       bool setSecret(const MemView& sec);
-      bool setSecret(const string& sec);
-      string getSecretAsString();
-      SodiumSecureMemory getSecret(SodiumSecureMemType memType = SodiumSecureMemType::Locked);
 
-      // password handling
-      bool changePassword(const string& oldPw, const string& newPw,
-                          SodiumLib::PasswdHashStrength pwStrength = SodiumLib::PasswdHashStrength::Moderate,
-                          SodiumLib::PasswdHashAlgo pwAlgo = SodiumLib::PasswdHashAlgo::Argon2);
+      /** \brief Sets the secret to the provided data or erase the current secret
+       * if the provided data buffer is empty.
+       *
+       * Before calling this function with non-empty data, a password has to be
+       * set by calling `setPassword()`.
+       *
+       * \throws NoPasswordSet if there is no valid password available
+       *
+       * \returns `true` if the secret data has set / cleared successfully.
+       */
+      bool setSecret(const string& sec);
+
+      /** \brief Retrieves the currently stored secret if available.
+       *
+       * \throws NoPasswordSet if there is no valid password available
+       *
+       * \throws WrongPassword if the decryption of the stored secret failed; could also
+       * indicate an integrity error of the stored secret.
+       *
+       * \returns the decrypted, stored secret or an empty buffer if there is currently no secret stored
+       */
+      string getSecretAsString();
+
+      /** \brief Retrieves the currently stored secret if available.
+       *
+       * \throws NoPasswordSet if there is no valid password available
+       *
+       * \throws WrongPassword if the decryption of the stored secret failed; could also
+       * indicate an integrity error of the stored secret.
+       *
+       * \returns the decrypted, stored secret or an empty buffer if there is currently no secret stored
+       */
+      SodiumSecureMemory getSecret(
+          SodiumSecureMemType memType = SodiumSecureMemType::Locked   ///< the protection class for the decrypted secret
+          );
+
+      /** \brief Changes the password to a new value.
+       *
+       * Requires that a valid password has been set before using `setPassword()`.
+       *
+       * \throws NoPasswordSet if there is no existing, valid password
+       *
+       * \returns `false` if the old password was invalid or the new password is empty;
+       * `true` if the password has been updated successfully and the stored secret has
+       * successfully been re-encrypted using the new password.
+       */
+      bool changePassword(
+          const string& oldPw,   ///< the old, existing password
+          const string& newPw,   ///< the new password
+          SodiumLib::PasswdHashStrength pwStrength = SodiumLib::PasswdHashStrength::Moderate,   ///< the hashing strength for the new password
+          SodiumLib::PasswdHashAlgo pwAlgo = SodiumLib::PasswdHashAlgo::Argon2id   ///< the hashing algorithm for the new password
+          );
+
+      /** \brief Sets the initial password for encrypting / decrypting the stored secret.
+       *
+       * This function only succeeds if there has no password been set so far (read:
+       * if there was no successfull call to `setPassword()` before).
+       *
+       * If we have been initialized with existing data, the provided
+       * password is checked for validity. In this case this function only succeeds
+       * if the provided password was correct.
+       *
+       * If we have been created "from scratch" without any data, any non-empty
+       * password will do.
+       *
+       * \returns `false` if we already have a valid password, if the provided
+       * password is empty or if the provided password was wrong; `true` if the
+       * password has been set successfully.
+       */
       bool setPassword(const string& pw);
 
-      // boolean queries
-      bool hasContent() const { return cipher.isValid(); }
-      bool isValidPassword(const string& pw);
-      bool hasPassword() const { return pwClear.isValid(); }
+      /** \returns `true` if we currently store (encrypted) secret content
+       */
+      bool hasContent() const { return cipher.notEmpty(); }
 
-      // getters for the encrypted data including hashing parameters
-      string asString(bool useBase64 = false) const;
+      /** \brief Checks whether a provided plain password matches the previously stored password
+       * that has been set using `setPassword()`.
+       *
+       * \throws NoPasswordSet if there is no previously set password
+       *
+       * \returns `true` if the provided password matches the stored password set
+       * via `setPassword()`; `false` otherwise
+       */
+      bool isValidPassword(
+          const string& pw   ///< the plain, unencrypted password that shall be checked
+          );
 
-    protected:
-      Net::MessageBuilder hashConfigToBin() const;
+      /** \returns `true` if the user has previously set a valid password using 'setPassword()'
+       */
+      bool hasPassword() const { return (!(pwClear.empty())); }
+
+      /** \brief Retrieves the complete data record including password hashing parameters.
+       *
+       * The data returned by this function should typically be stored on disk or
+       * in a database for later re-loading.
+       *
+       * \returns a string that contains the password hashing parameters as well as the encrypted secret
+       */
+      string asString(
+          bool useBase64 = false   ///< Base64-encode the resulting data
+          ) const;
 
     private:
       SodiumLib* lib;
       SodiumLib::PwHashData hashConfig;
-      ManagedBuffer cipher;
+      MemArray cipher;
       SodiumLib::SecretBoxNonce nonce;
       SodiumSecureMemory pwClear;
       SodiumLib::SecretBoxKey symKey;

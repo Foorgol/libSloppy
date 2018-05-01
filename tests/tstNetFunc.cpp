@@ -65,6 +65,14 @@ TEST(NetFuncs, MsgBuilder)
   b.addInt(INT32_MIN);
   b.addInt(INT32_MAX);
 
+  // MemView (storing it twice for retrieval as MemView and MemArray)
+  string someData1{"abcdefg12345678"};
+  string someData2{"zyx66666"};
+  Sloppy::MemView mv1{someData1};
+  Sloppy::MemView mv2{someData2};
+  b.addMemView(mv1);
+  b.addMemView(mv2);
+
   auto result = b.view();
 
   InMessage d{result};
@@ -103,6 +111,30 @@ TEST(NetFuncs, MsgBuilder)
   ASSERT_EQ(0, d.getInt());
   ASSERT_EQ(INT32_MIN, d.getInt());
   ASSERT_EQ(INT32_MAX, d.getInt());
+
+  // Get as MemView
+  auto mv = d.getMemView();
+  ASSERT_FALSE(mv == mv1);  // we should have different memory locations
+  ASSERT_EQ(someData1.size(), mv.size());
+  ASSERT_EQ(mv1.size(), mv.size());
+  for (int i=0; i < mv.size(); ++i)
+  {
+    ASSERT_EQ(mv[i], mv1[i]);   // content should be identical
+  }
+  string s{mv.to_charPtr(), mv.size()};
+  ASSERT_EQ(s, someData1);
+
+  // get as MemArray
+  auto ma = d.getMemArray();
+  ASSERT_EQ(someData2.size(), ma.size());
+  ASSERT_EQ(mv2.size(), ma.size());
+  for (int i=0; i < ma.size(); ++i)
+  {
+    ASSERT_EQ(ma[i], mv2[i]);   // content should be identical
+  }
+  s = string{ma.to_charPtr(), ma.size()};
+  ASSERT_EQ(s, someData2);
+
 }
 
 //----------------------------------------------------------------------------

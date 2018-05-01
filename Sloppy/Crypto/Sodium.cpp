@@ -1072,7 +1072,7 @@ namespace Sloppy
                                        nonce.to_ucPtr_ro(), key.to_ucPtr_ro());
 
       // return the result
-      return make_pair(cipher, mac);
+      return make_pair(std::move(cipher), std::move(mac));
     }
 
     //----------------------------------------------------------------------------
@@ -2332,7 +2332,7 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    string SodiumLib::crypto_pwhash_str(const MemView& pw, SodiumLib::PasswdHashStrength strength, SodiumLib::PasswdHashAlgo algo)
+    string SodiumLib::crypto_pwhash_str(const MemView& pw, SodiumLib::PasswdHashStrength strength)
     {
       if (pw.empty())
       {
@@ -2352,9 +2352,9 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    string SodiumLib::crypto_pwhash_str(const string& pw, SodiumLib::PasswdHashStrength strength, SodiumLib::PasswdHashAlgo algo)
+    string SodiumLib::crypto_pwhash_str(const string& pw, SodiumLib::PasswdHashStrength strength)
     {
-      return crypto_pwhash_str(MemView{pw}, strength, algo);
+      return crypto_pwhash_str(MemView{pw}, strength);
     }
 
     //----------------------------------------------------------------------------
@@ -2485,7 +2485,7 @@ namespace Sloppy
 
       if (autoIncrementNonce) nonce.increment();
 
-      return make_pair(result.first, result.second);
+      return make_pair(std::move(result.first), std::move(result.second));
     }
 
     //----------------------------------------------------------------------------
@@ -2626,7 +2626,7 @@ namespace Sloppy
         throw SodiumNotAvailableException{};
       }
 
-      lib->genDHKeyPair(pk, sk);
+      tie(sk, pk) = lib->genDHKeyPair();
       sk.setAccess(SodiumSecureMemAccess::NoAccess);
     }
 
@@ -2639,32 +2639,32 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    DiffieHellmannExchanger::SharedSecret DiffieHellmannExchanger::getSharedSecret(const SodiumLib::DH_PublicKey& othersPublicKey)
+    SodiumLib::DH_SharedSecret DiffieHellmannExchanger::getSharedSecret(const SodiumLib::DH_PublicKey& othersPublicKey)
     {
-      SodiumLib::DH_SharedSecret shared;
+      ;
 
       sk.setAccess(SodiumSecureMemAccess::RO);
-      bool isOkay = lib->genDHSharedSecret(sk, othersPublicKey, shared);
+      SodiumLib::DH_SharedSecret shared = lib->genDHSharedSecret(sk, othersPublicKey);
       sk.setAccess(SodiumSecureMemAccess::NoAccess);
 
-      if (!isOkay)
+      if (shared.empty())
       {
         throw runtime_error("Damn, couldn't calculate Diffie-Hellmann shared secret. FIX: add a special exception for this!");
       }
 
       // hash this result with the two public keys
-      GenericHasher hasher;
-      hasher.append(shared);
+      GenericHasher hasher(shared.size());
+      hasher.append(shared.toMemView());
       if (isClient)
       {
-        hasher.append(pk);
-        hasher.append(othersPublicKey);
+        hasher.append(pk.toMemView());
+        hasher.append(othersPublicKey.toMemView());
       } else {
-        hasher.append(othersPublicKey);
-        hasher.append(pk);
+        hasher.append(othersPublicKey.toMemView());
+        hasher.append(pk.toMemView());
       }
 
-      SharedSecret result;
+      SodiumLib::DH_SharedSecret result;
       result.fillFromString(hasher.finalize_string());
 
       return result;
@@ -2678,14 +2678,14 @@ namespace Sloppy
       :lib{SodiumLib::getInstance()}
     {
       // initialize the hash configuration
-      tie(hashConfig.opslimit, hashConfig.memlimit) = lib->pwHashConfigToValues(pwStrength, pwAlgo);
+      tie(hashConfig.opslimit, hashConfig.memlimit) = lib->pwHashConfigToValues(pwStrength);
       hashConfig.algo = pwAlgo;
-      lib->randombytes_buf(hashConfig.salt);
+      lib->randombytes_buf(hashConfig.salt.toNotOwningArray());
 
       // set an initial nonce although this will never be used.
       // but if don't do this now, a subsequent call to asString()
       // would produce a malformed string
-      lib->randombytes_buf(nonce);
+      lib->randombytes_buf(nonce.toNotOwningArray());
     }
 
     //----------------------------------------------------------------------------
@@ -2704,30 +2704,27 @@ namespace Sloppy
       // if the data was malformed
       try
       {
-        Net::MessageDissector md{rawData};
+        Net::InMessage dissector{rawData};
 
         // determine the algo type
-        uint8_t algoId = md.getByte();
-        if (algoId == 0)
-        {
-          hashConfig.algo = SodiumLib::PasswdHashAlgo::Argon2;
-        } else {
-          hashConfig.algo = SodiumLib::PasswdHashAlgo::Scrypt;
-        }
+        uint8_t algoId = dissector.getByte();
+        hashConfig.algo = static_cast<SodiumLib::PasswdHashAlgo>(algoId);
 
         // get memlimit and opslimit
         static_assert(sizeof(unsigned long long) == sizeof(size_t), "Invalid size of unsigned long long!");
-        hashConfig.memlimit = md.getUI64();
-        hashConfig.opslimit = md.getUI64();
+        hashConfig.memlimit = dissector.getUI64();
+        hashConfig.opslimit = dissector.getUI64();
 
         // read the salt
-        hashConfig.salt = md.getManagedBuffer();
+        if (!(hashConfig.salt.fillFromMemView(dissector.getMemView())))
+        {
+          throw std::invalid_argument("Invalid salt in ctor of PasswordProtectedSecret!");
+        }
 
         // what remains are the cipher and nonce
-        cipher = md.getManagedBuffer();
+        cipher = dissector.getMemArray();
 
-        ManagedBuffer _nonce = md.getManagedBuffer();
-        if (!(nonce.fillFromMemView(_nonce)))
+        if (!(nonce.fillFromMemView(dissector.getMemView())))
         {
           throw std::invalid_argument("Invalid nonce in ctor of PasswordProtectedSecret!");
         }
@@ -2742,25 +2739,28 @@ namespace Sloppy
 
     bool PasswordProtectedSecret::setSecret(const MemView& sec)
     {
-      if (!(sec.isValid()))
+      if (sec.empty())
       {
         cipher.releaseMemory();
         return true;
       }
 
-      if (!(pwClear.isValid())) return false;
+      if (pwClear.empty() || symKey.empty())
+      {
+        throw NoPasswordSet{};
+      }
 
       // prepare a fresh random nonce for
       // each symmetric encryption step
-      lib->randombytes_buf(nonce);
+      lib->randombytes_buf(nonce.toNotOwningArray());
 
       // do the encryption
       symKey.setAccess(SodiumSecureMemAccess::RO);
-      ManagedBuffer _cipher = lib->crypto_secretbox_easy(sec, nonce, symKey);
+      MemArray _cipher = lib->crypto_secretbox_easy(sec, nonce, symKey);
       symKey.setAccess(SodiumSecureMemAccess::NoAccess);
 
       // only store the result if the encryption was successful
-      if (!(_cipher.isValid())) return false;
+      if (cipher.empty()) return false;
       cipher = std::move(_cipher);
 
       return true;
@@ -2770,11 +2770,7 @@ namespace Sloppy
 
     bool PasswordProtectedSecret::setSecret(const string& sec)
     {
-      // we are lazy and copy the input data over into a
-      // managed memory. this consumes more memory and time but we avoid
-      // some typing
-      ManagedBuffer tmp{sec};
-      return setSecret(tmp);
+      return setSecret(MemView{sec});
     }
 
     //----------------------------------------------------------------------------
@@ -2783,31 +2779,35 @@ namespace Sloppy
     {
       SodiumSecureMemory sec = getSecret(SodiumSecureMemType::Normal);
 
-      return (sec.isValid() ? sec.copyToString() : string{});
+      if (sec.empty()) return string{};
+
+      string result{sec.toMemView().to_charPtr(), sec.size()};
+
+      return result;
     }
 
     //----------------------------------------------------------------------------
 
     SodiumSecureMemory PasswordProtectedSecret::getSecret(SodiumSecureMemType memType)
     {
-      // is a decryption key available?
-      if (!(pwClear.isValid()))
-      {
-        throw NoPasswordSet{};
-      }
-
       // do we have any content at all?
-      if (!(cipher.isValid()))
+      if (cipher.empty())
       {
         return SodiumSecureMemory{};
       }
 
+      // is a decryption key available?
+      if (pwClear.empty() || symKey.empty())
+      {
+        throw NoPasswordSet{};
+      }
+
       // decrypt and throw an exception if things fail
       symKey.setAccess(SodiumSecureMemAccess::RO);
-      SodiumSecureMemory sec = lib->crypto_secretbox_open_easy__secure(cipher, nonce, symKey, memType);
+      SodiumSecureMemory sec = lib->crypto_secretbox_open_easy__secure(cipher.view(), nonce, symKey, memType);
       symKey.setAccess(SodiumSecureMemAccess::NoAccess);
 
-      if (!(sec.isValid()))
+      if (sec.empty())
       {
         throw WrongPassword{};
       }
@@ -2826,25 +2826,24 @@ namespace Sloppy
       // whether a password is stored at all
       if (!(isValidPassword(oldPw))) return false;
 
-      // decrypt the secret and store it in a temporary memory
+      // decrypt the secret and store it in a temporary buffer
       SodiumSecureMemory sec = getSecret(SodiumSecureMemType::Normal);
-      if ((!(sec.isValid())) && (cipher.isValid())) return false;
+      if (sec.empty() && (!(cipher.empty()))) return false;   // could not decrypt existing secret
 
       // determine the updated hashing parameters
-      tie(hashConfig.opslimit, hashConfig.memlimit) = lib->pwHashConfigToValues(pwStrength, pwAlgo);
+      tie(hashConfig.opslimit, hashConfig.memlimit) = lib->pwHashConfigToValues(pwStrength);
       hashConfig.algo = pwAlgo;
-      lib->randombytes_buf(hashConfig.salt);
+      lib->randombytes_buf(hashConfig.salt.toNotOwningArray());
 
-      // re-store the secret
-      if (sec.isValid())
-      {
-        password2SymKey(newPw);
-        return setSecret(sec);
-      }
-
-      // we have no secret yet, so we just hash the new pw
+      // derive a new key from the password
       password2SymKey(newPw);
       cipher.releaseMemory();
+
+      // re-store the secret
+      if (!(sec.empty()))
+      {
+        return setSecret(sec.toMemView());
+      }
 
       return true;
     }
@@ -2855,7 +2854,7 @@ namespace Sloppy
     {
       // this function is only intended for
       // cases if there is no previously set password
-      if (pwClear.isValid()) return false;
+      if (!(pwClear.empty())) return false;
 
       if (pw.empty()) return false;
 
@@ -2863,7 +2862,7 @@ namespace Sloppy
 
       // if we have content, try to decode it to check
       // the password validity
-      if (cipher.isValid())
+      if (cipher.notEmpty())
       {
         try
         {
@@ -2883,14 +2882,13 @@ namespace Sloppy
 
     bool PasswordProtectedSecret::isValidPassword(const string& pw)
     {
-      if (!(pwClear.isValid()))
+      if (pwClear.empty())
       {
         throw NoPasswordSet{};
       }
 
-      SodiumSecureMemory pwSec{pw, SodiumSecureMemType::Normal};
       pwClear.setAccess(SodiumSecureMemAccess::RO);
-      bool isEqual = lib->memcmp(pwClear, pwSec);
+      bool isEqual = lib->memcmp(pwClear.toMemView(), MemView{pw});
       pwClear.setAccess(SodiumSecureMemAccess::NoAccess);
 
       return isEqual;
@@ -2900,17 +2898,18 @@ namespace Sloppy
 
     string PasswordProtectedSecret::asString(bool useBase64) const
     {
-      Net::MessageBuilder mb;
+      Net::OutMessage msg;
 
-      mb.addByte((hashConfig.algo == SodiumLib::PasswdHashAlgo::Argon2) ? 0 : 1);
-      mb.addUI64(hashConfig.memlimit);
-      mb.addUI64(hashConfig.opslimit);
-      mb.addMemView(hashConfig.salt);  // also works for an empty salt
-      mb.addMemView(cipher);  // also works for an empty cipher
-      mb.addMemView(nonce);
+      msg.addByte(static_cast<uint8_t>(hashConfig.algo));
+      msg.addUI64(hashConfig.memlimit);
+      msg.addUI64(hashConfig.opslimit);
+      msg.addMemView(hashConfig.salt.toMemView());  // also works for an empty salt
+      msg.addMemView(cipher.view());  // also works for an empty cipher
+      msg.addMemView(nonce.toMemView());
 
       // not very efficient... hmmmm...
-      string rawData = mb.get().copyToString();
+      MemView mv{msg.view()};
+      string rawData{mv.to_charPtr(), mv.size()};
 
       return useBase64 ? toBase64(rawData) : rawData;
     }
@@ -2922,9 +2921,8 @@ namespace Sloppy
       // convert the pw into a hash; the hash will be used as the secret key for
       // encrypting the secret
       SodiumLib::SecretBoxKey sk;
-      SodiumSecureMemory pwSecure{pw, SodiumSecureMemType::Normal};
-      sk = lib->crypto_pwhash(pwSecure, sk.getSize(), hashConfig, sk.getType());
-      if (!(sk.isValid()))
+      sk = lib->crypto_pwhash(MemView{pw}, sk.size(), hashConfig, sk.getType());
+      if (sk.empty())
       {
         throw PasswordHashingError{};
       }
@@ -2933,7 +2931,7 @@ namespace Sloppy
       symKey = std::move(sk);
       symKey.setAccess(SodiumSecureMemAccess::NoAccess);
 
-      if (pwClear.isValid()) pwClear.setAccess(SodiumSecureMemAccess::RW);
+      if (!(pwClear.empty())) pwClear.setAccess(SodiumSecureMemAccess::RW);
       pwClear = SodiumSecureMemory{pw, SodiumSecureMemType::Locked};
       pwClear.setAccess(SodiumSecureMemAccess::NoAccess);
     }

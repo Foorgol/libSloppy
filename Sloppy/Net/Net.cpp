@@ -357,6 +357,40 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
+    MemArray InMessage::getMemArray()
+    {
+      // get the buffer size
+      assertSufficientData(8);
+      size_t len = getUI64();
+
+      // get the buffer itself
+      assertSufficientData(len);
+      auto buf = curView.slice_byCount(0, len);
+      MemArray result{buf};
+      curView.chopLeft(len);
+
+      return result;
+    }
+
+    //----------------------------------------------------------------------------
+
+    MemView InMessage::getMemView()
+    {
+      // get the buffer size
+      assertSufficientData(8);
+      size_t len = getUI64();
+
+      // get the buffer itself
+      assertSufficientData(len);
+      auto buf = curView.slice_byCount(0, len);
+      MemView result{buf.to_charPtr(), buf.size()};
+      curView.chopLeft(len);
+
+      return result;
+    }
+
+    //----------------------------------------------------------------------------
+
     void InMessage::assertSufficientData(size_t n) const
     {
       if (curView.size() < n)

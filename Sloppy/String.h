@@ -74,7 +74,8 @@ namespace Sloppy
     estring(const string& other) : string(other) {}
 
     /// copy constructor from an estring
-    estring(const estring& other) = default;
+    estring(const estring& other)
+      :string{other} {}
 
     /// copy assignment from an estring
     estring& operator =(const estring& other) = default;

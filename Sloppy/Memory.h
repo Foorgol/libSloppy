@@ -458,6 +458,8 @@ namespace Sloppy
       if ((ptr != nullptr) && owning)
       {
         releaseMem(ptr);
+        ptr = nullptr;
+        cnt = 0;
       }
     }
 
@@ -574,6 +576,8 @@ namespace Sloppy
       if (ptr != nullptr)
       {
         releaseMem(ptr);
+        ptr = nullptr;
+        cnt = 0;
       }
     }
 
@@ -759,7 +763,7 @@ namespace Sloppy
         T* p   ///< pointer to the memory section that should be freed; **can be `nullptr`**
         )
     {
-      if (ptr != nullptr) delete[] ptr;
+      if (p != nullptr) delete[] p;
     }
 
   private:
@@ -811,6 +815,12 @@ namespace Sloppy
         )
       :MemArray(reinterpret_cast<uint8_t*>(p), n, false) {}
 
+    /** \returns a `MemView` instance representing this MemArray
+     */
+    MemView view() const
+    {
+      return MemView{to_ucPtr(), size()};
+    }
   };
 }
 

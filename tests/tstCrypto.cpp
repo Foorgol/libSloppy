@@ -22,6 +22,7 @@
 
 #include "../Sloppy/libSloppy.h"
 #include "../Sloppy/Crypto/Crypto.h"
+#include "../Sloppy/Memory.h"
 
 using namespace Sloppy::Crypto;
 
@@ -103,7 +104,7 @@ TEST(Crypto, Base64Enc)
 
     // test length calculations
     ASSERT_EQ(b64_expected.size(), calc_base64_encSize(src.size()));
-    ASSERT_EQ(src.size(), calc_base64_rawSize(b64_expected));
+    ASSERT_EQ(src.size(), calc_base64_rawSize(Sloppy::MemView{b64_expected}));
   }
 
 }

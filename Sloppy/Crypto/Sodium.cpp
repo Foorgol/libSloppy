@@ -94,6 +94,7 @@ namespace Sloppy
     //----------------------------------------------------------------------------
 
     SodiumSecureMemory::SodiumSecureMemory(SodiumSecureMemory&& other)
+      :SodiumSecureMemory{}
     {
       *this = std::move(other);
     }

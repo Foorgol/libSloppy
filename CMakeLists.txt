@@ -120,7 +120,7 @@ set(LIB_SOURCES_TST
     tests/tstCrypto.cpp
     #tests/tstStringFunc.cpp
     tests/tstBetterTemplateSys.cpp
-    #tests/tstSodium.cpp
+    tests/tstSodium.cpp
     #tests/tstManagedMemory.cpp
     #tests/tstManagedFileDescriptor.cpp
     #tests/tstTcpClientServer.cpp

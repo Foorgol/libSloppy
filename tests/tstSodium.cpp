@@ -652,7 +652,7 @@ TEST(Sodium, AEAD_ChaCha20)
 }
 
 //----------------------------------------------------------------------------
-/*
+
 TEST(Sodium, AEAD_AES256GCM)
 {
   SodiumLib* sodium = SodiumLib::getInstance();
@@ -660,93 +660,91 @@ TEST(Sodium, AEAD_AES256GCM)
 
   // generate a random message
   static constexpr size_t msgSize = 500;
-  ManagedBuffer msg{msgSize};
+  MemArray msg{msgSize};
   sodium->randombytes_buf(msg);
-  string sMsg = msg.copyToString();
+  string sMsg{msg.to_charPtr(), msgSize};
 
   // generate a random key
   SodiumLib::AEAD_AES256GCM_KeyType key;
-  sodium->randombytes_buf(key);
-  string sKey = key.copyToString();
+  sodium->randombytes_buf(key.toNotOwningArray());
 
   // generate a random nonce
   SodiumLib::AEAD_AES256GCM_NonceType nonce;
-  sodium->randombytes_buf(nonce);
-  string sNonce = nonce.copyToString();
+  sodium->randombytes_buf(nonce.toNotOwningArray());
 
   // generate random extra data
   static constexpr size_t adSize = 500;
-  ManagedBuffer ad{adSize};
+  MemArray ad{adSize};
   sodium->randombytes_buf(ad);
-  string sAd = ad.copyToString();
+  string sAd{ad.to_charPtr(), adSize};
 
   // encrypt
-  auto cipher = sodium->aead_aes256gcm_encrypt(msg, nonce, key, ad);
-  ASSERT_TRUE(cipher.isValid());
+  auto cipher = sodium->aead_aes256gcm_encrypt(msg.view(), nonce, key, ad.view());
+  ASSERT_FALSE(cipher.empty());
   ASSERT_TRUE(cipher.size() >= (msg.size() + crypto_aead_aes256gcm_ABYTES));
 
   // decrypt
-  auto msg2 = sodium->aead_aes256gcm_decrypt(cipher, nonce, key, ad, SodiumSecureMemType::Normal);
-  ASSERT_TRUE(msg2.isValid());
+  auto msg2 = sodium->aead_aes256gcm_decrypt(cipher.view(), nonce, key, ad.view(), SodiumSecureMemType::Normal);
+  ASSERT_FALSE(msg2.empty());
   ASSERT_EQ(msg.size(), msg2.size());
-  ASSERT_TRUE(sodium->memcmp(msg, msg2));
+  ASSERT_TRUE(sodium->memcmp(msg.view(), msg2.toMemView()));
 
   // decrypt without additional data although AD was provided
   // during encryption
-  msg2 = sodium->aead_aes256gcm_decrypt(cipher, nonce, key);
-  ASSERT_FALSE(msg2.isValid());
+  msg2 = sodium->aead_aes256gcm_decrypt(cipher.view(), nonce, key);
+  ASSERT_TRUE(msg2.empty());
 
   // encrypt / decrypt without additional data
-  cipher = sodium->aead_aes256gcm_encrypt(msg, nonce, key);
-  ASSERT_TRUE(cipher.isValid());
+  cipher = sodium->aead_aes256gcm_encrypt(msg.view(), nonce, key);
+  ASSERT_FALSE(cipher.empty());
   ASSERT_TRUE(cipher.size() >= (msg.size() + crypto_aead_aes256gcm_ABYTES));
-  msg2 = sodium->aead_aes256gcm_decrypt(cipher, nonce, key);
-  ASSERT_TRUE(msg2.isValid());
+  msg2 = sodium->aead_aes256gcm_decrypt(cipher.view(), nonce, key);
+  ASSERT_FALSE(msg2.empty());
   ASSERT_EQ(msg.size(), msg2.size());
-  ASSERT_TRUE(sodium->memcmp(msg, msg2));
+  ASSERT_TRUE(sodium->memcmp(msg.view(), msg2.toMemView()));
 
-  // decrypt with additional data although AD was provided
+  // decrypt with additional data although AD was not provided
   // during encryption
-  msg2 = sodium->aead_aes256gcm_decrypt(cipher, nonce, key, ad);
-  ASSERT_FALSE(msg2.isValid());
+  msg2 = sodium->aead_aes256gcm_decrypt(cipher.view(), nonce, key, ad.view());
+  ASSERT_TRUE(msg2.empty());
 
   //
   // test the string-based functions
   //
 
   // encrypt
-  auto sCipher = sodium->aead_aes256gcm_encrypt(sMsg, sNonce, sKey, sAd);
+  auto sCipher = sodium->aead_aes256gcm_encrypt(sMsg, nonce, key, sAd);
   ASSERT_FALSE(sCipher.empty());
   ASSERT_TRUE(sCipher.size() >= (sMsg.size() + crypto_aead_aes256gcm_ABYTES));
 
   // decrypt
-  auto sMsg2 = sodium->aead_aes256gcm_decrypt(sCipher, sNonce, sKey, sAd);
+  auto sMsg2 = sodium->aead_aes256gcm_decrypt(sCipher, nonce, key, sAd);
   ASSERT_FALSE(sMsg2.empty());
   ASSERT_EQ(sMsg.size(), sMsg2.size());
   ASSERT_EQ(sMsg, sMsg2);
 
   // decrypt without additional data although AD was provided
   // during encryption
-  sMsg2 = sodium->aead_aes256gcm_decrypt(sCipher, sNonce, sKey);
+  sMsg2 = sodium->aead_aes256gcm_decrypt(sCipher, nonce, key);
   ASSERT_TRUE(sMsg2.empty());
 
   // encrypt / decrypt without additional data
-  sCipher = sodium->aead_aes256gcm_encrypt(sMsg, sNonce, sKey);
+  sCipher = sodium->aead_aes256gcm_encrypt(sMsg, nonce, key);
   ASSERT_FALSE(sCipher.empty());
   ASSERT_TRUE(sCipher.size() >= (sMsg.size() + crypto_aead_aes256gcm_ABYTES));
-  sMsg2 = sodium->aead_aes256gcm_decrypt(sCipher, sNonce, sKey);
+  sMsg2 = sodium->aead_aes256gcm_decrypt(sCipher, nonce, key);
   ASSERT_FALSE(sMsg2.empty());
   ASSERT_EQ(sMsg.size(), sMsg2.size());
   ASSERT_EQ(sMsg, sMsg2);
 
-  // decrypt with additional data although AD was provided
+  // decrypt with additional data although AD was not provided
   // during encryption
-  sMsg2 = sodium->aead_aes256gcm_decrypt(sCipher, sNonce, sKey, sAd);
+  sMsg2 = sodium->aead_aes256gcm_decrypt(sCipher, nonce, key, sAd);
   ASSERT_TRUE(sMsg2.empty());
 }
 
 //----------------------------------------------------------------------------
-
+/*
 TEST(Sodium, AsymKeyHandling)
 {
   SodiumLib* sodium = SodiumLib::getInstance();

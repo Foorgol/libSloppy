@@ -744,7 +744,7 @@ TEST(Sodium, AEAD_AES256GCM)
 }
 
 //----------------------------------------------------------------------------
-/*
+
 TEST(Sodium, AsymKeyHandling)
 {
   SodiumLib* sodium = SodiumLib::getInstance();
@@ -758,16 +758,16 @@ TEST(Sodium, AsymKeyHandling)
   // re-gen the public key from the secret key
   SodiumLib::AsymCrypto_PublicKey pk2;
   ASSERT_TRUE(sodium->genPublicCryptoKeyFromSecretKey(sk, pk2));
-  ASSERT_TRUE(sodium->memcmp(pk, pk2));
+  ASSERT_TRUE(sodium->memcmp(pk.toMemView(), pk2.toMemView()));
 
   // gen key pair from seed
   SodiumLib::AsymCrypto_KeySeed seed;
-  sodium->randombytes_buf(seed);
+  sodium->randombytes_buf(seed.toNotOwningArray());
   sodium->genAsymCryptoKeyPairSeeded(seed, pk, sk);
   SodiumLib::AsymCrypto_SecretKey sk2;
   sodium->genAsymCryptoKeyPairSeeded(seed, pk2, sk2);
-  ASSERT_TRUE(sodium->memcmp(pk, pk2));
-  ASSERT_TRUE(sodium->memcmp(sk, sk2));
+  ASSERT_TRUE(sodium->memcmp(pk.toMemView(), pk2.toMemView()));
+  ASSERT_TRUE(sodium->memcmp(sk.toMemView(), sk2.toMemView()));
 }
 
 //----------------------------------------------------------------------------
@@ -787,35 +787,35 @@ TEST(Sodium, AsymKeyCrypto_Buffer)
 
   // generate a random message
   static constexpr size_t msgSize = 500;
-  ManagedBuffer msg{msgSize};
+  MemArray msg{msgSize};
   sodium->randombytes_buf(msg);
 
   // generate a nonce
   SodiumLib::AsymCrypto_Nonce nonce;
-  sodium->randombytes_buf(nonce);
+  sodium->randombytes_buf(nonce.toNotOwningArray());
 
   // encrypt a message
-  auto cipher = sodium->box_easy(msg, nonce, pkRecipient, skSender);
-  ASSERT_TRUE(cipher.isValid());
+  auto cipher = sodium->box_easy(msg.view(), nonce, pkRecipient, skSender);
+  ASSERT_FALSE(cipher.empty());
   ASSERT_EQ(msgSize + crypto_box_MACBYTES, cipher.size());
 
   // decrypt the message
-  auto msg2 = sodium->box_open_easy(cipher, nonce, pkSender, skRecipient);
-  ASSERT_TRUE(msg2.isValid());
+  auto msg2 = sodium->box_open_easy(cipher.view(), nonce, pkSender, skRecipient);
+  ASSERT_FALSE(msg2.empty());
   ASSERT_EQ(msgSize, msg2.size());
-  ASSERT_TRUE(sodium->memcmp(msg, msg2));
+  ASSERT_TRUE(sodium->memcmp(msg.view(), msg2.toMemView()));
 
-  // tamper with PK, SK, nonce and ciper
-  for (char* ptr : {pkSender.get_c(), skRecipient.get_c(), nonce.get_c(), cipher.get_c()})
+  // tamper with PK, SK, nonce and cipher
+  for (unsigned char* ptr : {pkSender.to_ucPtr_rw(), skRecipient.to_ucPtr_rw(), nonce.to_ucPtr_rw(), cipher.to_ucPtr()})
   {
     ptr[5] += 1;
-    msg2 = sodium->box_open_easy(cipher, nonce, pkSender, skRecipient);
-    ASSERT_FALSE(msg2.isValid());
+    msg2 = sodium->box_open_easy(cipher.view(), nonce, pkSender, skRecipient);
+    ASSERT_TRUE(msg2.empty());
     ptr[5] -= 1;
-    msg2 = sodium->box_open_easy(cipher, nonce, pkSender, skRecipient);
-    ASSERT_TRUE(msg2.isValid());
+    msg2 = sodium->box_open_easy(cipher.view(), nonce, pkSender, skRecipient);
+    ASSERT_FALSE(msg2.empty());
     ASSERT_EQ(msgSize, msg2.size());
-    ASSERT_TRUE(sodium->memcmp(msg, msg2));
+    ASSERT_TRUE(sodium->memcmp(msg.view(), msg2.toMemView()));
   }
 
   //
@@ -823,32 +823,31 @@ TEST(Sodium, AsymKeyCrypto_Buffer)
   //
 
   SodiumLib::AsymCrypto_Tag mac;
-  auto tmp = sodium->box_detached(msg, nonce, pkRecipient, skSender);
+  auto tmp = sodium->box_detached(msg.view(), nonce, pkRecipient, skSender);
   cipher = std::move(tmp.first);
   mac = std::move(tmp.second);
-  ASSERT_TRUE(cipher.isValid());
+  ASSERT_FALSE(cipher.empty());
   ASSERT_EQ(msgSize, cipher.size());
-  ASSERT_TRUE(mac.isValid());
+  ASSERT_FALSE(mac.empty());
   ASSERT_EQ(crypto_box_MACBYTES, mac.size());
 
-  msg2 = sodium->box_open_detached(cipher, mac, nonce, pkSender, skRecipient);
-  ASSERT_TRUE(msg2.isValid());
+  msg2 = sodium->box_open_detached(cipher.view(), mac, nonce, pkSender, skRecipient);
+  ASSERT_FALSE(msg2.empty());
   ASSERT_EQ(msgSize, msg2.size());
-  ASSERT_TRUE(sodium->memcmp(msg, msg2));
+  ASSERT_TRUE(sodium->memcmp(msg.view(), msg2.toMemView()));
 
   // tamper with PK, SK, nonce, mac and ciper
-  for (char* ptr : {pkSender.get_c(), skRecipient.get_c(), nonce.get_c(), mac.get_c(), cipher.get_c()})
+  for (unsigned char* ptr : {pkSender.to_ucPtr_rw(), skRecipient.to_ucPtr_rw(), nonce.to_ucPtr_rw(), cipher.to_ucPtr(), mac.to_ucPtr_rw()})
   {
     ptr[5] += 1;
-    msg2 = sodium->box_open_detached(cipher, mac, nonce, pkSender, skRecipient);
-    ASSERT_FALSE(msg2.isValid());
+    msg2 = sodium->box_open_detached(cipher.view(), mac, nonce, pkSender, skRecipient);
+    ASSERT_TRUE(msg2.empty());
     ptr[5] -= 1;
-    msg2 = sodium->box_open_detached(cipher, mac, nonce, pkSender, skRecipient);
-    ASSERT_TRUE(msg2.isValid());
+    msg2 = sodium->box_open_detached(cipher.view(), mac, nonce, pkSender, skRecipient);
+    ASSERT_FALSE(msg2.empty());
     ASSERT_EQ(msgSize, msg2.size());
-    ASSERT_TRUE(sodium->memcmp(msg, msg2));
+    ASSERT_TRUE(sodium->memcmp(msg.view(), msg2.toMemView()));
   }
-
 }
 
 //----------------------------------------------------------------------------
@@ -868,13 +867,13 @@ TEST(Sodium, AsymKeyCrypto_String)
 
   // generate a random message
   static constexpr size_t msgSize = 500;
-  ManagedBuffer _msg{msgSize};
+  MemArray _msg{msgSize};
   sodium->randombytes_buf(_msg);
-  string msg = _msg.copyToString();
+  string msg{_msg.to_charPtr(), msgSize};
 
   // generate a nonce
   SodiumLib::AsymCrypto_Nonce nonce;
-  sodium->randombytes_buf(nonce);
+  sodium->randombytes_buf(nonce.toNotOwningArray());
 
   // encrypt a message
   string cipher = sodium->box_easy(msg, nonce, pkRecipient, skSender);
@@ -887,8 +886,8 @@ TEST(Sodium, AsymKeyCrypto_String)
   ASSERT_EQ(msgSize, msg2.size());
   ASSERT_EQ(msg, msg2);
 
-  // tamper with PK, SK, nonce and ciper
-  for (char* ptr : {pkSender.get_c(), skRecipient.get_c(), nonce.get_c(), (char *)cipher.c_str()})
+  // tamper with PK, SK, mac, nonce and ciper
+  for (unsigned char* ptr : {pkSender.to_ucPtr_rw(), skRecipient.to_ucPtr_rw(), nonce.to_ucPtr_rw(), (unsigned char *)cipher.c_str()})
   {
     ptr[5] += 1;
     msg2 = sodium->box_open_easy(cipher, nonce, pkSender, skRecipient);
@@ -904,8 +903,10 @@ TEST(Sodium, AsymKeyCrypto_String)
   // test the detached versions
   //
 
-  string mac;
-  tie(cipher, mac) = sodium->box_detached(msg, nonce, pkRecipient, skSender);
+  SodiumLib::AsymCrypto_Tag mac;
+  auto tmp = sodium->box_detached(msg, nonce, pkRecipient, skSender);
+  cipher = std::move(tmp.first);
+  mac = std::move(tmp.second);
   ASSERT_FALSE(cipher.empty());
   ASSERT_EQ(msgSize, cipher.size());
   ASSERT_FALSE(mac.empty());
@@ -917,7 +918,7 @@ TEST(Sodium, AsymKeyCrypto_String)
   ASSERT_EQ(msg, msg2);
 
   // tamper with PK, SK, nonce, mac and ciper
-  for (char* ptr : {pkSender.get_c(), skRecipient.get_c(), nonce.get_c(), (char *)mac.c_str(), (char *)cipher.c_str()})
+  for (unsigned char* ptr : {pkSender.to_ucPtr_rw(), skRecipient.to_ucPtr_rw(), nonce.to_ucPtr_rw(), mac.to_ucPtr_rw(), (unsigned char *)cipher.c_str()})
   {
     ptr[5] += 1;
     msg2 = sodium->box_open_detached(cipher, mac, nonce, pkSender, skRecipient);
@@ -928,7 +929,6 @@ TEST(Sodium, AsymKeyCrypto_String)
     ASSERT_EQ(msgSize, msg2.size());
     ASSERT_EQ(msg, msg2);
   }
-
 }
 
 //----------------------------------------------------------------------------
@@ -946,7 +946,7 @@ TEST(Sodium, AsymKeyHandling_Sign)
   // re-gen the public key from the secret key
   SodiumLib::AsymSign_PublicKey pk2;
   ASSERT_TRUE(sodium->genPublicSignKeyFromSecretKey(sk, pk2));
-  ASSERT_TRUE(sodium->memcmp(pk, pk2));
+  ASSERT_TRUE(sodium->memcmp(pk.toMemView(), pk2.toMemView()));
 
   // re-gen the seed from the secret key
   SodiumLib::AsymSign_KeySeed seed;
@@ -955,8 +955,8 @@ TEST(Sodium, AsymKeyHandling_Sign)
   // gen key pair from seed
   SodiumLib::AsymSign_SecretKey sk2;
   sodium->genAsymSignKeyPairSeeded(seed, pk2, sk2);
-  ASSERT_TRUE(sodium->memcmp(pk, pk2));
-  ASSERT_TRUE(sodium->memcmp(sk, sk2));
+  ASSERT_TRUE(sodium->memcmp(pk.toMemView(), pk2.toMemView()));
+  ASSERT_TRUE(sodium->memcmp(sk.toMemView(), sk2.toMemView()));
 }
 
 //----------------------------------------------------------------------------
@@ -973,48 +973,45 @@ TEST(Sodium, AsymKeySign_Buffer)
 
   // generate a random message
   static constexpr size_t msgSize = 500;
-  ManagedBuffer msg{msgSize};
+  MemArray msg{msgSize};
   sodium->randombytes_buf(msg);
 
   // sign the message
-  auto signedMsg = sodium->sign(msg, sk);
-  ASSERT_TRUE(signedMsg.isValid());
+  auto signedMsg = sodium->sign(msg.view(), sk);
   ASSERT_EQ(msgSize + crypto_sign_BYTES, signedMsg.size());
 
   // check and remove the signature
-  auto msg2 = sodium->sign_open(signedMsg, pk);
-  ASSERT_TRUE(msg2.isValid());
+  auto msg2 = sodium->sign_open(signedMsg.view(), pk);
   ASSERT_EQ(msgSize, msg2.size());
-  ASSERT_TRUE(sodium->memcmp(msg, msg2));
+  ASSERT_TRUE(sodium->memcmp(msg.view(), msg2.view()));
 
   // tamper with message and public key
-  for (char* ptr : {signedMsg.get_c(), pk.get_c()})
+  for (unsigned char* ptr : {signedMsg.to_uint8Ptr(), pk.to_ucPtr_rw()})
   {
     ptr[5] += 1;
-    msg2 = sodium->sign_open(signedMsg, pk);
-    ASSERT_FALSE(msg2.isValid());
+    msg2 = sodium->sign_open(signedMsg.view(), pk);
+    ASSERT_TRUE(msg2.empty());
     ptr[5] -= 1;
-    msg2 = sodium->sign_open(signedMsg, pk);
-    ASSERT_TRUE(msg2.isValid());
+    msg2 = sodium->sign_open(signedMsg.view(), pk);
+    ASSERT_FALSE(msg2.empty());
     ASSERT_EQ(msgSize, msg2.size());
-    ASSERT_TRUE(sodium->memcmp(msg, msg2));
+    ASSERT_TRUE(sodium->memcmp(msg.view(), msg2.view()));
   }
 
   //
   // detached version
   //
 
-  SodiumLib::AsymSign_Signature sig;
-  ASSERT_TRUE(sodium->sign_detached(msg, sk, sig));
-  ASSERT_TRUE(sodium->sign_verify_detached(msg, sig, pk));
+  SodiumLib::AsymSign_Signature sig = sodium->sign_detached(msg.view(), sk);
+  ASSERT_TRUE(sodium->sign_verify_detached(msg.view(), sig, pk));
 
   // tamper with message, signature and public key
-  for (char* ptr : {msg.get_c(), sig.get_c(), pk.get_c()})
+  for (unsigned char* ptr : {msg.to_uint8Ptr(), sig.to_ucPtr_rw(), pk.to_ucPtr_rw()})
   {
     ptr[5] += 1;
-    ASSERT_FALSE(sodium->sign_verify_detached(msg, sig, pk));
+    ASSERT_FALSE(sodium->sign_verify_detached(msg.view(), sig, pk));
     ptr[5] -= 1;
-    ASSERT_TRUE(sodium->sign_verify_detached(msg, sig, pk));
+    ASSERT_TRUE(sodium->sign_verify_detached(msg.view(), sig, pk));
   }
 }
 
@@ -1032,9 +1029,9 @@ TEST(Sodium, AsymKeySign_String)
 
   // generate a random message
   static constexpr size_t msgSize = 500;
-  ManagedBuffer _msg{msgSize};
+  MemArray _msg{msgSize};
   sodium->randombytes_buf(_msg);
-  string msg = _msg.copyToString();
+  string msg{_msg.to_charPtr(), msgSize};
 
   // sign the message
   string signedMsg = sodium->sign(msg, sk);
@@ -1048,7 +1045,7 @@ TEST(Sodium, AsymKeySign_String)
   ASSERT_EQ(msg, msg2);
 
   // tamper with message and public key
-  for (char* ptr : {(char *)signedMsg.c_str(), pk.get_c()})
+  for (unsigned char* ptr : {(unsigned char *)signedMsg.c_str(), pk.to_ucPtr_rw()})
   {
     ptr[5] += 1;
     msg2 = sodium->sign_open(signedMsg, pk);
@@ -1064,12 +1061,12 @@ TEST(Sodium, AsymKeySign_String)
   // detached version
   //
 
-  string sig = sodium->sign_detached(msg, sk);
+  SodiumLib::AsymSign_Signature sig = sodium->sign_detached(msg, sk);
   ASSERT_FALSE(sig.empty());
   ASSERT_TRUE(sodium->sign_verify_detached(msg, sig, pk));
 
   // tamper with message, signature and public key
-  for (char* ptr : {(char *)msg.c_str(), (char *)sig.c_str(), pk.get_c()})
+  for (unsigned char* ptr : {(unsigned char *)msg.c_str(), sig.to_ucPtr_rw(), pk.to_ucPtr_rw()})
   {
     ptr[5] += 1;
     ASSERT_FALSE(sodium->sign_verify_detached(msg, sig, pk));
@@ -1079,7 +1076,7 @@ TEST(Sodium, AsymKeySign_String)
 }
 
 //----------------------------------------------------------------------------
-
+/*
 TEST(Sodium, GenericHashing_Buffer)
 {
   SodiumLib* sodium = SodiumLib::getInstance();

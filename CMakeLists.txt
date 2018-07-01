@@ -120,13 +120,12 @@ set(LIB_SOURCES_TST
     tests/tstCrypto.cpp
     tests/tstBetterTemplateSys.cpp
     tests/tstSodium.cpp
-    #tests/tstManagedMemory.cpp
     #tests/tstManagedFileDescriptor.cpp
     #tests/tstTcpClientServer.cpp
     tests/tstNetFunc.cpp
     #tests/tstCryptoClientServer.cpp
     #tests/tstPasswordProtectedSecret.cpp
-    #tests/tstPosixFileFunc.cpp
+    tests/tstPosixFileFunc.cpp
     tests/tstTimer.cpp
     tests/tstStrings.cpp
 )

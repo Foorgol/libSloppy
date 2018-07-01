@@ -224,10 +224,8 @@ TEST(Sodium, SymmetricLowLevel)
   sodium->randombytes_buf(msg);
 
   // generate random nonce and key
-  SodiumLib::SecretBoxNonce nonce;
-  sodium->randombytes_buf(nonce.toNotOwningArray());
-  SodiumLib::SecretBoxKey key;
-  sodium->randombytes_buf(key.toNotOwningArray());
+  SodiumLib::SecretBoxNonce nonce{SodiumKeyInitStyle::Random};
+  SodiumLib::SecretBoxKey key{SodiumKeyInitStyle::Random};
 
   // encrypt
   MemArray cipher = sodium->secretbox_easy(msg.view(), nonce, key);
@@ -299,10 +297,8 @@ TEST(Sodium, SymmetricLowLevel_String)
   string msg{_msg.to_charPtr(), msgSize};
 
   // generate random nonce and key
-  SodiumLib::SecretBoxNonce nonce;
-  sodium->randombytes_buf(nonce.toNotOwningArray());
-  SodiumLib::SecretBoxKey key;
-  sodium->randombytes_buf(key.toNotOwningArray());
+  SodiumLib::SecretBoxNonce nonce{SodiumKeyInitStyle::Random};
+  SodiumLib::SecretBoxKey key{SodiumKeyInitStyle::Random};
 
   // encrypt
   string cipher = sodium->secretbox_easy(msg, nonce, key);
@@ -345,10 +341,8 @@ TEST(Sodium, SecretBoxClass)
   string msg{_msg.to_charPtr(), msgSize};
 
   // generate random nonce and key
-  SodiumLib::SecretBoxNonce nonce;
-  sodium->randombytes_buf(nonce.toNotOwningArray());
-  SodiumLib::SecretBoxKey key;
-  sodium->randombytes_buf(key.toNotOwningArray());
+  SodiumLib::SecretBoxNonce nonce{SodiumKeyInitStyle::Random};
+  SodiumLib::SecretBoxKey key{SodiumKeyInitStyle::Random};
 
   // create the SecretBox
   SodiumSecretBox box{key, nonce};
@@ -390,10 +384,8 @@ TEST(Sodium, SecretBoxClass_NonceInc)
   string msg{_msg.to_charPtr(), msgSize};
 
   // generate random nonce and key
-  SodiumLib::SecretBoxNonce nonce;
-  sodium->randombytes_buf(nonce.toNotOwningArray());
-  SodiumLib::SecretBoxKey key;
-  sodium->randombytes_buf(key.toNotOwningArray());
+  SodiumLib::SecretBoxNonce nonce{SodiumKeyInitStyle::Random};
+  SodiumLib::SecretBoxKey key{SodiumKeyInitStyle::Random};
 
   // create a SecretBox for encryption
   SodiumSecretBox encBox{key, nonce, true};
@@ -447,8 +439,7 @@ TEST(Sodium, Auth)
   string sMsg{msg.to_charPtr(), msgSize};
 
   // generate a random key
-  SodiumLib::AuthKeyType key;
-  sodium->randombytes_buf(key.toNotOwningArray());
+  SodiumLib::AuthKeyType key{SodiumKeyInitStyle::Random};
 
   // calc an auth tag, buffer-based
   SodiumLib::AuthTagType tag = sodium->auth(msg.view(), key);
@@ -520,13 +511,9 @@ TEST(Sodium, AEAD_ChaCha20)
   sodium->randombytes_buf(msg);
   string sMsg{msg.to_charPtr(), msgSize};
 
-  // generate a random key
-  SodiumLib::AEAD_XChaCha20Poly1305_KeyType key;
-  sodium->randombytes_buf(key.toNotOwningArray());
-
-  // generate a random nonce
-  SodiumLib::AEAD_XChaCha20Poly1305_NonceType nonce;
-  sodium->randombytes_buf(nonce.toNotOwningArray());
+  // generate a random key and nonce
+  SodiumLib::AEAD_XChaCha20Poly1305_KeyType key{SodiumKeyInitStyle::Random};
+  SodiumLib::AEAD_XChaCha20Poly1305_NonceType nonce{SodiumKeyInitStyle::Random};
 
   // generate random extra data
   static constexpr size_t adSize = 500;
@@ -664,13 +651,9 @@ TEST(Sodium, AEAD_AES256GCM)
   sodium->randombytes_buf(msg);
   string sMsg{msg.to_charPtr(), msgSize};
 
-  // generate a random key
-  SodiumLib::AEAD_AES256GCM_KeyType key;
-  sodium->randombytes_buf(key.toNotOwningArray());
-
-  // generate a random nonce
-  SodiumLib::AEAD_AES256GCM_NonceType nonce;
-  sodium->randombytes_buf(nonce.toNotOwningArray());
+  // generate a random key and nonce
+  SodiumLib::AEAD_AES256GCM_KeyType key{SodiumKeyInitStyle::Random};
+  SodiumLib::AEAD_AES256GCM_NonceType nonce{SodiumKeyInitStyle::Random};
 
   // generate random extra data
   static constexpr size_t adSize = 500;
@@ -791,8 +774,7 @@ TEST(Sodium, AsymKeyCrypto_Buffer)
   sodium->randombytes_buf(msg);
 
   // generate a nonce
-  SodiumLib::AsymCrypto_Nonce nonce;
-  sodium->randombytes_buf(nonce.toNotOwningArray());
+  SodiumLib::AsymCrypto_Nonce nonce{SodiumKeyInitStyle::Random};
 
   // encrypt a message
   auto cipher = sodium->box_easy(msg.view(), nonce, pkRecipient, skSender);
@@ -872,8 +854,7 @@ TEST(Sodium, AsymKeyCrypto_String)
   string msg{_msg.to_charPtr(), msgSize};
 
   // generate a nonce
-  SodiumLib::AsymCrypto_Nonce nonce;
-  sodium->randombytes_buf(nonce.toNotOwningArray());
+  SodiumLib::AsymCrypto_Nonce nonce{SodiumKeyInitStyle::Random};
 
   // encrypt a message
   string cipher = sodium->box_easy(msg, nonce, pkRecipient, skSender);
@@ -1076,51 +1057,67 @@ TEST(Sodium, AsymKeySign_String)
 }
 
 //----------------------------------------------------------------------------
-/*
+
 TEST(Sodium, GenericHashing_Buffer)
 {
   SodiumLib* sodium = SodiumLib::getInstance();
   ASSERT_TRUE(sodium != nullptr);
 
   // generate a random hashing key
-  SodiumLib::GenericHashKey k;
-  sodium->randombytes_buf(k);
+  SodiumLib::GenericHashKey k{SodiumKeyInitStyle::Random};
 
   // generate a random message
   static constexpr size_t msgSize = 500;
-  ManagedBuffer msg{msgSize};
+  MemArray msg{msgSize};
   sodium->randombytes_buf(msg);
 
   // hash without key
-  auto h1 = sodium->generichash(msg);
-  ASSERT_TRUE(h1.isValid());
+  auto h1 = sodium->generichash(msg.view());
+  ASSERT_FALSE(h1.empty());
+  msg[10] += 1;
+  auto h1a = sodium->generichash(msg.view());
+  ASSERT_FALSE(h1a.empty());
+  ASSERT_EQ(h1.size(), h1a.size());
+  ASSERT_FALSE(sodium->memcmp(h1.view(), h1a.view()));
+  msg[10] -= 1;
+  h1a = sodium->generichash(msg.view());
+  ASSERT_FALSE(h1a.empty());
+  ASSERT_EQ(h1.size(), h1a.size());
+  ASSERT_TRUE(sodium->memcmp(h1.view(), h1a.view()));
 
   // hash with key
-  auto h2 = sodium->generichash(msg, k);
-  ASSERT_TRUE(h2.isValid());
-  ASSERT_FALSE(sodium->memcmp(h1, h2));
+  auto h2 = sodium->generichash(msg.view(), k);
+  ASSERT_FALSE(h2.empty());
+  msg[10] += 1;
+  auto h2a = sodium->generichash(msg.view(), k);
+  ASSERT_FALSE(h2a.empty());
+  ASSERT_EQ(h2.size(), h2a.size());
+  ASSERT_FALSE(sodium->memcmp(h2.view(), h2a.view()));
+  msg[10] -= 1;
+  h2a = sodium->generichash(msg.view(), k);
+  ASSERT_FALSE(h2a.empty());
+  ASSERT_EQ(h2.size(), h2a.size());
+  ASSERT_TRUE(sodium->memcmp(h2.view(), h2a.view()));
 
   // use the hasher class
   GenericHasher gh;
-  ASSERT_TRUE(gh.append(msg));
+  gh.append(msg.view());
   auto h3 = gh.finalize();
-  ASSERT_TRUE(h3.isValid());
-  ASSERT_TRUE(sodium->memcmp(h1, h3));
+  ASSERT_FALSE(h3.empty());
+  ASSERT_TRUE(sodium->memcmp(h1.view(), h3.view()));
 
   GenericHasher gh2{k};
-  ASSERT_TRUE(gh2.append(msg));
+  gh2.append(msg.view());
   auto h4 = gh2.finalize();
-  ASSERT_TRUE(h4.isValid());
-  ASSERT_TRUE(sodium->memcmp(h2, h4));
+  ASSERT_FALSE(h4.empty());
+  ASSERT_TRUE(sodium->memcmp(h2.view(), h4.view()));
 
   // make sure we can't use the class anymore after
   // we've called finalize
-  ASSERT_FALSE(gh.append(msg));
-  ASSERT_FALSE(gh2.append(msg));
   h3 = gh.finalize();
-  ASSERT_FALSE(h3.isValid());
+  ASSERT_TRUE(h3.empty());
   h4 = gh2.finalize();
-  ASSERT_FALSE(h4.isValid());
+  ASSERT_TRUE(h4.empty());
 }
 
 //----------------------------------------------------------------------------
@@ -1131,14 +1128,13 @@ TEST(Sodium, GenericHashing_String)
   ASSERT_TRUE(sodium != nullptr);
 
   // generate a random hashing key
-  SodiumLib::GenericHashKey k;
-  sodium->randombytes_buf(k);
+  SodiumLib::GenericHashKey k{SodiumKeyInitStyle::Random};
 
   // generate a random message
   static constexpr size_t msgSize = 500;
-  ManagedBuffer _msg{msgSize};
+  MemArray _msg{msgSize};
   sodium->randombytes_buf(_msg);
-  string msg = _msg.copyToString();
+  string msg{_msg.to_charPtr(), msgSize};
 
   // hash without key
   string h1 = sodium->generichash(msg);
@@ -1151,21 +1147,19 @@ TEST(Sodium, GenericHashing_String)
 
   // use the hasher class
   GenericHasher gh;
-  ASSERT_TRUE(gh.append(msg));
+  gh.append(msg);
   string h3 = gh.finalize_string();
   ASSERT_FALSE(h3.empty());
   ASSERT_EQ(h1, h3);
 
   GenericHasher gh2{k};
-  ASSERT_TRUE(gh2.append(msg));
+  gh2.append(msg);
   string h4 = gh2.finalize_string();
   ASSERT_FALSE(h4.empty());
   ASSERT_EQ(h2, h4);
 
   // make sure we can't use the class anymore after
   // we've called finalize
-  ASSERT_FALSE(gh.append(msg));
-  ASSERT_FALSE(gh2.append(msg));
   h3 = gh.finalize_string();
   ASSERT_TRUE(h3.empty());
   h4 = gh2.finalize_string();
@@ -1180,27 +1174,25 @@ TEST(Sodium, ShortHash)
   ASSERT_TRUE(sodium != nullptr);
 
   // generate a random hashing key
-  SodiumLib::ShorthashKey k;
-  sodium->randombytes_buf(k);
+  SodiumLib::ShorthashKey k{SodiumKeyInitStyle::Random};
 
   // generate a random message
   static constexpr size_t msgSize = 500;
-  ManagedBuffer msg{msgSize};
+  MemArray msg{msgSize};
   sodium->randombytes_buf(msg);
-  string sMsg = msg.copyToString();
+  string sMsg{msg.to_charPtr(), msgSize};
 
   // shorthash using buffers
-  auto bufHash = sodium->shorthash(msg, k);
-  ASSERT_TRUE(bufHash.isValid());
+  auto bufHash = sodium->shorthash(msg.view(), k);
+  ASSERT_FALSE(bufHash.empty());
 
   // shorthash using strings
   string sHash = sodium->shorthash(sMsg, k);
   ASSERT_FALSE(sHash.empty());
 
   // cross-compare results
-  ASSERT_EQ(sHash, bufHash.copyToString());
-  auto bufHash2 = ManagedBuffer{sHash};
-  ASSERT_TRUE(sodium->memcmp(bufHash, bufHash2));
+  MemView sView{sHash};
+  ASSERT_TRUE(sodium->memcmp(sView, bufHash.view()));
 }
 
 //----------------------------------------------------------------------------
@@ -1211,57 +1203,32 @@ TEST(Sodium, PasswdHash)
   ASSERT_TRUE(sodium != nullptr);
 
   // a random passwd
-  static constexpr size_t pwSize = 5;
-  ManagedBuffer pw{pwSize};
+  static constexpr size_t pwSize = 20;
+  MemArray pw{pwSize};
   sodium->randombytes_buf(pw);
 
   // create a 16-byte hash from it
   static constexpr size_t hashLen = 16;
-  auto tmp = sodium->pwhash(pw, hashLen);
+  auto tmp = sodium->pwhash(pw.view(), hashLen);
   SodiumSecureMemory hash;
   SodiumLib::PwHashData hDat;
   hash = std::move(tmp.first);
   hDat = std::move(tmp.second);
-  ASSERT_TRUE(hash.isValid());
+  ASSERT_FALSE(hash.empty());
   ASSERT_EQ(hashLen, hash.size());
-  ASSERT_TRUE(hDat.salt.isValid());
+  ASSERT_FALSE(hDat.salt.empty());
   cout << "Moderate opslimit for Argon2 is " << hDat.opslimit << endl;
   cout << "Moderate memlimit for Argon2 is " << hDat.memlimit << endl;
 
   // make sure the hash is reproducible with
   // the parameters provided in hDat
-  string oldSalt = hDat.salt.copyToString();
-  SodiumSecureMemory hash2 = sodium->pwhash(pw, hashLen, hDat);
-  ASSERT_TRUE(hash2.isValid());
+  string oldSalt{hDat.salt.toMemView().to_charPtr(), hDat.salt.size()};
+  SodiumSecureMemory hash2 = sodium->pwhash(pw.view(), hashLen, hDat);
+  ASSERT_FALSE(hash2.empty());
   ASSERT_EQ(hashLen, hash2.size());
-  ASSERT_TRUE(sodium->memcmp(hash, hash2));
-  string saltAfterCall = hDat.salt.copyToString();
+  ASSERT_TRUE(sodium->memcmp(hash.toMemView(), hash2.toMemView()));
+  string saltAfterCall{hDat.salt.toMemView().to_charPtr(), hDat.salt.size()};
   ASSERT_EQ(oldSalt, saltAfterCall);
-
-  // use the other algo with an invalid strength
-  tmp = sodium->pwhash(pw, hashLen, SodiumLib::PasswdHashStrength::Moderate, SodiumLib::PasswdHashAlgo::Scrypt);
-  hash = std::move(tmp.first);
-  hDat = std::move(tmp.second);
-  ASSERT_FALSE(hash.isValid());
-  ASSERT_FALSE(hDat.salt.isValid());
-
-  // use the other algo with a valid strength
-  tmp = sodium->pwhash(pw, hashLen, SodiumLib::PasswdHashStrength::High, SodiumLib::PasswdHashAlgo::Scrypt);
-  hash = std::move(tmp.first);
-  hDat = std::move(tmp.second);
-  ASSERT_TRUE(hash.isValid());
-  ASSERT_EQ(hashLen, hash.size());
-  ASSERT_TRUE(hDat.salt.isValid());
-
-  //
-  // try string operations
-  //
-  string spw{"password"};
-  string sHash;
-  string sSalt;
-  tie(sHash, sSalt) = sodium->pwhash(spw, hashLen);
-  ASSERT_FALSE(sHash.empty());
-  ASSERT_FALSE(sSalt.empty());
 }
 
 //----------------------------------------------------------------------------
@@ -1299,24 +1266,24 @@ TEST(Sodium, DiffieHellmann)
   auto shared1 = c.getSharedSecret(s.getMyPublicKey());
   auto shared2 = s.getSharedSecret(c.getMyPublicKey());
 
-  ASSERT_TRUE(shared1.isValid());
-  ASSERT_TRUE(shared2.isValid());
-  ASSERT_TRUE(sodium->memcmp(shared1, shared2));
+  ASSERT_FALSE(shared1.empty());
+  ASSERT_FALSE(shared2.empty());
+  ASSERT_TRUE(sodium->memcmp(shared1.toMemView(), shared2.toMemView()));
 
   //cout << "Shared secret is: " << toBase64(shared1) << endl;
   //cout << "Shared secret length is: " << shared1.size() * 8 << " bit" << endl;
 
   // tamper with a public key
   auto pkServ = s.getMyPublicKey();
-  char* ptr = pkServ.get_c();
+  unsigned char* ptr = pkServ.to_ucPtr_rw();
   ptr[2] += 1;
   shared1 = c.getSharedSecret(pkServ);
-  ASSERT_FALSE(sodium->memcmp(shared1, shared2));
+  ASSERT_FALSE(sodium->memcmp(shared1.toMemView(), shared2.toMemView()));
   //cout << "Wrong shared secret is: " << toBase64(shared1) << endl;
 
   ptr[2] -= 1;
   shared1 = c.getSharedSecret(pkServ);
-  ASSERT_TRUE(sodium->memcmp(shared1, shared2));
+  ASSERT_TRUE(sodium->memcmp(shared1.toMemView(), shared2.toMemView()));
 
 }
-*/
+

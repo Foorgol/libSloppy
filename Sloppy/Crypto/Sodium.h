@@ -384,11 +384,13 @@ namespace Sloppy
         return MemArray{rawPtr, nBytes};
       }
 
+    protected:
+      SodiumLib* lib;
+
     private:
       void* rawPtr;
       size_t nBytes;
       SodiumSecureMemType type;
-      SodiumLib* lib;
       SodiumSecureMemAccess curProtection;
 
     };
@@ -401,6 +403,16 @@ namespace Sloppy
     {
       Secret,   ///< the key is a secret key (either a private, asymetric key or a symetric key)
       Public    ///< the key is a public asymetric key
+    };
+
+    /** \brief An enum class defining how a `SodiumKey`s
+     * memory should be initialized
+     */
+    enum class SodiumKeyInitStyle
+    {
+      None,  // don't touch the memory at all
+      Random, // fill with random data
+      Zeros // fill with zeros
     };
 
     /** \brief A template class for cryptographic keys of different kinds and sizes
@@ -422,12 +434,25 @@ namespace Sloppy
        * Internally calls the ctor of SodiumSecureMemory for the actual memory allocation. Thus,
        * all exceptions of the SodiumSecureMemory ctor can occur here as well.
        *
+       * By default keys are initialized with random data. This can be suppressed by setting
+       * a setting the ctor's parameter to `false`.
+       *
        * The memory for secret keys is **not** protected after initialization. It can be directly
        * accessed for reading and writing.
        */
-      SodiumKey()
+      SodiumKey(SodiumKeyInitStyle initStyle = SodiumKeyInitStyle::None)
         : SodiumSecureMemory{keySize, (kt == SodiumKeyType::Secret) ? SodiumSecureMemType::Guarded : SodiumSecureMemType::Normal},
-          keyType{kt} {}
+          keyType{kt}
+      {
+        if (initStyle == SodiumKeyInitStyle::Random)
+        {
+          lib->randombytes_buf(toNotOwningArray());
+        }
+        if (initStyle == SodiumKeyInitStyle::Random)
+        {
+          lib->memzero(toNotOwningArray());
+        }
+      }
 
       /** \brief Move ctor, forwards all activity to the move assignment operator.
        */

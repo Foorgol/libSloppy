@@ -30,6 +30,8 @@ TEST(GenericPeriod, Ctor)
 {
   IntPeriod ip{3, 4};
   ASSERT_FALSE(ip.hasOpenEnd());
+  ASSERT_EQ(3, ip.getStart());
+  ASSERT_EQ(4, ip.getEnd());
 
   ASSERT_THROW(IntPeriod(4,3), std::invalid_argument);
 

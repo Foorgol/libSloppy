@@ -26,7 +26,6 @@
 #include <regex>
 #include <optional>
 
-#include "../libSloppy.h"
 #include "../json/json-forwards.h"
 #include "../ConfigFileParser/ConfigFileParser.h"
 

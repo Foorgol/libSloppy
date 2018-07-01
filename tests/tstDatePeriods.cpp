@@ -32,6 +32,12 @@ TEST(DatePeriods, TestLengths)
 
   DatePeriod cp{s, e};
   ASSERT_EQ(15, cp.getLength_Days());
+  ASSERT_EQ(15/7.0, cp.getLength__Weeks());
+
+  // Date periods that start and end on the same day
+  // should have length "1"
+  DatePeriod p{s,s};
+  ASSERT_EQ(1, p.getLength_Days());
 }
 
 //----------------------------------------------------------------------------

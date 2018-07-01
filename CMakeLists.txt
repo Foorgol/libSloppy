@@ -18,7 +18,6 @@ add_definitions(-DBOOST_LOG_DYN_LINK=1)  # linking fails if this is not set
 set(LIBS ${LIBS} dl)
 
 set(LIB_SOURCES
-    Sloppy/libSloppy.cpp
     Sloppy/DateTime/DateAndTime.cpp
     Sloppy/Logger/Logger.cpp
     Sloppy/MailAndMIME/MailAndMIME.cpp
@@ -38,6 +37,7 @@ set(LIB_SOURCES
     Sloppy/Timer.cpp
     Sloppy/String.cpp
     Sloppy/Memory.cpp
+    Sloppy/Utils.cpp
 )
 
 #
@@ -111,14 +111,13 @@ set(LIB_SOURCES_TST
     tests/tstTimePeriods.cpp
     tests/tstArrayView.cpp
     tests/tstManagedArray.cpp
-    #tests/tstDatePeriods.cpp
+    tests/tstDatePeriods.cpp
     tests/tstRFC822.cpp
     tests/tstRFC2045.cpp
     tests/tstConfigParser.cpp
-    #tests/tstEmailPattern.cpp
+    tests/tstEmailPattern.cpp
     tests/tstHTML.cpp
     tests/tstCrypto.cpp
-    #tests/tstStringFunc.cpp
     tests/tstBetterTemplateSys.cpp
     tests/tstSodium.cpp
     #tests/tstManagedMemory.cpp

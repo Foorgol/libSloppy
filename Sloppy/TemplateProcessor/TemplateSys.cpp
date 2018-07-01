@@ -26,6 +26,7 @@
 
 #include "TemplateSys.h"
 #include "../json/json.h"
+#include "../Utils.h"
 
 namespace bfs = boost::filesystem;
 

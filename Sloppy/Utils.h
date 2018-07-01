@@ -16,16 +16,11 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __LIBSLOPPY_SLOPPY_H
-#define __LIBSLOPPY_SLOPPY_H
+#ifndef __LIBSLOPPY_UTILS_H
+#define __LIBSLOPPY_UTILS_H
 
-//#include <string>
 #include <vector>
 #include <algorithm>
-#include <mutex>
-#include <atomic>
-#include <thread>
-//#include <cstring>
 
 // we include some special file functions for
 // non-Windows builds only

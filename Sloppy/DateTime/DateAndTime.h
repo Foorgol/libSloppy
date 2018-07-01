@@ -25,6 +25,7 @@
 #include <cstring>
 #include <tuple>
 #include <optional>
+#include <type_traits>
 
 #include <boost/date_time/local_time/local_time.hpp>
 
@@ -468,6 +469,7 @@ namespace Sloppy
           )
         :start{_start}, end{_end}
       {
+        static_assert(is_copy_constructible<T>(), "GenericPeriod works only with copy-constructible types!");
         if (*end < start)
         {
           throw invalid_argument("GenericPeriod ctor: 'end'' may not be before start!");
@@ -682,11 +684,17 @@ namespace Sloppy
     };
 
     /** \brief A class for a date period that is defined by two `boost::gregorian::date` values
+     *
+     * \note Start day and end day are fully included in the period. Hence, a
+     * `DatePeriod` that starts and ends on the same day has a length of one (1) day.
      */
     class DatePeriod : public GenericPeriod<boost::gregorian::date>
     {
     public:
       /** \brief Ctor for a closed date period
+       *
+       * \note Start day and end day are fully included in the period. Hence, a
+       * `DatePeriod` that starts and ends on the same day has a length of one (1) day.
        *
        * \throws std::invalid_argument if the end is before the start
        */
@@ -726,7 +734,7 @@ namespace Sloppy
        */
       long getLength_Days() const
       {
-        if (end.has_value()) return -1;
+        if (!(end.has_value())) return -1;
 
         auto dp = toBoost();
         return dp.length().days();
@@ -736,7 +744,7 @@ namespace Sloppy
        */
       inline double getLength__Weeks() const
       {
-        return (end.has_value()) ? -1 : getLength_Days() / 7.0;
+        return (!(end.has_value())) ? -1 : getLength_Days() / 7.0;
       }
     };
   }

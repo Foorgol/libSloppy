@@ -30,7 +30,7 @@
 #include <winsock2.h>   // for htonl() etc.
 #endif
 
-#include "../libSloppy.h"
+#include "../String.h"
 #include "../Memory.h"
 
 using namespace std;

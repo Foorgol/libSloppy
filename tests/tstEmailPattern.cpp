@@ -20,7 +20,7 @@
 
 #include <gtest/gtest.h>
 
-#include "../Sloppy/libSloppy.h"
+#include "../Sloppy/Utils.h"
 
 using namespace std;
 

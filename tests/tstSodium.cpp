@@ -21,7 +21,6 @@
 #include <sodium.h>
 
 #include <gtest/gtest.h>
-#include "../Sloppy/libSloppy.h"
 #include "../Sloppy/Crypto/Sodium.h"
 #include "../Sloppy/Crypto/Crypto.h"
 

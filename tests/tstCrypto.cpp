@@ -20,7 +20,6 @@
 
 #include <gtest/gtest.h>
 
-#include "../Sloppy/libSloppy.h"
 #include "../Sloppy/Crypto/Crypto.h"
 #include "../Sloppy/Memory.h"
 

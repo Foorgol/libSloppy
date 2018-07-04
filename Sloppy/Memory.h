@@ -568,6 +568,9 @@ namespace Sloppy
      */
     void releaseMemory()
     {
+      // do nothing if we don't manage any memory
+      if ((ptr == nullptr) && (cnt == 0)) return;
+
       if (!owning)
       {
         throw std::runtime_error("ManagedArray: attempt to release not-owned memory");
@@ -712,6 +715,24 @@ namespace Sloppy
     /** \returns `true` if we're owning the array's memory, `false` otherwise
      */
     bool isOwning() const { return owning; }
+
+    /** \brief Copies data from another array into this array.
+     *
+     * \throws std::out_of_range if the source data does not completely fit into the memory
+     */
+    void copyOver(
+        const ArrayView<T>& src,   ///< the data that shall be copied into our array
+        size_t idxFirstDstElem=0   ///< the start index in our array for the data
+        )
+    {
+      if ((idxFirstDstElem + src.size()) > cnt)
+      {
+        throw std::out_of_range("ManagedArray: copyOver would exceed array limits");
+      }
+
+      void* dstPtr = to_voidPtr() + idxFirstDstElem * sizeof(T);
+      memcpy(dstPtr, src.to_voidPtr(), src.byteSize());
+    }
 
   protected:
     /** \brief An internal function that can be used by derived classes

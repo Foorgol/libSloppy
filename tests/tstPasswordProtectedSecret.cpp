@@ -30,7 +30,7 @@ TEST(PasswordProtectedSecr, ctor)
   PasswordProtectedSecret pps;
   ASSERT_FALSE(pps.hasContent());
   ASSERT_FALSE(pps.hasPassword());
-  ASSERT_FALSE(pps.setSecret("sdkfsdf"));  // has no PW set
+  ASSERT_THROW(pps.setSecret("sdkfsdf"), PasswordProtectedSecret::NoPasswordSet);  // has no PW set
   ASSERT_THROW(pps.getSecretAsString(), PasswordProtectedSecret::NoPasswordSet);
   ASSERT_THROW(pps.changePassword("", "sdkfsdf"), PasswordProtectedSecret::NoPasswordSet);
 
@@ -49,7 +49,7 @@ TEST(PasswordProtectedSecr, readWrite1)
   PasswordProtectedSecret pps;
 
   // try to store data although no pw is set
-  ASSERT_FALSE(pps.setSecret("secret"));
+  ASSERT_THROW(pps.setSecret("secret"), PasswordProtectedSecret::NoPasswordSet);
 
   // set a password
   ASSERT_TRUE(pps.setPassword("abc123"));

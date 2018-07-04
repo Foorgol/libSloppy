@@ -21,7 +21,6 @@
 
 #include <gtest/gtest.h>
 
-#include "../Sloppy/libSloppy.h"
 #include "../Sloppy/ManagedFileDescriptor.h"
 
 using namespace Sloppy;
@@ -58,9 +57,9 @@ TEST(ManagedFileDescr, BasicReadWrite)
   };
 
   // task2: read numChars bytes
-  auto reader = [](ManagedFileDescriptor& fd, size_t timeout_ms) -> string
+  auto reader = [](ManagedFileDescriptor& fd, size_t timeout_ms) -> MemArray
   {
-    string d;
+    MemArray d;
 
     try
     {
@@ -75,7 +74,7 @@ TEST(ManagedFileDescr, BasicReadWrite)
     }
     catch(ReadTimeout e)
     {
-      cerr << "Reader: Timeout while waiting for data. Data read so far: " << e.getIncompleteData() << endl;
+      cerr << "Reader: Timeout while waiting for data. Data read so far: " << string{e.getIncompleteData().to_charPtr(), e.getIncompleteData().size()} << endl;
       throw;
     }
 
@@ -101,9 +100,10 @@ TEST(ManagedFileDescr, BasicReadWrite)
   // start an async thread for reading, allow for sufficient
   // time to read all data
   auto a = async(launch::async, reader, ref(fdRead), (totalRuntime_us * 1.1) / 1000);
-  string d;
+  MemArray d;
   ASSERT_NO_THROW(d = a.get());
-  ASSERT_EQ(expectedResult, d);
+  string dStr{d.to_charPtr(), d.size()};
+  ASSERT_EQ(expectedResult, dStr);
 
   // wait for the writer to finish
   tWrite.join();

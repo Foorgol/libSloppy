@@ -2761,7 +2761,7 @@ namespace Sloppy
       symKey.setAccess(SodiumSecureMemAccess::NoAccess);
 
       // only store the result if the encryption was successful
-      if (cipher.empty()) return false;
+      if (_cipher.empty()) return false;
       cipher = std::move(_cipher);
 
       return true;
@@ -2791,16 +2791,16 @@ namespace Sloppy
 
     SodiumSecureMemory PasswordProtectedSecret::getSecret(SodiumSecureMemType memType)
     {
-      // do we have any content at all?
-      if (cipher.empty())
-      {
-        return SodiumSecureMemory{};
-      }
-
       // is a decryption key available?
       if (pwClear.empty() || symKey.empty())
       {
         throw NoPasswordSet{};
+      }
+
+      // do we have any content at all?
+      if (cipher.empty())
+      {
+        return SodiumSecureMemory{};
       }
 
       // decrypt and throw an exception if things fail

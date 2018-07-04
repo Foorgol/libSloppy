@@ -22,23 +22,30 @@ namespace Sloppy
 {
   namespace Net
   {
-    bool ManagedSocket::bind(const string &bindName, int port)
+    void ManagedSocket::bind(const string &bindName, int port)
     {
       sockaddr_in sa = fillSockAddr(bindName, port);
       int rc = ::bind(fd, (sockaddr *)&sa, sizeof(sa));
-      return (rc >= 0);
+      if (rc != 0)
+      {
+        throw IOError();
+      }
     }
 
     //----------------------------------------------------------------------------
 
-    bool ManagedSocket::listen(size_t maxConnectionCount)
+    void ManagedSocket::listen(size_t maxConnectionCount)
     {
       if (maxConnectionCount < 1)
       {
         throw invalid_argument("Invalid connection count for listen()");
       }
 
-      return (::listen(fd, maxConnectionCount) >= 0);
+      int rc = ::listen(fd, maxConnectionCount);
+      if (rc != 0)
+      {
+        throw IOError();
+      }
     }
 
     //----------------------------------------------------------------------------
@@ -68,13 +75,16 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    bool ManagedSocket::connect(const string& srvName, int srvPort)
+    void ManagedSocket::connect(const string& srvName, int srvPort)
     {
       sockaddr_in srvAddr = fillSockAddr(srvName, srvPort);
 
       int rc = ::connect(fd, (sockaddr *)&srvAddr, sizeof(srvAddr));
 
-      return (rc >= 0);
+      if (rc != 0)
+      {
+        throw IOError();
+      }
     }
 
   }

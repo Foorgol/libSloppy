@@ -48,8 +48,8 @@ IF (NOT WIN32)
   set(LIB_SOURCES ${LIB_SOURCES}
       #Sloppy/Net/TcpClientServer.cpp
       #Sloppy/Net/CryptoClientServer.cpp
-      #Sloppy/ManagedFileDescriptor.cpp
-      #Sloppy/Net/ManagedSocket.cpp
+      Sloppy/ManagedFileDescriptor.cpp
+      Sloppy/Net/ManagedSocket.cpp
       )
 ENDIF()
 
@@ -120,11 +120,11 @@ set(LIB_SOURCES_TST
     tests/tstCrypto.cpp
     tests/tstBetterTemplateSys.cpp
     tests/tstSodium.cpp
-    #tests/tstManagedFileDescriptor.cpp
+    tests/tstManagedFileDescriptor.cpp
     #tests/tstTcpClientServer.cpp
     tests/tstNetFunc.cpp
     #tests/tstCryptoClientServer.cpp
-    #tests/tstPasswordProtectedSecret.cpp
+    tests/tstPasswordProtectedSecret.cpp
     tests/tstPosixFileFunc.cpp
     tests/tstTimer.cpp
     tests/tstStrings.cpp

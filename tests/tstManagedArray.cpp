@@ -151,3 +151,45 @@ TEST(ManagedArray, Resize)
 
   ASSERT_NO_THROW(ia.resize(200));  // resizing an empty array with invalid source pointers
 }
+
+//----------------------------------------------------------------------------
+
+TEST(ManagedArray, CopyOver)
+{
+  IntArray dst{10};
+  IntArray src1{3};
+  IntArray src2{11};
+
+  for (int i=0; i < dst.size(); ++i) dst[i] = i;
+  for (int i=0; i < src1.size(); ++i) src1[i] = 100 + i;
+
+  // copy without offset
+  dst.copyOver(src1.view());
+  size_t idx = 0;
+  for (int i : {100, 101, 102, 3, 4, 5, 6, 7, 8, 9})
+  {
+    ASSERT_EQ(i, dst[idx]);
+    ++idx;
+  }
+
+  // copy with offset
+  dst.copyOver(src1.view(), 5);
+  idx = 0;
+  for (int i : {100, 101, 102, 3, 4, 100, 101, 102, 8, 9})
+  {
+    ASSERT_EQ(i, dst[idx]);
+    ++idx;
+  }
+  dst.copyOver(src1.view(), 7);
+  idx = 0;
+  for (int i : {100, 101, 102, 3, 4, 100, 101, 100, 101, 102})
+  {
+    ASSERT_EQ(i, dst[idx]);
+    ++idx;
+  }
+
+  // invalid calls
+  ASSERT_THROW(dst.copyOver(src1.view(), 8), std::out_of_range);
+  ASSERT_THROW(dst.copyOver(src2.view()), std::out_of_range);
+
+}

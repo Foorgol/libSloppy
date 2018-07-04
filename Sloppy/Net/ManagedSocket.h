@@ -19,7 +19,6 @@
 #ifndef SLOPPY__MANAGED_SOCKET_H
 #define SLOPPY__MANAGED_SOCKET_H
 
-#include "../libSloppy.h"
 #include "../ManagedFileDescriptor.h"
 #include "Net.h"
 
@@ -29,25 +28,72 @@ namespace Sloppy
 {
   namespace Net
   {
+    /** \brief An enum for selecting between TCP and UDP sockets
+     */
     enum class SocketType
     {
-      TCP,
-      UDP
+      TCP,   ///< TCP socket
+      UDP    ///< UDP socket
     };
 
+    /** \brief A class that manages a UDP or TCP socket
+     *
+     * The socket will be closed when the instance is deleted.
+     */
     class ManagedSocket : public ManagedFileDescriptor
     {
     public:
-      explicit ManagedSocket(SocketType t)
+
+      /** \brief Ctor that creates a new, bare UDP or TCP socket
+       */
+      explicit ManagedSocket(
+          SocketType t   ///< set to UDP or TCP, depending on the desired socket type
+          )
         :ManagedFileDescriptor{socket(AF_INET, (t == SocketType::UDP) ? SOCK_DGRAM : SOCK_STREAM, 0)}{}
 
-      explicit ManagedSocket(int _fd)
+      /** \brief Ctor that takes over an already existing socket that has been created elsewhere
+       */
+      explicit ManagedSocket(
+          int _fd   ///< the file descriptor of the existing socket
+          )
         :ManagedFileDescriptor(_fd) {}
 
-      bool bind(const string& bindName, int port);
-      bool listen(size_t maxConnectionCount = 1);
-      pair<int, sockaddr_in> acceptNext(size_t timeout_ms = 0);
-      bool connect(const string& srvName, int srvPort);
+      /** \brief Assigns a name to a socket
+       *
+       * \throws IOError if binding wasn't successful
+       *
+       * \throws std::invalid_argument if the port number is outside the permitted range (1..65535)
+       */
+      void bind(
+          const string& bindName,   ///< the name to bind to (e.g., "localhost")
+          int port   ///< the port to bind to
+          );
+
+      /** \brief Sets a socket to `listen` state
+       *
+       * \throws std::invalid_argument if the number of permitted connections is less than 1
+       *
+       * \throws IOError if a I/O error occurred when calling `listen()' on the socket
+       */
+      void listen(size_t maxConnectionCount = 1);
+
+      /** \brief Waits for the next incoming connection on a listening socket
+       *
+       * \returns a pair of <file descriptor of new connection, client address>
+       * with the file descriptor being set to -1 if a timeout occurred.
+       */
+      pair<int, sockaddr_in> acceptNext(
+          size_t timeout_ms = 0   ///< the maximum time in milliseconds to wait for a new, incoming connection
+          );
+
+      /** \brief Connectes to another, listening socket
+       *
+       * \throws IOError if a I/O error occurred when calling `connect()' on the socket
+       */
+      void connect(
+          const string& srvName,   ///< the name or IP address of the server to connect to
+          int srvPort   ///< the port to connect to
+          );
     };
 
   }

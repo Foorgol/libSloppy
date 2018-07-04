@@ -32,7 +32,6 @@ set(LIB_SOURCES
     Sloppy/HTML/Table.cpp
     Sloppy/HTML/Bootstrap.cpp
     Sloppy/TemplateProcessor/TemplateSys.cpp
-    Sloppy/jsoncpp.cpp
     Sloppy/Net/Net.cpp
     Sloppy/Timer.cpp
     Sloppy/String.cpp
@@ -72,8 +71,8 @@ set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 17)
 set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD_REQUIRED ON)
 
 set(LIB_VERSION_MAJOR 0)
-set(LIB_VERSION_MINOR 3)
-set(LIB_VERSION_PATCH 2)
+set(LIB_VERSION_MINOR 4)
+set(LIB_VERSION_PATCH 0)
 set(LIB_VERSION_STRING ${LIB_VERSION_MAJOR}.${LIB_VERSION_MINOR}.${LIB_VERSION_PATCH})
 
 set_target_properties(${PROJECT_NAME} PROPERTIES VERSION ${LIB_VERSION_STRING}
@@ -96,7 +95,7 @@ ELSE()
 ENDIF()
 
 install(DIRECTORY Sloppy DESTINATION include
-    FILES_MATCHING PATTERN "*.h"
+    FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp"
     )
 
 #

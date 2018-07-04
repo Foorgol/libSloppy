@@ -24,8 +24,10 @@
 #include <boost/filesystem.hpp>
 
 #include "Utils.h"
+#include "../json.hpp"
 
 namespace bfs = boost::filesystem;
+using json = nlohmann::json;
 
 namespace Sloppy
 {
@@ -177,6 +179,28 @@ namespace Sloppy
       if (((c < '0') || (c > '9')) && (c != '.')) return false;
       ++p;
     }
+  }
+
+  //----------------------------------------------------------------------------
+
+  string json2String(const nlohmann::json& jv, const string& defVal)
+  {
+    switch (jv.type())
+    {
+    case json::value_t::boolean:
+      return to_string(jv.get<bool>());
+
+    case json::value_t::number_integer:
+      return to_string(jv.get<int>());
+
+    case json::value_t::number_float:
+      return to_string(jv.get<double>());
+
+    case json::value_t::string:
+      return jv;
+    }
+
+    return defVal;
   }
 
 

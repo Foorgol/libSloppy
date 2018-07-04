@@ -20,8 +20,8 @@
 
 #include <gtest/gtest.h>
 
+#include "../json.hpp"
 #include "../Sloppy/TemplateProcessor/TemplateSys.h"
-#include "../Sloppy/json/json.h"
 #include "BasicTestClass.h"
 
 using namespace Sloppy::TemplateSystem;
@@ -281,7 +281,7 @@ TEST(BetterTemplateSys, SimpleGet)
   TemplateStore ts{"../tests/sampleTemplateStore", {"txt", "html"}};
 
   // prepare a json structure with target values
-  Json::Value val;
+  json val;
   val["x"] = "***X***";
   val["y"] = 42;
 
@@ -297,14 +297,44 @@ TEST(BetterTemplateSys, SimpleGet)
 TEST(BetterTemplateSys, GetWithIf)
 {
   TemplateStore ts{"../tests/sampleTemplateStore", {"txt", "html"}};
+  string sFalse = "Intro\nOutro\n";
+  string sTrue = "Intro\nConditionalText\nOutro\n";
 
   // prepare a json structure with target values
   // start with an empty list
-  Json::Value val;
+  json val;
 
   string s = ts.get("ifTest.txt", val);
-  string sExpected = "Intro\nOutro\n";
-  ASSERT_EQ(sExpected, s);
+  ASSERT_EQ(sFalse, s);
+
+  val["condVar"] = 1;
+  s = ts.get("ifTest.txt", val);
+  ASSERT_EQ(sTrue, s);
+  val["condVar"] = true;
+  s = ts.get("ifTest.txt", val);
+  ASSERT_EQ(sTrue, s);
+
+
+  val["condVar"] = 0;
+  s = ts.get("ifTest.txt", val);
+  ASSERT_EQ(sFalse, s);
+  val["condVar"] = false;
+  s = ts.get("ifTest.txt", val);
+  ASSERT_EQ(sFalse, s);
+
+  for (const string& v : {"yes", "true", "on", "YES", "TRUE", "ON", "Yes", "True", "On", "1"})
+  {
+    val["condVar"] = v;
+    s = ts.get("ifTest.txt", val);
+    ASSERT_EQ(sTrue, s);
+  }
+
+  for (const string& v : {"no", "false", "off", "No", "False", "Off", "NO", "FALSE", "OFF", "0"})
+  {
+    val["condVar"] = v;
+    s = ts.get("ifTest.txt", val);
+    ASSERT_EQ(sFalse, s);
+  }
 }
 
 //----------------------------------------------------------------------------
@@ -313,7 +343,7 @@ TEST(BetterTemplateSys, RecursiveInclude_MultiInclude)
 {
   TemplateStore ts{"../tests/sampleTemplateStore", {"txt", "html"}};
 
-  Json::Value val;
+  json val;
   ASSERT_THROW(ts.get("recursion1.txt", val), std::runtime_error);
   ASSERT_THROW(ts.get("recursion2a.txt", val), std::runtime_error);
 
@@ -329,7 +359,7 @@ TEST(BetterTemplateSys, Subkeys)
 {
   TemplateStore ts{"../tests/sampleTemplateStore", {"txt", "html"}};
 
-  Json::Value val;
+  json val;
   val["normal"] = "abc123";
   val["one"]["two"] = 2;
 
@@ -344,20 +374,20 @@ TEST(BetterTemplateSys, Loops)
 {
   TemplateStore ts{"../tests/sampleTemplateStore", {"txt", "html"}};
 
-  Json::Value dic;
-  Json::Value li{Json::arrayValue};
-  li.append("one");
-  li.append("two");
-  li.append("three");
+  json dic;
+  json li = json::array();
+  li.push_back("one");
+  li.push_back("two");
+  li.push_back("three");
   dic["list1"] = li;
 
-  li = Json::Value{Json::arrayValue};
+  li = json::array();
   for (int i=0; i < 3 ; ++i)
   {
-    Json::Value dataSet{Json::objectValue};
+    json dataSet;
     dataSet["key"] =  "k" + to_string(i);
     dataSet["val"] =  "v" + to_string(i);
-    li.append(dataSet);
+    li.push_back(dataSet);
   }
   dic["list2"] = li;
 
@@ -393,7 +423,7 @@ TEST(BetterTemplateSys, StringList)
   s = ts.getString("lkjo");
   ASSERT_FALSE(s.has_value());
 
-  Json::Value dic;
+  json dic;
   s = ts.get("stringlist.txt", dic);
   ASSERT_EQ("some other string\n", s);
 }
@@ -404,26 +434,26 @@ TEST(BetterTemplateSys, NestedFor)
 {
   TemplateStore ts{"../tests/sampleTemplateStore", {"txt", "html"}};
 
-  Json::Value dic;
-  Json::Value outer{Json::arrayValue};
+  json dic;
+  json outer = json::array();
 
-  Json::Value inner{Json::objectValue};
+  json inner;
   inner["major"] = "a";
-  Json::Value sub{Json::arrayValue};
+  json sub = json::array();
   sub[0] = 0;
   sub[1] = 1;
   sub[2] = 2;
   inner["subs"] = sub;
-  outer.append(inner);
+  outer.push_back(inner);
 
-  inner = Json::Value{Json::objectValue};
+  inner = json();
   inner["major"] = "b";
-  sub = Json::Value{Json::arrayValue};
+  sub = json::array();
   sub[0] = 3;
   sub[1] = 4;
   sub[2] = 5;
   inner["subs"] = sub;
-  outer.append(inner);
+  outer.push_back(inner);
 
   dic["list1"] = outer;
   //cout << dic.toStyledString() << endl;

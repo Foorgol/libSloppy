@@ -26,10 +26,11 @@
 #include <regex>
 #include <optional>
 
-#include "../json/json-forwards.h"
+#include "../../json_fwd.hpp"
 #include "../ConfigFileParser/ConfigFileParser.h"
 
 using namespace std;
+using json = nlohmann::json;
 
 namespace Sloppy
 {
@@ -382,7 +383,7 @@ namespace Sloppy
        */
       string get(
           const string& tName,   ///< the name of the template to retrieve (e.g., `subDir/template.txt`)
-          const Json::Value& dic   ///< a JSON dictionary with substitution strings
+          const json& dic   ///< a JSON dictionary with substitution strings
           );
 
       /** \brief Looks up a string in the list of string translations
@@ -439,7 +440,7 @@ namespace Sloppy
        */
       string getTemplate_Recursive(
           const string& tName,   ///< the name of the template to retrieve
-          const Json::Value& dic,   ///< a dictionary with substitutions to be applied to the template
+          const json& dic,   ///< a dictionary with substitutions to be applied to the template
           StringList& visitedTemplates   ///< a list to which all visited sub-templates are append; used for the detection of circular dependencies
           ) const;
 
@@ -453,8 +454,8 @@ namespace Sloppy
       string getSyntaxSubtree(
           const SyntaxTreeItemList& tree,   ///< a reference to the tree we're working on
           size_t idxFirstItem,    ///< the index of first item in the tree that shall be processed
-          const Json::Value& dic,   ///< the substitutions to apply
-          unordered_map<string, const Json::Value&>& localScopeVars,   ///< in case of nested statements (e.g., `if` inside a `for`) this map contains the local variables and their value
+          const json& dic,   ///< the substitutions to apply
+          unordered_map<string, const json&>& localScopeVars,   ///< in case of nested statements (e.g., `if` inside a `for`) this map contains the local variables and their value
           StringList& visitedTemplates   ///< a list to which all visited sub-templates are append; used for the detection of circular dependencies
           ) const;
 
@@ -467,10 +468,10 @@ namespace Sloppy
        *
        * \returns a Json::Value with the resolved symbol
        */
-      const Json::Value& resolveVariable(
+      const json& resolveVariable(
           const string& varName,   ///< the name of the variable to resolve
-          const Json::Value& dic,  ///< the dictionary for looking up variable values
-          unordered_map<string, const Json::Value&>& localScopeVars   ///< a map of local variables
+          const json& dic,  ///< the dictionary for looking up variable values
+          unordered_map<string, const json&>& localScopeVars   ///< a map of local variables
           ) const;
 
     private:

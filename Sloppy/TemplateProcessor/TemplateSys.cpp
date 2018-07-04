@@ -25,7 +25,7 @@
 #include <boost/filesystem.hpp>
 
 #include "TemplateSys.h"
-#include "../json/json.h"
+#include "../../json.hpp"
 #include "../Utils.h"
 
 namespace bfs = boost::filesystem;
@@ -641,7 +641,7 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    string TemplateStore::get(const string& tName, const Json::Value& dic)
+    string TemplateStore::get(const string& tName, const json& dic)
     {
       StringList visited;
 
@@ -696,7 +696,7 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    string TemplateStore::getTemplate_Recursive(const string& tName, const Json::Value& dic, StringList& visitedTemplates) const
+    string TemplateStore::getTemplate_Recursive(const string& tName, const json& dic, StringList& visitedTemplates) const
     {
       string localTemplate = getLocalizedTemplateName(tName);
       if (localTemplate.empty())
@@ -723,7 +723,7 @@ namespace Sloppy
 
       // prepare a hash that maps "local for variables" to the
       // associated JSON-subtree
-      unordered_map<string, const Json::Value&> localScopeVars;
+      unordered_map<string, const json&> localScopeVars;
 
       string result = getSyntaxSubtree(allTreeItems, 0, dic, localScopeVars, visitedTemplates);
 
@@ -738,8 +738,8 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    string TemplateStore::getSyntaxSubtree(const SyntaxTreeItemList& tree, size_t idxFirstItem, const Json::Value& dic,
-                                           unordered_map<string, const Json::Value&>& localScopeVars, StringList& visitedTemplates) const
+    string TemplateStore::getSyntaxSubtree(const SyntaxTreeItemList& tree, size_t idxFirstItem, const json& dic,
+                                           unordered_map<string, const json&>& localScopeVars, StringList& visitedTemplates) const
     {
       string result;
 
@@ -775,7 +775,15 @@ namespace Sloppy
               result += val.has_value() ? *val : "???";
             }
           } else {
-            result += resolveVariable(sti.varName, dic, localScopeVars).asString();
+            try
+            {
+              const json& tmp = resolveVariable(sti.varName, dic, localScopeVars);
+              result += json2String(tmp);
+            }
+            catch (std::out_of_range ex)
+            {
+              // ignore non-existing variables
+            }
           }
         }
 
@@ -795,30 +803,35 @@ namespace Sloppy
           // default: condition is NOT true
           bool cond = false;
 
-          const Json::Value& val = resolveVariable(sti.varName, dic, localScopeVars);
+          json val;
+          try
+          {
+            val = resolveVariable(sti.varName, dic, localScopeVars);
+          }
+          catch (std::out_of_range ex) {}
 
           // only parse non-empty values. all empty values or non-existing variables
           // will be treated as "false" (see default)
           if (!(val.empty()))
           {
             // handle numeric values
-            if (val.isConvertibleTo(Json::ValueType::booleanValue))
+            if (val.is_boolean())
             {
-              cond = val.asBool();
+              cond = val;
             } else {
 
               // this provides a simple interpreter for textual boolean expressions
-              string s = val.asString();
-              if (isInVector<string>({"yes", "true", "on", "YES", "TRUE", "ON"}, s))
+              string s = json2String(val);
+              if (isInVector<string>({"yes", "true", "on", "YES", "TRUE", "ON", "Yes", "True", "On", "1"}, s))
               {
                 cond = true;
-              }
-
-              // explicitly check for valid "false"-expressions, do not simply trust
-              // the "default false" here
-              if (!(isInVector<string>({"no", "false", "off", "NO", "FALSE", "OFF"}, s)))
-              {
-                throw std::runtime_error("TemplateStore: unparseable condition value: " + s);
+              } else {
+                // explicitly check for valid "false"-expressions, do not simply trust
+                // the "default false" here
+                if (!(isInVector<string>({"no", "false", "off", "No", "False", "Off", "NO", "FALSE", "OFF", "0"}, s)))
+                {
+                  throw std::runtime_error("TemplateStore: unparseable condition value: " + s);
+                }
               }
             }
           }
@@ -842,18 +855,22 @@ namespace Sloppy
           if (sti.idxFirstChild != SyntaxTree::InvalidIndex)
           {
             // does the list exist at all? And is it an array?
-            const Json::Value& list = resolveVariable(sti.listName, dic, localScopeVars);
-            if ((!(list.empty())) && (list.isArray()))
+            try
             {
-              // iterate over the array contents
-              for (int idx=0; idx < list.size(); ++idx)
+              const json& list = resolveVariable(sti.listName, dic, localScopeVars);
+              if ((!(list.empty())) && (list.is_array()))
               {
-                const Json::Value& subList = list[idx];
-                localScopeVars.emplace(sti.varName, subList);
-                result += getSyntaxSubtree(tree, sti.idxFirstChild, dic, localScopeVars, visitedTemplates);
-                localScopeVars.erase(sti.varName);
+                // iterate over the array contents
+                for (int idx=0; idx < list.size(); ++idx)
+                {
+                  const json& subList = list.at(idx);
+                  localScopeVars.emplace(sti.varName, subList);
+                  result += getSyntaxSubtree(tree, sti.idxFirstChild, dic, localScopeVars, visitedTemplates);
+                  localScopeVars.erase(sti.varName);
+                }
               }
             }
+            catch (std::out_of_range e) {}  // invalid, non-existing list
           }
         }
 
@@ -866,7 +883,7 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    const Json::Value&TemplateStore::resolveVariable(const string& varName, const Json::Value& dic, unordered_map<string, const Json::Value&>& localScopeVars) const
+    const json& TemplateStore::resolveVariable(const string& varName, const json& dic, unordered_map<string, const json&>& localScopeVars) const
     {
       // is the name of the form "first.second"?
       string first{};
@@ -888,13 +905,36 @@ namespace Sloppy
       // does "first" reference a "local variable"? if yes,
       // proceed with the local variable, otherwise pick the value
       // directly from dic
-      auto it = localScopeVars.find(first);
-      const Json::Value& var = (it != localScopeVars.end()) ? it->second : dic[first];
+      auto itLocal = localScopeVars.find(first);
+      auto itDict = dic.find(first);
+      if ((itLocal == localScopeVars.end()) && (itDict == dic.end()))
+      {
+        // "first" neither refers to a local var nor to a dic entry
+
+        // do not return an empty json{} here, because
+        // the return type is a reference and thus we
+        // would return a reference to a out-of-scope, local
+        // value
+
+        throw std::out_of_range("Template sys: could not resolve variable name");
+      }
+      const json& var = (itLocal != localScopeVars.end()) ? itLocal->second : *itDict;
 
       // use "second" as a subscript, if existing
       if (!(second.empty()))
       {
-        return var[second];
+        auto it = var.find(second);
+
+        if (it == var.end())
+        {
+          throw std::out_of_range("Template sys: invalid variable subscript");
+
+          // do not return an empty json{} here, because
+          // the return type is a reference and thus we
+          // would return a reference to a out-of-scope, local
+          // value
+        }
+        return *it;
       }
 
       return var;

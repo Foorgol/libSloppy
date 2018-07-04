@@ -30,6 +30,7 @@
 #endif
 
 #include "String.h"
+#include "../json_fwd.hpp"
 
 using namespace std;
 
@@ -85,6 +86,16 @@ namespace Sloppy
   bool isFile(const string& fName);
   bool isDirectory(const string& dirName);
 #endif
+
+  /** \brief Converts a JSON-value to string, regardless of the actual inner JSON type
+   *
+   * Is designed for single JSON values, not arrays etc. This is not a replacement
+   * for serializing via dump().
+   */
+  string json2String(
+          const nlohmann::json& jv,   ///< the JSON value that shall be converted
+          const string& defVal = string{}   ///< a default value if none of the conversions worked
+          );
 
 }
 

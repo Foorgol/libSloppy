@@ -58,14 +58,13 @@ namespace Sloppy
     /** \brief A class for constructing a binary blob of data that consists of a sequence of simple data types (int, longs, ...)
      *
      * The class OWNS and copies all data that is passed to it during message construction.
+     *
+     * \note Uses default, compiler-generated ctor, dtor and copy/move assignment because internally
+     * it only wraps a basic string.
      */
     class OutMessage
     {
     public:
-      /** \brief Ctor for an empty message
-       */
-      OutMessage(){}
-
       /** \brief Appends a string to the message
        */
       void addString(
@@ -169,7 +168,7 @@ namespace Sloppy
       void clear() { data.clear(); }
 
     private:
-      ByteString data;
+      ByteString data{};
     };
 
     //----------------------------------------------------------------------------
@@ -184,39 +183,76 @@ namespace Sloppy
     class InMessage
     {
     public:
+      /** \brief Default ctor that initializes the class with an empty mem view
+       * that makes the new instance basically unusable.
+       */
+      InMessage() = default;
+
       /** \brief Ctor from a view on a memory array
        *
        * The new instance does NOT take ownership of the data and does not copy it.
        * The caller has to ensure that the referenced location exists long enough.
        */
-      InMessage(const MemView& v   ///< a view on the data that shall be dissected
-          );
+      explicit InMessage(
+          const MemView& v   ///< a view on the data that shall be dissected
+          )
+        :fullView{v}, curView{v} {}
 
       /** \brief Ctor from a string
        *
        * The new instance does NOT take ownership of the data and does not copy it.
        * The caller has to ensure that the referenced string exists long enough.
        */
-      InMessage(
+      explicit InMessage(
           const string& s   ///< a string with the data that shall be dissected
           )
-        : InMessage(MemView(reinterpret_cast<const uint8_t*>(s.c_str()), s.size())) {}
+        : InMessage(MemView{s}) {}
 
       /** \brief Ctor from a ByteString
        *
        * The new instance does NOT take ownership of the data and does not copy it.
        * The caller has to ensure that the referenced string exists long enough.
        */
-      InMessage(
+      explicit InMessage(
           const ByteString& bs   ///< a ByteString with the data that shall be dissected
           )
         : InMessage(MemView(bs.c_str(), bs.size())) {}
+
+      /** \brief Copy ctor
+       *
+       * Creates a deep copy of the data if we own it. If we don't own it,
+       * we simply copy the data views of the source object over to the new object
+       */
+      InMessage(const InMessage& other);
+
+      /** \brief Copy assignment
+       *
+       * Creates a deep copy of the data if we own it. If we don't own it,
+       * we simply copy the data views of the source object over to the new object
+       */
+      InMessage& operator =(const InMessage& other);
+
+      /** \brief Move assignment
+       *
+       * Shifts all pointers and data over to the new owner and leaves the
+       * source object in the same state as the default ctor
+       */
+      InMessage& operator =(InMessage&& other) noexcept;
+
+      /** \brief Move ctor
+       *
+       * Shifts all pointers and data over to the new owner and leaves the
+       * source object in the same state as the default ctor
+       */
+      InMessage(InMessage&& other) noexcept;
+
 
       /** \brief Factory function for creating a new InMessage that actually owns the data it processes
        *
        * \throws std::bad_alloc if problems during memory allocation occured
        */
-      static InMessage fromDataCopy(const MemView& v   ///< a view on the data that shall be copied and dissected
+      static InMessage fromDataCopy(
+          const MemView& v   ///< a view on the data that shall be copied and dissected
           );
 
       /** \brief Factory function for creating a new InMessage that actually owns the data it processes
@@ -377,9 +413,9 @@ namespace Sloppy
       MemView getMemView();
 
     private:
-      MemView fullView;   ///< contains the full data view as passed to the ctor
-      MemView curView;    ///< contains a partial view that always starts at the next read position
-      MemArray data;      ///< potential internal data buffer; used only if created via `fromDataCopy`
+      MemView fullView{};   ///< contains the full data view as passed to the ctor
+      MemView curView{};    ///< contains a partial view that always starts at the next read position
+      MemArray data{};      ///< potential internal data buffer; used only if created via `fromDataCopy`
 
       /** \brief Checks if the message still contains a certain number of bytes.
        *
@@ -399,6 +435,11 @@ namespace Sloppy
     class TypedOutMessage : public OutMessage
     {
     public:
+
+      /** \brief Deleted default ctor; we always need a message type for construction
+       */
+      TypedOutMessage() = delete;
+
       /** \brief Constructor of an otherwise empty message, except for the starting type header
        */
       TypedOutMessage(
@@ -407,6 +448,30 @@ namespace Sloppy
         :OutMessage{}, msgType{_msgType}
       {
         addUI32(static_cast<uint32_t>(msgType));
+      }
+
+      /** \brief Copy ctor; copies all contained data
+       */
+      TypedOutMessage(const TypedOutMessage& other) = default;
+
+      /** \brief Copy assignment; copies all contained data
+       */
+      TypedOutMessage& operator=(const TypedOutMessage& other) = default;
+
+      /** \brief Move ctor; moves the containted data and copies the type
+       */
+      TypedOutMessage(TypedOutMessage&& other) noexcept
+        :OutMessage{std::move(other)}
+      {
+        msgType = other.msgType;
+      }
+
+      /** \brief Move assignment; moves the containted data and copies the type
+       */
+      TypedOutMessage& operator=(TypedOutMessage&& other) noexcept
+      {
+        OutMessage::operator=(std::move(other));
+        msgType = other.msgType;
       }
 
       /** \brief Overwrites the message header with a new type
@@ -427,7 +492,8 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    /** \brief A specialized InMessage that assumes that the message starts with a header containing an integer representation of an enum
+    /** \brief A specialized InMessage that assumes that the message starts with a header
+     * containing an integer representation of an enum
      *
      * This class shall facilitate the dissection of messages that start with
      * a message type header defined as an enum.
@@ -445,6 +511,11 @@ namespace Sloppy
     class TypedInMessage : public InMessage
     {
     public:
+      /** \brief Deleted default ctor; we always need a message for construction in
+       * order to properly derive the message type
+       */
+      TypedInMessage() = delete;
+
       /** \brief Ctor from a standard string
        *
        * \throws std::out_of_range if the source data is not sufficiently long for parsing the message type
@@ -474,6 +545,30 @@ namespace Sloppy
           const MemView& mv   ///< a view of the memory with the source data for dissection
           )
         :InMessage{mv}, msgType{static_cast<TypeEnum>(getUI32())} {}
+
+      /** \brief Copy ctor; copies all contained data
+       */
+      TypedInMessage(const TypedInMessage& other) = default;
+
+      /** \brief Copy assignment; copies all contained data
+       */
+      TypedInMessage& operator=(const TypedInMessage& other) = default;
+
+      /** \brief Move ctor; moves the containted data and copies the type
+       */
+      TypedInMessage(TypedInMessage&& other) noexcept
+        :InMessage{std::move(other)}
+      {
+        msgType = other.msgType;
+      }
+
+      /** \brief Move assignment; moves the containted data and copies the type
+       */
+      TypedInMessage& operator=(TypedInMessage&& other) noexcept
+      {
+        InMessage::operator=(std::move(other));
+        msgType = other.msgType;
+      }
 
       /** \returns the message type
        *

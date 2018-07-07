@@ -35,6 +35,10 @@ namespace Sloppy
   class ArrayView
   {
   public:
+    /** \brief Default ctor for an empty, invalid array
+     */
+    ArrayView() = default;  // uses member initializiation defaults
+
     /** \brief Ctor for an existing array with a defined number of elements
      *
      * \throws std::invalid_argument if the caller uses either a valid pointer with zero elements or non-zero elements with a null pointer
@@ -55,9 +59,63 @@ namespace Sloppy
       }
     }
 
-    /** \brief Ctor for an empty, invalid array
+    /** \brief Copy constructor
+     *
+     * This ctor DOES NOT create a deep copy of the array; it simply
+     * copies the pointer and the array size.
      */
-    ArrayView() : ArrayView(nullptr, 0) {}
+    explicit ArrayView(
+        const ArrayView<T>& other   ///< the view to copy
+        ) noexcept
+    {
+      ptr = other.ptr;
+      cnt = other.cnt;
+    }
+
+    /** \brief Copy Assignment
+     *
+     * This operator DOES NOT create a deep copy of the array; it simply
+     * copies the pointer and the array size.
+     */
+    ArrayView<T>& operator=(const ArrayView<T>& other) noexcept
+    {
+      ptr = other.ptr;
+      cnt = other.cnt;
+      return *this;
+    }
+
+    /** \brief Move constructor
+     *
+     * Takes over the pointer from the source and sets the source
+     * pointer to zero.
+     */
+    ArrayView(ArrayView<T>&& other) noexcept
+    {
+      ptr = other.ptr;
+      cnt = other.cnt;
+      other.ptr = nullptr;
+      other.cnt = 0;
+    }
+
+    /** \brief Move assignment.
+     *
+     * Takes over the pointer from the source and sets the source
+     * pointer to zero.
+     */
+    ArrayView<T>& operator =(ArrayView<T>&& other)
+    {
+      // check for self-assignment
+      if (this == &other) return *this;
+
+      ptr = other.ptr;
+      cnt = other.cnt;
+      other.ptr = nullptr;
+      other.cnt = 0;
+    }
+
+    /** \brief Default dtor, no ressources to release
+     */
+    virtual ~ArrayView() = default;
 
     /** \brief Provides read access to an element in the array
      *
@@ -276,44 +334,7 @@ namespace Sloppy
       return reinterpret_cast<const unsigned char *>(ptr);
     }
 
-    /** \brief Copy constructor
-     *
-     * This ctor DOES NOT create a deep copy of the array; it simply
-     * copies the pointer and the array size.
-     */
-    explicit ArrayView(
-        const ArrayView<T>& other   ///< the view to copy
-        ) noexcept
-    {
-      ptr = other.ptr;
-      cnt = other.cnt;
-    }
-
-    /** \brief Copy Assignment
-     *
-     * This operator DOES NOT create a deep copy of the array; it simply
-     * copies the pointer and the array size.
-     */
-    ArrayView<T>& operator=(const ArrayView<T>& other) noexcept
-    {
-      ptr = other.ptr;
-      cnt = other.cnt;
-      return *this;
-    }
-
-    /** \brief Disabled move constructor.
-     *
-     * Since we don't own any resources, move semantics make no sense here.
-     */
-    ArrayView(ArrayView<T>&& other) = delete;
-
-    /** \brief Disabled move assignment.
-     *
-     * Since we don't own any resources, move semantics make no sense here.
-     */
-    ArrayView<T>& operator =(ArrayView<T>&& other) = delete;
-
-    /** \brief Comparison between arrays
+    /** \brief Comparison between ArrayViews
      *
      * \returns `true` if the base pointer and the size are equal; `false` otherwise
      */
@@ -367,8 +388,8 @@ namespace Sloppy
     }
 
   private:
-    const T* ptr;
-    size_t cnt;
+    const T* ptr{nullptr};
+    size_t cnt{0};
   };
 
   //----------------------------------------------------------------------------
@@ -393,6 +414,39 @@ namespace Sloppy
      */
     explicit MemView(const string& src)
       :ArrayView(reinterpret_cast<const uint8_t*>(src.c_str()), src.size()) {}
+
+    /** \brief Copy ctor
+     *
+     * Delegates the call to the parent's copy ctor.
+     */
+    MemView (const MemView& other)
+      :ArrayView<uint8_t>(other) {}
+
+    /** \brief Copy assignment
+     *
+     * Delegates the call to the parent's copy assignment operator.
+     */
+    MemView& operator=(const MemView& other)
+    {
+      return reinterpret_cast<MemView&>(ArrayView<uint8_t>::operator =(other));
+    }
+
+    /** \brief Move ctor
+     *
+     * Delegates the call to the parent's move ctor.
+     */
+    MemView (const MemView&& other)
+      :ArrayView<uint8_t>(std::move(other)) {}
+
+    /** \brief move assignment
+     *
+     * Delegates the call to the parent's move assignment operator.
+     */
+    MemView& operator=(const MemView&& other)
+    {
+      return reinterpret_cast<MemView&>(ArrayView<uint8_t>::operator =(std::move(other)));
+    }
+
   };
 
   //----------------------------------------------------------------------------
@@ -406,16 +460,20 @@ namespace Sloppy
   class ManagedArray
   {
   public:
-    /** \brief Default ctor that allocates a new array with a defined number of elements
+    /** \brief Default ctor that creates an empty, invalid array
+     */
+    ManagedArray() = default;
+
+    /** \brief Ctor that allocates a new array with a defined number of elements
      *
      * Can throw any exception that the custom `allocateMem()` throws.
      *
      * \throws std::runtime_error if the custom 'allocateMem()' did not provide a valid memory block
      */
     ManagedArray(
-        size_t nElem = 0         ///< number of elements in the array (NOT number of bytes!!)
+        size_t nElem         ///< number of elements in the array (NOT number of bytes!!)
         )
-      : ptr{nullptr}, cnt{0}, owning{false}
+      : ManagedArray{}   // delegate basic initialization to the default ctor
     {
       if (nElem == 0) return;
 
@@ -434,8 +492,12 @@ namespace Sloppy
 
     /** \brief Ctor from the raw pointer of a previously allocated array of which we can, optionally, take ownership
      *
-     * \warning Arrays that we take ownership for have to created with anything that is compatible
+     * \warning Arrays that we take ownership of have to be created with anything that is compatible
      * with the `releaseMem()`-function because we're applying this custom function for releasing the provided pointer.
+     *
+     * \throws std::invalid_argument if the pointer is not `nullptr` and the number of elements is zero.
+     *
+     * \throws std::invalid_argument if the pointer is `nullptr` and the number of elements is not zero.
      *
      * If we're not taking ownership, it doesn't matter how the array has been created because
      * we're not calling `releaseMem()' on the pointer.
@@ -448,6 +510,11 @@ namespace Sloppy
         )
       :ManagedArray{}
     {
+      if (((p == nullptr) && (n > 0))   ||   ((p != nullptr) && (n == 0)))
+      {
+        throw std::invalid_argument("ManagedArray: inconsistent ctor parameters");
+      }
+
       overwritePointer(p, n, takeOwnership);
     }
 
@@ -461,6 +528,100 @@ namespace Sloppy
         ptr = nullptr;
         cnt = 0;
       }
+    }
+
+    /** \brief Copy ctor; creates a DEEP COPY of an existing array.
+     *
+     * \throws std::runtime_error if the memory allocation failed
+     */
+    ManagedArray(
+        const ManagedArray& other   ///< the array containing the data to be copied
+        )
+      :ManagedArray{other.view()}
+    {
+    }
+
+    /** \brief Copy ctor; creates a DEEP COPY of an existing array.
+     *
+     * \throws std::runtime_error if the memory allocation failed
+     */
+    ManagedArray(
+        const ArrayView<T>& other   ///< the array containing the data to be copied
+        )
+      :ManagedArray{other.size()}
+    {
+      memcpy(to_voidPtr(), other.to_voidPtr(), byteSize());
+    }
+
+    /** \brief Disabled copy assignment operator.
+     *
+     * If I need copy assignment, I want to make it explicit using
+     * the copy constructor.
+     */
+    ManagedArray& operator= (const ManagedArray& other) = delete;
+
+    /** \brief Move ctor
+     */
+    ManagedArray(
+        ManagedArray&& other   ///< the ManagedArray whose content shall be transfered to this instance
+        ) noexcept
+    {
+      // take over the other's state
+      overwritePointer(other.ptr, other.cnt, other.owning);
+
+      // clear the other's state
+      other.overwritePointer(nullptr, 0, false);
+    }
+
+    /** \brief Move assignment
+     */
+    ManagedArray<T>& operator = (ManagedArray<T>&& other)
+    {
+      // free currently owned resources
+      if (owning && (ptr != nullptr)) releaseMem(ptr);
+
+      // take over the other's state
+      overwritePointer(other.ptr, other.cnt, other.owning);
+
+      // clear the other's state
+      other.overwritePointer(nullptr, 0, false);
+
+      return *this;
+    }
+
+    /** \brief Comparison of ManagedArrays
+     *
+     * Two genuine ManagedArrays can never be identical:
+     *   * if freshly created, a new pointer is allocated
+     *   * if created via copy ctor, a new pointer / new array for the target is allocated
+     *   * upon move, the source pointer is overwritte with zero.
+     *
+     * The only exception is if the user has constructed two arrays with
+     * the same (raw) pointer. This is BAAAD, because a resource should
+     * only be owned by one instance.
+     *
+     * The comparison only checks the pointer and size, not the "owning" flag.
+     * Thus, an owning and a not-owning array pointing at the same memory
+     * location are considered equal.
+     *
+     * \returns `true` if the two arrays point at the same location and have the same size;
+     * `false` otherwise.
+     */
+    bool operator ==(const ManagedArray<T>& other) noexcept
+    {
+      return ((ptr = other.ptr) && (cnt == other.cnt));
+    }
+
+    /** \brief Comparison of ManagedArrays, inverted
+     *
+     * The comparison only checks the pointer and size, not the "owning" flag.
+     *
+     * \returns `false` if the two arrays point at the same location and have the same size;
+     * `true` otherwise.
+     */
+    bool operator !=(const ManagedArray<T>& other) noexcept
+    {
+      return ((ptr != other.ptr) || (cnt != other.cnt));
     }
 
     /** \returns the number of elements in the array
@@ -532,36 +693,6 @@ namespace Sloppy
       return ArrayView<T>(ptr, cnt);
     }
 
-    /** \brief Copy ctor; creates a DEEP COPY of an existing array.
-     *
-     * \throws std::runtime_error if the memory allocation failed
-     */
-    ManagedArray(
-        const ManagedArray& other   ///< the array containing the data to be copied
-        )
-      :ManagedArray{other.view()}
-    {
-    }
-
-    /** \brief Copy ctor; creates a DEEP COPY of an existing array.
-     *
-     * \throws std::runtime_error if the memory allocation failed
-     */
-    ManagedArray(
-        const ArrayView<T>& other   ///< the array containing the data to be copied
-        )
-      :ManagedArray{other.size()}
-    {
-      memcpy(to_voidPtr(), other.to_voidPtr(), byteSize());
-    }
-
-    /** \brief Disabled copy assignment operator.
-     *
-     * If I need copy assignment, I want to make it explicit using
-     * the copy constructor.
-     */
-    ManagedArray& operator= (const ManagedArray& other) = delete;
-
     /** \brief Releases the currently managed memory if we're owning it
      *
      * \throws std::runtime_error if an attempt was made to release memory that we're not owning
@@ -582,35 +713,6 @@ namespace Sloppy
         ptr = nullptr;
         cnt = 0;
       }
-    }
-
-    /** \brief Move ctor
-     */
-    ManagedArray(
-        ManagedArray&& other   ///< the ManagedArray whose content shall be transfered to this instance
-        ) noexcept
-    {
-      // take over the other's state
-      overwritePointer(other.ptr, other.cnt, other.owning);
-
-      // clear the other's state
-      other.overwritePointer(nullptr, 0, false);
-    }
-
-    /** \brief Move assignment
-     */
-    ManagedArray<T>& operator = (ManagedArray<T>&& other)
-    {
-      // free currently owned resources
-      if (owning && (ptr != nullptr)) releaseMem(ptr);
-
-      // take over the other's state
-      overwritePointer(other.ptr, other.cnt, other.owning);
-
-      // clear the other's state
-      other.overwritePointer(nullptr, 0, false);
-
-      return *this;
     }
 
     /** \returns `true` if the array contains elements, `false` otherwise
@@ -788,9 +890,9 @@ namespace Sloppy
     }
 
   private:
-    T* ptr;
-    size_t cnt;
-    bool owning;
+    T* ptr{nullptr};
+    size_t cnt{0};
+    bool owning{false};
   };
 
   //----------------------------------------------------------------------------
@@ -815,7 +917,7 @@ namespace Sloppy
       memcpy(to_voidPtr(), v.to_voidPtr(), byteSize());
     }
 
-    /** \brief Convenience ctor from a plain, old char pointer
+    /** \brief Convenience ctor from a plain, old char pointer; data IS NOT COPIED
      *
      * \warning We **do not** take ownership of this pointer because we can't be sure about its origin
      */
@@ -825,7 +927,7 @@ namespace Sloppy
         )
       :MemArray(reinterpret_cast<uint8_t*>(p), n, false) {}
 
-    /** \brief Convenience ctor from a plain, old void pointer
+    /** \brief Convenience ctor from a plain, old void pointer; data IS NOT COPIED
      *
      * \warning We **do not** take ownership of this pointer because we can't be sure about its
      * origin and since we're coming from a `void`-pointer that could literally point to anything.
@@ -842,7 +944,37 @@ namespace Sloppy
     {
       return MemView{to_ucPtr(), size()};
     }
+
+    /** \brief Move assignmemt
+     *
+     * Delegates the call to the parent's move assignment operator.
+     */
+    MemArray& operator=(MemArray&& other)
+    {
+      return static_cast<MemArray&>(ManagedArray<uint8_t>::operator =(std::move(other)));
+    }
+
+    /** \brief Move ctor
+     *
+     * Delegates the call to the parent's move ctor.
+     */
+    MemArray (MemArray&& other)
+      :ManagedArray<uint8_t>(std::move(other)) {}
+
+    /** \brief Copy ctor
+     *
+     * Delegates the call to the parent's copy ctor.
+     */
+    MemArray (const MemArray& other)
+      :ManagedArray<uint8_t>(other) {}
+
+    /** \brief Disabled copy assignment operator
+     *
+     * If you need copy assignment, make it explicit using the copy ctor
+     */
+    MemArray& operator =(const MemArray& other) = delete;
   };
+
 }
 
 #endif

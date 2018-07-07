@@ -197,9 +197,54 @@ namespace Sloppy
     //----------------------------------------------------------------------------
     //----------------------------------------------------------------------------
 
-    InMessage::InMessage(const MemView& v)
-      :fullView{v}, curView{v}, data{}
+    InMessage::InMessage(const InMessage& other)
     {
+      operator =(other);
+    }
+
+    //----------------------------------------------------------------------------
+
+    InMessage& InMessage::operator =(const InMessage& other)
+    {
+      if (data.notEmpty()) data.releaseMemory();
+
+      if (other.data.notEmpty())
+      {
+        // create a deep copy of the source data
+        data = MemArray{other.data};
+        fullView = data.view();
+        curView = data.view();
+
+        // reconstruct the offset between the
+        // fullview and the curview
+        size_t choppedBytes = other.fullView.size() - other.curView.size();
+        if (choppedBytes > 0) curView.chopLeft(choppedBytes);
+
+      } else {
+
+        fullView = other.fullView;
+        curView = other.curView;
+      }
+
+      return *this;
+    }
+
+    //----------------------------------------------------------------------------
+
+    InMessage& InMessage::operator =(InMessage&& other) noexcept
+    {
+      data = std::move(other.data);   // includes de-allocation, if necessary
+      fullView = std::move(other.fullView);
+      curView = std::move(other.curView);
+
+      return *this;
+    }
+
+    //----------------------------------------------------------------------------
+
+    InMessage::InMessage(InMessage&& other) noexcept
+    {
+      operator =(std::move(other));
     }
 
     //----------------------------------------------------------------------------
@@ -207,15 +252,14 @@ namespace Sloppy
     InMessage InMessage::fromDataCopy(const MemView& v)
     {
       // start with an empty message
-      InMessage result{MemView{}};
+      InMessage result;
 
       // copy the data to the new message
       result.data = MemArray(v);  // creates a deep copy
 
       // adjust the views
-      MemView owningData{result.data.to_uint8Ptr(), result.data.size()};
-      result.fullView = owningData;
-      result.curView = owningData;
+      result.fullView = result.data.view();
+      result.curView = result.data.view();
 
       return result;
     }

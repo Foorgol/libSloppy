@@ -114,7 +114,7 @@ set(LIB_SOURCES_TST
     tests/tstRFC822.cpp
     tests/tstRFC2045.cpp
     tests/tstConfigParser.cpp
-    tests/tstEmailPattern.cpp
+    tests/tstUtils.cpp
     tests/tstHTML.cpp
     tests/tstCrypto.cpp
     tests/tstBetterTemplateSys.cpp

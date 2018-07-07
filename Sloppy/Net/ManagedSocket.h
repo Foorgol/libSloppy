@@ -44,6 +44,11 @@ namespace Sloppy
     {
     public:
 
+      /** \brief Default ctor that creates an invalid, unusable socket
+       * by setting the file descriptor to -1
+       */
+      ManagedSocket() :ManagedFileDescriptor{} {}
+
       /** \brief Ctor that creates a new, bare UDP or TCP socket
        */
       explicit ManagedSocket(
@@ -57,6 +62,32 @@ namespace Sloppy
           int _fd   ///< the file descriptor of the existing socket
           )
         :ManagedFileDescriptor(_fd) {}
+
+      /** \brief Disabled copy ctor; a socket can only belong to one instance
+       */
+      ManagedSocket(const ManagedSocket& other) = delete;
+
+      /** \brief Disabled copy assignment; a socket can only belong to one instance
+       */
+      ManagedSocket& operator=(const ManagedSocket& other) = delete;
+
+      /** \brief Move ctor that transfers the ownership
+       * of the socket (==> the file descriptor).
+       *
+       * The source is left with the FD "-1" and the state "Closed".
+       */
+      ManagedSocket(ManagedSocket&& other)
+        :ManagedFileDescriptor{std::move(other)} {}
+
+      /** \brief Move assignment that transfers the ownership
+       * of the socket (==> the file descriptor).
+       *
+       * The source is left with the FD "-1" and the state "Closed".
+       */
+      ManagedSocket& operator=(ManagedSocket&& other)
+      {
+        return static_cast<ManagedSocket&>(ManagedFileDescriptor::operator =(std::move(other)));
+      }
 
       /** \brief Assigns a name to a socket
        *

@@ -21,10 +21,12 @@
 #include <gtest/gtest.h>
 
 #include "../Sloppy/Utils.h"
+#include "../json.hpp"
+#include "../Sloppy/Memory.h"
 
 using namespace std;
 
-TEST(EmailPattern, PatternCheck)
+TEST(Utils, EmailPatternCheck)
 {
   ASSERT_FALSE(Sloppy::isValidEmailAddress(""));
   ASSERT_FALSE(Sloppy::isValidEmailAddress(" "));
@@ -39,4 +41,157 @@ TEST(EmailPattern, PatternCheck)
   ASSERT_TRUE(Sloppy::isValidEmailAddress("abc@xx.yz"));
   ASSERT_TRUE(Sloppy::isValidEmailAddress("abc@123.org"));
   ASSERT_TRUE(Sloppy::isValidEmailAddress("abc_de.fgh@123.456.org"));
+}
+
+//----------------------------------------------------------------------------
+
+TEST(Utils, AssignIfNotNull)
+{
+  int x = 42;
+  int* px = &x;
+
+  ASSERT_EQ(42, *px);
+  ASSERT_EQ(42, x);
+  ASSERT_NO_THROW(Sloppy::assignIfNotNull<int>(px, 666));
+  ASSERT_EQ(666, *px);
+  ASSERT_EQ(666, x);
+
+  px = nullptr;
+  ASSERT_NO_THROW(Sloppy::assignIfNotNull<int>(px, 666));
+  ASSERT_EQ(666, x);
+}
+
+//----------------------------------------------------------------------------
+
+TEST(Utils, IsInVector)
+{
+  vector<int> v{1,2,3,4,5};
+  ASSERT_TRUE(Sloppy::isInVector<int>(v, 3));
+  ASSERT_FALSE(Sloppy::isInVector<int>(v, 6));
+
+  v = vector<int>{};
+  ASSERT_FALSE(Sloppy::isInVector<int>(v, 3));
+}
+
+//----------------------------------------------------------------------------
+
+TEST(Utils, EraseFromVector)
+{
+  vector<int> v{1,2,5,4,5};
+  ASSERT_EQ(2, Sloppy::eraseAllOccurencesFromVector<int>(v, 5));
+  vector<int> vRef{1,2,4};
+  ASSERT_EQ(vRef, v);
+
+  ASSERT_EQ(0, Sloppy::eraseAllOccurencesFromVector<int>(v, 5));
+  ASSERT_EQ(vRef, v);
+
+  v = vector<int>{};
+  vRef = vector<int>{};
+  ASSERT_EQ(0, Sloppy::eraseAllOccurencesFromVector<int>(v, 5));
+  ASSERT_EQ(vRef, v);
+
+  v = vector<int>{5};
+  ASSERT_EQ(1, Sloppy::eraseAllOccurencesFromVector<int>(v, 5));
+  ASSERT_EQ(vRef, v);
+
+  v = vector<int>{5,5,5};
+  ASSERT_EQ(3, Sloppy::eraseAllOccurencesFromVector<int>(v, 5));
+  ASSERT_EQ(vRef, v);
+}
+
+//----------------------------------------------------------------------------
+
+TEST(Utils, TrimAndCheckString)
+{
+  string s = " 123 ";
+  ASSERT_TRUE(Sloppy::trimAndCheckString(s, 10));
+  ASSERT_EQ("123", s);
+
+  s = " 123 ";
+  ASSERT_FALSE(Sloppy::trimAndCheckString(s, 1));
+  ASSERT_EQ("123", s);
+
+  s = "123";
+  ASSERT_TRUE(Sloppy::trimAndCheckString(s));
+  ASSERT_EQ("123", s);
+
+  // strings shall be non-empty
+  s = "";
+  ASSERT_FALSE(Sloppy::trimAndCheckString(s));
+  ASSERT_EQ("", s);
+  ASSERT_FALSE(Sloppy::trimAndCheckString(s, 20));
+  ASSERT_EQ("", s);
+}
+
+//----------------------------------------------------------------------------
+
+TEST(Utils, Json2String)
+{
+  using json = nlohmann::json;
+
+  json j;
+  ASSERT_EQ(json::value_t::null, j.type());
+  ASSERT_EQ("", Sloppy::json2String(j));
+
+  j = 42u;
+  ASSERT_EQ(json::value_t::number_unsigned, j.type());
+  ASSERT_EQ("42", Sloppy::json2String(j));
+
+  j = 42;
+  ASSERT_EQ(json::value_t::number_integer, j.type());
+  ASSERT_EQ("42", Sloppy::json2String(j));
+
+  j = -42;
+  ASSERT_EQ(json::value_t::number_integer, j.type());
+  ASSERT_EQ("-42", Sloppy::json2String(j));
+
+  j = -42.666;
+  ASSERT_EQ(json::value_t::number_float, j.type());
+  ASSERT_EQ("-42.666", Sloppy::json2String(j, 3));
+  ASSERT_EQ("-42.66600", Sloppy::json2String(j, 5));
+  ASSERT_EQ("-42.7", Sloppy::json2String(j, 1));
+
+  j = true;
+  ASSERT_EQ(json::value_t::boolean, j.type());
+  ASSERT_EQ("1", Sloppy::json2String(j));
+
+  j = false;
+  ASSERT_EQ(json::value_t::boolean, j.type());
+  ASSERT_EQ("0", Sloppy::json2String(j));
+
+  j = "I am a string";
+  ASSERT_EQ(json::value_t::string, j.type());
+  ASSERT_EQ("I am a string", Sloppy::json2String(j));
+
+  j = {1,2,3};
+  ASSERT_EQ(json::value_t::array, j.type());
+  ASSERT_THROW(Sloppy::json2String(j), std::invalid_argument);
+
+  j = json::object();
+  j["dyf"] = "dkf";
+  j["mb"] = 76575;
+  ASSERT_EQ(json::value_t::object, j.type());
+  ASSERT_THROW(Sloppy::json2String(j), std::invalid_argument);
+
+}
+
+//----------------------------------------------------------------------------
+
+TEST(Utils, BiDirPipe)
+{
+  auto pipePair= Sloppy::createBirectionalPipe();
+  Sloppy::BiDirPipeEnd e1{std::move(pipePair.first)};
+  Sloppy::BiDirPipeEnd e2{std::move(pipePair.second)};
+
+  // test direction one
+  ASSERT_TRUE(e1.blockingWrite("FirstDirection"));
+  Sloppy::MemArray data = e2.blockingRead_FixedSize(14, 10);
+  string sDat{data.to_charPtr(), data.size()};
+  ASSERT_EQ("FirstDirection", sDat);
+
+  // test direction two
+  ASSERT_TRUE(e2.blockingWrite("OtherDirection"));
+  data = e1.blockingRead_FixedSize(14, 10);
+  sDat = string{data.to_charPtr(), data.size()};
+  ASSERT_EQ("OtherDirection", sDat);
 }

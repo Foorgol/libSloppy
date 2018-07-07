@@ -82,7 +82,7 @@ namespace Sloppy
 
     // do the actual write
     st = State::Writing;
-    size_t n = write(fd, ptr, len);
+    int n = write(fd, ptr, len);
     st = State::Idle;
 
     if (n < 0)

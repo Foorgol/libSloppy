@@ -19,12 +19,15 @@
 #include <regex>
 #include <iostream>
 #include <cstdio>
+#include <tuple>
 
 #include <boost/algorithm/string.hpp>
 #include <boost/filesystem.hpp>
 
 #include "Utils.h"
 #include "../json.hpp"
+#include "ManagedFileDescriptor.h"
+#include "Memory.h"
 
 namespace bfs = boost::filesystem;
 using json = nlohmann::json;
@@ -33,22 +36,6 @@ namespace Sloppy
 {
   bool isValidEmailAddress(const string& email)
   {
-    //
-    // Well, this is weird. Using the case-insensitive mode
-    // of a regex doesn't work as expected. Example: the
-    // simple pattern ^[A-Z]+ used with regex::icase does match
-    // "ABC", "aaa" but not "abc". I would expect to match "abc"
-    // as well. Hmmm....
-    //
-    // So for the purpose of "simple" regex, I only use the
-    // character class A-Z and convert the email address to
-    // uppercase first. I hoped the uppercase conversion would
-    // not be necessary, but the simple test explained above
-    // proved me wrong.
-    //
-    // The regex is taken from
-    // http://www.regular-expressions.info/email.html
-    //
     regex reEmail{R"(^(?=[A-Z0-9][A-Z0-9@._%+-]{5,253}+$)[A-Z0-9._%+-]{1,64}+@(?:(?=[A-Z0-9-]{1,63}+\.)[A-Z0-9]++(?:-[A-Z0-9]++)*+\.){1,8}+[A-Z]{2,63}+$)",
                  regex::icase};
 
@@ -129,78 +116,129 @@ namespace Sloppy
   }
 #endif
 
-  bool isInt(const string& s)
-  {
-    //
-    // looks clumsy but I believe it's faster
-    // than lexical_cast or regex
-    //
-    // and stoi converts "5xy" to 5, for instance
-    //
-
-    if (s.empty()) return false;
-
-    const char* p = s.c_str();
-    bool isSigned = (*p == '-');
-    if (isSigned && (s.size() < 2)) return false;
-
-    if (isSigned) ++p;
-    while (true)
-    {
-      char c = *p;
-      if (c == 0) return true;
-      if ((c < '0') || (c > '9')) return false;
-      ++p;
-    }
-  }
-
   //----------------------------------------------------------------------------
 
-  bool isDouble(const string& s)
+  string json2String(const nlohmann::json& jv, int numDigits)
   {
-    //
-    // looks clumsy but I believe it's faster
-    // than lexical_cast or regex
-    //
-    // and stoi converts "5xy" to 5, for instance
-    //
+    // helper variables for floating point conversion
+    string fmt = "%";
+    char buf[100];
 
-    if (s.empty()) return false;
-
-    const char* p = s.c_str();
-    bool isSigned = (*p == '-');
-    if (isSigned && (s.size() < 2)) return false;
-
-    if (isSigned) ++p;
-    while (true)
-    {
-      char c = *p;
-      if (c == 0) return true;
-      if (((c < '0') || (c > '9')) && (c != '.')) return false;
-      ++p;
-    }
-  }
-
-  //----------------------------------------------------------------------------
-
-  string json2String(const nlohmann::json& jv, const string& defVal)
-  {
     switch (jv.type())
     {
     case json::value_t::boolean:
       return to_string(jv.get<bool>());
 
+    case json::value_t::number_unsigned:
+      return to_string(jv.get<unsigned long>());
+
     case json::value_t::number_integer:
-      return to_string(jv.get<int>());
+      return to_string(jv.get<long>());
 
     case json::value_t::number_float:
-      return to_string(jv.get<double>());
+      if (numDigits >=0) fmt += "." + to_string(numDigits);
+      fmt += "f";
+
+      snprintf(buf, 100, fmt.c_str(), jv.get<double>());
+      return string{buf};
 
     case json::value_t::string:
       return jv;
+
+    case json::value_t::null:
+      return "";
+
+    default:
+      throw std::invalid_argument("json2string: the JSON object is of an invalid type");
     }
 
-    return defVal;
+    return "!!! JSON conversion error !!!";    // we should never get here
+  }
+
+  //----------------------------------------------------------------------------
+
+  BiDirPipeEnd::BiDirPipeEnd(int _fdRead, int _fdWrite)
+    :fdRead{_fdRead}, fdWrite{_fdWrite}
+  {
+
+  }
+
+  //----------------------------------------------------------------------------
+
+  BiDirPipeEnd& BiDirPipeEnd::operator=(BiDirPipeEnd&& other) noexcept
+  {
+    fdRead = std::move(other.fdRead);
+    fdWrite = std::move(other.fdWrite);
+
+    return *this;
+  }
+
+  //----------------------------------------------------------------------------
+
+  BiDirPipeEnd::BiDirPipeEnd(BiDirPipeEnd&& other) noexcept
+    :fdRead{std::move(other.fdRead)}, fdWrite{std::move(other.fdWrite)}
+  {
+
+  }
+
+  //----------------------------------------------------------------------------
+
+  bool BiDirPipeEnd::blockingWrite(const string& data)
+  {
+    return fdWrite.blockingWrite(data);
+  }
+
+  //----------------------------------------------------------------------------
+
+  bool BiDirPipeEnd::blockingWrite(const MemView& data)
+  {
+    return fdWrite.blockingWrite(data);
+  }
+
+  //----------------------------------------------------------------------------
+
+  bool BiDirPipeEnd::blockingWrite(const char* ptr, size_t len)
+  {
+    return fdWrite.blockingWrite(ptr, len);
+  }
+
+  //----------------------------------------------------------------------------
+
+  MemArray BiDirPipeEnd::blockingRead(size_t minLen, size_t maxLen, size_t timeout_ms)
+  {
+    return fdRead.blockingRead(minLen, maxLen, timeout_ms);
+  }
+
+  //----------------------------------------------------------------------------
+
+  MemArray BiDirPipeEnd::blockingRead_FixedSize(size_t expectedLen, size_t timeout_ms)
+  {
+    return fdRead.blockingRead_FixedSize(expectedLen, timeout_ms);
+  }
+
+  //----------------------------------------------------------------------------
+
+  void BiDirPipeEnd::close()
+  {
+    fdRead.close();
+    fdWrite.close();
+  }
+
+  //----------------------------------------------------------------------------
+
+  pair<BiDirPipeEnd, BiDirPipeEnd> createBirectionalPipe()
+  {
+    // create two pipe
+    int fd_pipe1[2];
+    pipe(fd_pipe1);
+    int fd_pipe2[2];
+    pipe(fd_pipe2);
+
+    // create two pipe ends with "crossed" descriptors
+    BiDirPipeEnd e1{fd_pipe1[0], fd_pipe2[1]};
+    BiDirPipeEnd e2{fd_pipe2[0], fd_pipe1[1]};
+
+    return make_pair(std::move(e1), std::move(e2));
   }
 
 

@@ -170,6 +170,11 @@ namespace Sloppy
       Closed   ///< the descriptor has been closed by the user
     };
 
+    /** \brief Default ctor that constructs an invalid FD (value = -1) with
+     * state "Closed" and an empty read buffer.
+     */
+    ManagedFileDescriptor() = default;
+
     /** \brief Ctor that takes ownership of the provided file descriptor.
      *
      * The descriptor has to be open. It is the caller's responsibility
@@ -185,6 +190,34 @@ namespace Sloppy
         int _fd,  ///< the descritpr number
         size_t readBufferSize = ReadChunkSize   ///< the size of the read buffer in bytes
         );
+
+    /** \brief Disabled the copy constructor because a FD can only belong to one owner
+     */
+    ManagedFileDescriptor(const ManagedFileDescriptor& other) = delete;
+
+    /** \brief Disabled the copy assignment because a FD can only belong to one owner
+     */
+    ManagedFileDescriptor& operator=(const ManagedFileDescriptor& other) = delete;
+
+    /** \brief Move constructor.
+     *
+     * Waits until the mutexes of source and target become available
+     * and then closes the FD in the target (if any), transfers the FD
+     * to the target and sets the source FD to an invalid value.
+     *
+     * \note Do not use the source object anymore after calling the move ctor!
+     */
+    ManagedFileDescriptor(ManagedFileDescriptor&& other);
+
+    /** \brief Move assignment.
+     *
+     * Waits until the mutexes of source and target become available
+     * and then closes the FD in the target (if any), transfers the FD
+     * to the target and sets the source FD to an invalid value.
+     *
+     * \note Do not use the source object anymore after using the move assignment!
+     */
+    ManagedFileDescriptor& operator=(ManagedFileDescriptor&& other);
 
     /** \brief Dtor, closes the descriptor if it is still open
      */
@@ -295,37 +328,11 @@ namespace Sloppy
      */
     int releaseDescriptor();
 
-    // disable the copy constructor; a FD can only belong to one owner
-    ManagedFileDescriptor(const ManagedFileDescriptor& other) = delete;
-
-    // disable the copy assignment operator; a FD can only belong to one owner
-    ManagedFileDescriptor& operator=(const ManagedFileDescriptor& other) = delete;
-
-    /** \brief Move constructor.
-     *
-     * Waits until the mutexes of source and target become available
-     * and then closes the FD in the target (if any), transfers the FD
-     * to the target and sets the source FD to an invalid value.
-     *
-     * \note Do not use the source object anymore after calling the move ctor!
-     */
-    ManagedFileDescriptor(ManagedFileDescriptor&& other);
-
-    /** \brief Move assignment.
-     *
-     * Waits until the mutexes of source and target become available
-     * and then closes the FD in the target (if any), transfers the FD
-     * to the target and sets the source FD to an invalid value.
-     *
-     * \note Do not use the source object anymore after using the move assignment!
-     */
-    ManagedFileDescriptor& operator=(ManagedFileDescriptor&& other);
-
   protected:
-    int fd;
-    mutex fdMutex;
-    atomic<State> st;
-    MemArray readBuf;
+    int fd{-1};
+    mutex fdMutex{};
+    atomic<State> st{State::Closed};
+    MemArray readBuf{};
 
   };
 }

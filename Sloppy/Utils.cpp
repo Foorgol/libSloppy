@@ -157,13 +157,19 @@ namespace Sloppy
 
   //----------------------------------------------------------------------------
 
+#ifndef WIN32
+
   BiDirPipeEnd::BiDirPipeEnd(int _fdRead, int _fdWrite)
     :fdRead{_fdRead}, fdWrite{_fdWrite}
   {
 
   }
 
+#endif
+
   //----------------------------------------------------------------------------
+
+#ifndef WIN32
 
   BiDirPipeEnd& BiDirPipeEnd::operator=(BiDirPipeEnd&& other) noexcept
   {
@@ -173,7 +179,11 @@ namespace Sloppy
     return *this;
   }
 
+#endif
+
   //----------------------------------------------------------------------------
+
+#ifndef WIN32
 
   BiDirPipeEnd::BiDirPipeEnd(BiDirPipeEnd&& other) noexcept
     :fdRead{std::move(other.fdRead)}, fdWrite{std::move(other.fdWrite)}
@@ -181,42 +191,66 @@ namespace Sloppy
 
   }
 
+#endif
+
   //----------------------------------------------------------------------------
+
+#ifndef WIN32
 
   bool BiDirPipeEnd::blockingWrite(const string& data)
   {
     return fdWrite.blockingWrite(data);
   }
 
+#endif
+
   //----------------------------------------------------------------------------
+
+#ifndef WIN32
 
   bool BiDirPipeEnd::blockingWrite(const MemView& data)
   {
     return fdWrite.blockingWrite(data);
   }
 
+#endif
+
   //----------------------------------------------------------------------------
+
+#ifndef WIN32
 
   bool BiDirPipeEnd::blockingWrite(const char* ptr, size_t len)
   {
     return fdWrite.blockingWrite(ptr, len);
   }
 
+#endif
+
   //----------------------------------------------------------------------------
+
+#ifndef WIN32
 
   MemArray BiDirPipeEnd::blockingRead(size_t minLen, size_t maxLen, size_t timeout_ms)
   {
     return fdRead.blockingRead(minLen, maxLen, timeout_ms);
   }
 
+#endif
+
   //----------------------------------------------------------------------------
+
+#ifndef WIN32
 
   MemArray BiDirPipeEnd::blockingRead_FixedSize(size_t expectedLen, size_t timeout_ms)
   {
     return fdRead.blockingRead_FixedSize(expectedLen, timeout_ms);
   }
 
+#endif
+
   //----------------------------------------------------------------------------
+
+#ifndef WIN32
 
   void BiDirPipeEnd::close()
   {
@@ -224,7 +258,11 @@ namespace Sloppy
     fdWrite.close();
   }
 
+#endif
+
   //----------------------------------------------------------------------------
+
+#ifndef WIN32
 
   pair<BiDirPipeEnd, BiDirPipeEnd> createBirectionalPipe()
   {
@@ -241,7 +279,11 @@ namespace Sloppy
     return make_pair(std::move(e1), std::move(e2));
   }
 
+#endif
+
   //----------------------------------------------------------------------------
+
+#ifndef WIN32
 
   pair<ManagedFileDescriptor, ManagedFileDescriptor> createSimplePipe()
   {
@@ -256,6 +298,7 @@ namespace Sloppy
     return make_pair(std::move(fdRead), std::move(fdWrite));
   }
 
+#endif
 
   //----------------------------------------------------------------------------
 

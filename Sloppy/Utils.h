@@ -212,6 +212,8 @@ namespace Sloppy
 
   //----------------------------------------------------------------------------
 
+#ifndef WIN32
+
   /** \brief A class that represents the end point of a bi-directional pipe.
    *
    * Is internally represented by two ManagedFileDescriptor instances, one
@@ -381,6 +383,8 @@ namespace Sloppy
    * \returns a pair of <readFileDescr, writeFileDescr>
    */
   pair<ManagedFileDescriptor, ManagedFileDescriptor> createSimplePipe();
+
+#endif
 
 }
 

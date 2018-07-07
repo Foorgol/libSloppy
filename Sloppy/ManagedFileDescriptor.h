@@ -295,6 +295,32 @@ namespace Sloppy
      */
     int releaseDescriptor();
 
+    // disable the copy constructor; a FD can only belong to one owner
+    ManagedFileDescriptor(const ManagedFileDescriptor& other) = delete;
+
+    // disable the copy assignment operator; a FD can only belong to one owner
+    ManagedFileDescriptor& operator=(const ManagedFileDescriptor& other) = delete;
+
+    /** \brief Move constructor.
+     *
+     * Waits until the mutexes of source and target become available
+     * and then closes the FD in the target (if any), transfers the FD
+     * to the target and sets the source FD to an invalid value.
+     *
+     * \note Do not use the source object anymore after calling the move ctor!
+     */
+    ManagedFileDescriptor(ManagedFileDescriptor&& other);
+
+    /** \brief Move assignment.
+     *
+     * Waits until the mutexes of source and target become available
+     * and then closes the FD in the target (if any), transfers the FD
+     * to the target and sets the source FD to an invalid value.
+     *
+     * \note Do not use the source object anymore after using the move assignment!
+     */
+    ManagedFileDescriptor& operator=(ManagedFileDescriptor&& other);
+
   protected:
     int fd;
     mutex fdMutex;

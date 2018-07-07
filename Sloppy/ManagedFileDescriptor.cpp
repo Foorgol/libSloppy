@@ -273,6 +273,60 @@ namespace Sloppy
 
   //----------------------------------------------------------------------------
 
+  ManagedFileDescriptor::ManagedFileDescriptor(ManagedFileDescriptor&& other)
+  {
+    // secure exclusive access to the FDs
+    lock_guard<mutex> lockFd_other{other.fdMutex};
+    lock_guard<mutex> lockFd_Self{fdMutex};
+
+    // transfer ownership
+    fd = other.fd;
+    other.fd = -1;
+    State tmp = other.st;
+    st = tmp;
+    other.st = State::Closed;
+    readBuf = std::move(other.readBuf);  // re-use MemArray's move assignment
+  }
+
+  //----------------------------------------------------------------------------
+
+  ManagedFileDescriptor& ManagedFileDescriptor::operator=(ManagedFileDescriptor&& other)
+  {
+    // secure exclusive access to the FDs
+    lock_guard<mutex> lockFd_other{other.fdMutex};
+    lock_guard<mutex> lockFd_Self{fdMutex};
+
+    // close our existing FD, if any
+    if (fd >= 0)
+    {
+      int rc = ::close(fd);
+      fd = -1;
+      if (rc < 0) throw IOError{};
+    }
+
+    // release our read buffer, if any
+    //
+    // should also be handled by MemArray's move
+    // assignment operator, but better be safe than
+    // sorry
+    if (readBuf.notEmpty())
+    {
+      readBuf.releaseMemory();
+    }
+
+    // transfer ownership
+    fd = other.fd;
+    other.fd = -1;
+    State tmp = other.st;
+    st = tmp;
+    other.st = State::Closed;
+    readBuf = std::move(other.readBuf);  // re-use MemArray's move assignment
+
+    return *this;
+  }
+
+  //----------------------------------------------------------------------------
+
   bool waitForReadOnDescriptor(int fd, size_t timeout_ms)
   {
     fd_set readFd;

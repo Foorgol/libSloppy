@@ -124,3 +124,39 @@ TEST(ManagedFileDescr, BasicReadWrite)
 
 //----------------------------------------------------------------------------
 
+TEST(ManagedFileDescr, MoveOps)
+{
+  // create a pipe
+  int fd[2];
+  pipe(fd);
+
+  // wrap the descriptors in classes
+  ManagedFileDescriptor fdRead{fd[0]};
+  ManagedFileDescriptor fdWrite{fd[1]};
+
+  // test basic operation prior to moving
+  ASSERT_TRUE(fdWrite.blockingWrite("abcd"));
+  MemArray data = fdRead.blockingRead_FixedSize(4, 100);
+  string sDat{data.to_charPtr(), data.size()};
+  ASSERT_EQ("abcd", sDat);
+
+  // try move assignment
+  ManagedFileDescriptor fdMoved = std::move(fdWrite);
+  ASSERT_EQ(ManagedFileDescriptor::State::Closed, fdWrite.getState());
+  ASSERT_FALSE(fdWrite.blockingWrite("xxx"));
+  ASSERT_THROW(fdRead.blockingRead(0, 0, 10), ReadTimeout);  // test that nothing has been written
+  ASSERT_TRUE(fdMoved.blockingWrite("AfterMove"));
+  data = fdRead.blockingRead_FixedSize(9, 100);
+  sDat = string{data.to_charPtr(), data.size()};
+  ASSERT_EQ("AfterMove", sDat);
+
+  // try move ctor
+  ManagedFileDescriptor fdNew{std::move(fdMoved)};
+  ASSERT_EQ(ManagedFileDescriptor::State::Closed, fdMoved.getState());
+  ASSERT_FALSE(fdMoved.blockingWrite("xxx"));
+  ASSERT_THROW(fdRead.blockingRead(0, 0, 10), ReadTimeout);  // test that nothing has been written
+  ASSERT_TRUE(fdNew.blockingWrite("AfterMoveCtor"));
+  data = fdRead.blockingRead_FixedSize(13, 100);
+  sDat = string{data.to_charPtr(), data.size()};
+  ASSERT_EQ("AfterMoveCtor", sDat);
+}

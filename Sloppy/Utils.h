@@ -364,7 +364,23 @@ namespace Sloppy
     ManagedFileDescriptor fdWrite;
   };
 
+  /** \brief Creates a bi-directional pipe that allows for two-way communication
+   * between to peers.
+   *
+   * This is essentially a set of two normal pipes, one for each direction.
+   *
+   * \returns a pair of two BiDirPipeEnd objects, one for each pipe endpoint.
+   */
   pair<BiDirPipeEnd, BiDirPipeEnd> createBirectionalPipe();
+
+  /** \brief Creates a simple, one-directional pipe
+   *
+   * Basically calls `pipe()` and wraps the result into two
+   * `ManagedFileDescriptor` instances.
+   *
+   * \returns a pair of <readFileDescr, writeFileDescr>
+   */
+  pair<ManagedFileDescriptor, ManagedFileDescriptor> createSimplePipe();
 
 }
 

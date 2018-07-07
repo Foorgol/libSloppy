@@ -228,7 +228,7 @@ namespace Sloppy
 
   pair<BiDirPipeEnd, BiDirPipeEnd> createBirectionalPipe()
   {
-    // create two pipe
+    // create two pipes
     int fd_pipe1[2];
     pipe(fd_pipe1);
     int fd_pipe2[2];
@@ -239,6 +239,21 @@ namespace Sloppy
     BiDirPipeEnd e2{fd_pipe2[0], fd_pipe1[1]};
 
     return make_pair(std::move(e1), std::move(e2));
+  }
+
+  //----------------------------------------------------------------------------
+
+  pair<ManagedFileDescriptor, ManagedFileDescriptor> createSimplePipe()
+  {
+    // create the pipe
+    int fd_pipe[2];
+    pipe(fd_pipe);
+
+    // wrap the descriptors into ManagedFileDescriptor instances
+    ManagedFileDescriptor fdRead{fd_pipe[0]};
+    ManagedFileDescriptor fdWrite{fd_pipe[1]};
+
+    return make_pair(std::move(fdRead), std::move(fdWrite));
   }
 
 

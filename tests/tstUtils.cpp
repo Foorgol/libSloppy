@@ -195,3 +195,18 @@ TEST(Utils, BiDirPipe)
   sDat = string{data.to_charPtr(), data.size()};
   ASSERT_EQ("OtherDirection", sDat);
 }
+
+//----------------------------------------------------------------------------
+
+TEST(Utils, SimplePipe)
+{
+  Sloppy::ManagedFileDescriptor r;
+  Sloppy::ManagedFileDescriptor w;
+  tie(r, w) = Sloppy::createSimplePipe();
+
+  // test data exchance
+  ASSERT_TRUE(w.blockingWrite("abcd"));
+  Sloppy::MemArray data = r.blockingRead_FixedSize(4, 10);
+  string sDat{data.to_charPtr(), data.size()};
+  ASSERT_EQ("abcd", sDat);
+}

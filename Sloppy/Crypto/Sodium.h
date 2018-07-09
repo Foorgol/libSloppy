@@ -180,9 +180,7 @@ namespace Sloppy
     public:
       /** \brief Default ctor; creates a zero-sized, invalid data block
        */
-      SodiumSecureMemory()
-        :rawPtr{nullptr}, nBytes{0}, type{SodiumSecureMemType::Normal},
-          lib{nullptr}, curProtection{SodiumSecureMemAccess::NoAccess} {}
+      SodiumSecureMemory() = default;
 
       /** \brief Ctor that allocates a given amount of memory of a certain protection class.
        *
@@ -223,9 +221,27 @@ namespace Sloppy
        */
       SodiumSecureMemory(const MemView& src, SodiumSecureMemType t);
 
-      // disable copy functions
-      SodiumSecureMemory(const SodiumSecureMemory&) = delete; // no copy constructor
+      /** \brief Disabled copy assignment; if you need a copy, make it
+       * explicit using the copy ctor.
+       */
       SodiumSecureMemory& operator=(const SodiumSecureMemory&) = delete; // no copy assignment
+
+      /** \brief Copy ctor that creates a deep copy of an existing secure memory region
+       *
+       * I want copies of secure memory to be explicit. This is why I disabled the
+       * copy assignment operator.
+       *
+       * \note If the source is guarded memory it needs to be set to read-only or read-write
+       * access before calling this copy function.
+       *
+       * \throws SodiumOutOfMemoryException if the secure memory could not be allocated or locked
+       *
+       * \throws SodiumMemoryGuardException if the source memory is guarded against access
+       *
+       * \throws SodiumMemoryManagementException if a copy of guarded memory has been successfully
+       * created but could not be access-protected afterwards
+       */
+      SodiumSecureMemory(const SodiumSecureMemory& other);
 
       /** \brief Move ctor
        *
@@ -281,40 +297,6 @@ namespace Sloppy
       bool setAccess(
           SodiumSecureMemAccess a   ///< the new access protection type to assign to the memory
           );
-
-      /** \brief Static function that creates a deep copy of an existing secure memory region
-       *
-       * I want copies of secure memory to be explicit. This is why I disabled the copy constructor
-       * and the copy assignment operator and created explicit copy functions.
-       *
-       * \note If the source is guarded memory it needs to be set to read-only or read-write
-       * access before calling this copy function.
-       *
-       * \throws SodiumOutOfMemoryException if the secure memory could not be allocated or locked
-       *
-       * \throws SodiumMemoryGuardException if the source memory is guarded against access
-       *
-       * \throws SodiumMemoryManagementException if a copy of guarded memory has been successfully
-       * created but could not be access-protected afterwards
-       */
-      static SodiumSecureMemory asCopy(const SodiumSecureMemory& src);
-
-      /** \brief Creates a deep copy of the managed memory
-       *
-       * I want copies of secure memory to be explicit. This is why I disabled the copy constructor
-       * and the copy assignment operator and created explicit copy functions.
-       *
-       * \note If the source is guarded memory it needs to be set to read-only or read-write
-       * access before calling this copy function.
-       *
-       * \throws SodiumOutOfMemoryException if the secure memory could not be allocated or locked
-       *
-       * \throws SodiumMemoryGuardException if the source memory is guarded against access
-       *
-       * \throws SodiumMemoryManagementException if a copy of guarded memory has been successfully
-       * created but could not be access-protected afterwards
-       */
-      SodiumSecureMemory copy() const;
 
       /** \returns the number of bytes in the managed memory block
        */
@@ -388,10 +370,10 @@ namespace Sloppy
       SodiumLib* lib;
 
     private:
-      void* rawPtr;
-      size_t nBytes;
-      SodiumSecureMemType type;
-      SodiumSecureMemAccess curProtection;
+      void* rawPtr{nullptr};
+      size_t nBytes{0};
+      SodiumSecureMemType type{SodiumSecureMemType::Normal};
+      SodiumSecureMemAccess curProtection{SodiumSecureMemAccess::NoAccess};
 
     };
 
@@ -410,7 +392,6 @@ namespace Sloppy
      */
     enum class SodiumKeyInitStyle
     {
-      None,  // don't touch the memory at all
       Random, // fill with random data
       Zeros // fill with zeros
     };
@@ -434,22 +415,28 @@ namespace Sloppy
        * Internally calls the ctor of SodiumSecureMemory for the actual memory allocation. Thus,
        * all exceptions of the SodiumSecureMemory ctor can occur here as well.
        *
-       * By default keys are initialized with random data. This can be suppressed by setting
-       * a setting the ctor's parameter to `false`.
+       * By default key memory is not initialized. If you need memory initialization,
+       * use the ctor that takes a 'SodiumKeyInitStyle' argument.
        *
        * The memory for secret keys is **not** protected after initialization. It can be directly
        * accessed for reading and writing.
        */
-      SodiumKey(SodiumKeyInitStyle initStyle = SodiumKeyInitStyle::None)
-        : SodiumSecureMemory{keySize, (kt == SodiumKeyType::Secret) ? SodiumSecureMemType::Guarded : SodiumSecureMemType::Normal},
-          keyType{kt}
+      SodiumKey()
+        : SodiumSecureMemory{keySize, (kt == SodiumKeyType::Secret) ? SodiumSecureMemType::Guarded : SodiumSecureMemType::Normal} {}
+
+      /** \brief Allocates memory for the key according to the defined key size
+       * and initializes the key's memory.
+       *
+       * The memory for secret keys is **not** protected after initialization. It can be directly
+       * accessed for reading and writing.
+       */
+      SodiumKey(SodiumKeyInitStyle initStyle)
+        : SodiumKey{}
       {
         if (initStyle == SodiumKeyInitStyle::Random)
         {
           lib->randombytes_buf(toNotOwningArray());
-        }
-        if (initStyle == SodiumKeyInitStyle::Random)
-        {
+        } else {
           lib->memzero(toNotOwningArray());
         }
       }
@@ -492,50 +479,39 @@ namespace Sloppy
         SodiumSecureMemory::operator =(std::move(other));
         return *this;
       }
+      
+      /** \brief Disabled copy assignment. Make copying of keys
+       * explicit using the copy constructor.
+       */
+       virtual SodiumKey& operator=(const SodiumKey& other) = delete;
 
-      /** \brief Creates a deep copy of a key.
+      /** \brief Copy ctor, creates a deep copy of a key.
        *
        * Calls internally the ctor for SodiumKey and can thus throw all exceptions
        * that are also thrown by the ctor.
        *
        * \throws SodiumKeyLocked if a secret shall be copied that is currently not read-accessible
        */
-      static SodiumKey asCopy(
-            const SodiumKey& src   ///< the key to copy
-            )
+       SodiumKey(const SodiumKey& src)
+         :SodiumKey{}
       {
         if (!(src.canRead()))
         {
           throw SodiumKeyLocked{"creating a key copy"};
         }
 
-        SodiumKey cpy;
         SodiumSecureMemAccess srcProtection = src.getProtection();
         if (kt == SodiumKeyType::Secret)
         {
-          cpy.setAccess(SodiumSecureMemAccess::RW);
+          setAccess(SodiumSecureMemAccess::RW);
         }
 
-        memcpy(cpy.toNotOwningArray().to_voidPtr(), src.toNotOwningArray().to_voidPtr(), src.size());
+        memcpy(toNotOwningArray().to_voidPtr(), src.toNotOwningArray().to_voidPtr(), src.size());
 
         if (kt == SodiumKeyType::Secret)
         {
-          cpy.setAccess(srcProtection);
+          setAccess(srcProtection);
         }
-
-        return cpy;
-      }
-
-      /** \brief Creates a deep copy of the key.
-       *
-       * Calls internally the ctor for SodiumKey and can thus throw all exceptions
-       * that are also thrown by the ctor.
-       *
-       * \throws SodiumKeyLocked if a secret shall be copied that is currently not read-accessible
-       */
-      SodiumKey copy() const
-      {
-        return asCopy(*this);
       }
 
       /** \brief Copies content from a string into the key, overwriting all existing key data.
@@ -568,7 +544,7 @@ namespace Sloppy
       }
 
     protected:
-      SodiumKeyType keyType;
+      SodiumKeyType keyType{kt};
     };
 
     //----------------------------------------------------------------------------
@@ -784,6 +760,38 @@ namespace Sloppy
       /** \brief dtor, unloads the libsodium
        */
       ~SodiumLib();
+
+      /** \brief No copy ctor, this is a singleton
+       */
+      SodiumLib(const SodiumLib& other) = delete;
+
+      /** \brief No copy assignment, this is a singleton
+       */
+      SodiumLib& operator=(const SodiumLib& other) = delete;
+
+      /** \brief Simple move ctor; transfers internal pointers to the
+       * new object and deletes the pointers of the old instance
+       */
+      SodiumLib(SodiumLib&& other)
+      {
+        libHandle = other.libHandle;
+        other.libHandle = nullptr;
+        sodium = other.sodium;
+        other.sodium = SodiumPtr{};   // all struct pointers should be initialized to nullptr
+      }
+
+      /** \brief Simple move assignment; transfers internal pointers to the
+       * us and deletes the pointers of the other instance
+       */
+      SodiumLib& operator=(SodiumLib&& other)
+      {
+        libHandle = other.libHandle;
+        other.libHandle = nullptr;
+        sodium = other.sodium;
+        other.sodium = SodiumPtr{};   // all struct pointers should be initialized to nullptr
+
+        return *this;
+      }
 
       /** \brief Compares two memory segments; original documentation [here](https://download.libsodium.org/doc/helpers).
        *
@@ -2495,7 +2503,7 @@ namespace Sloppy
       NonceBox(
           const NonceType& _nonce   ///< the initial nonce
           )
-      :nonceIncrementCount{0}, lib{SodiumLib::getInstance()}
+        :initialNonce{_nonce}, curNonce{_nonce}, prevNonce{_nonce}, nonceIncrementCount{0}, lib{SodiumLib::getInstance()}
       {
         if (lib == nullptr)
         {
@@ -2505,10 +2513,6 @@ namespace Sloppy
         {
           throw SodiumInvalidNonce("ctor NonceBox");
         }
-
-        initialNonce = _nonce.copy();
-        curNonce = _nonce.copy();
-        prevNonce = _nonce.copy();
       }
 
       /** \brief Increments the nonce by one.
@@ -2525,12 +2529,12 @@ namespace Sloppy
       /** \returns the nonce **before** the last increment operation or the initial nonce
        * if no increment took place so far.
        */
-      NonceType getPrevNonce() const { return NonceType::asCopy(prevNonce); }
+      NonceType getPrevNonce() const { return NonceType{prevNonce}; }
 
       /** \returns the a copy of the current nonce (e.g., after the last increment call)
        * or the initial nonce if no increment took place so far.
        */
-      NonceType getNonce() const { return NonceType::asCopy(curNonce); }
+      NonceType getNonce() const { return NonceType{curNonce}; }
 
       /** \returns the a read-only reference to the current nonce (e.g., after the last increment call)
        * or to the initial nonce if no increment took place so far.
@@ -2737,6 +2741,14 @@ namespace Sloppy
     public:
       /** \brief Default ctor for a new hasher instance with a libsodium-internal standard key.
        *
+       * The length of the produced hash is `crypto_generichash_BYTES` (currently 32 Byte / 256 bit).
+       *
+       * \throws SodiumNotAvailableException if the sodium wrapper singleton could be initialized / retrieved
+       */
+      GenericHasher();
+
+      /** \brief Ctor for a new hasher instance with custom hash length and a libsodium-internal standard key.
+       *
        * The `hashLen` parameter shall be between `crypto_generichash_BYTES_MIN` (16 bytes / 128 bit)
        * and `crypto_generichash_BYTES_MAX` (64 bytes / 512 bit).
        *
@@ -2745,7 +2757,7 @@ namespace Sloppy
        * \throws std::range_error if the requested hash length is invalid
        */
       GenericHasher(
-          size_t hashLen = crypto_generichash_BYTES   ///< number of bytes for the resulting hash value
+          size_t hashLen   ///< number of bytes for the resulting hash value
           );
 
       /** \brief Special ctor for a new hasher instance with a user provided key.
@@ -2802,9 +2814,9 @@ namespace Sloppy
 
     private:
       SodiumLib* lib;
-      size_t outLen;
+      size_t outLen{crypto_generichash_BYTES};
       crypto_generichash_state state;
-      bool isFinalized;
+      bool isFinalized{false};
     };
 
     /** \brief A class that facilitates the Diffie-Hellmann key exchange between

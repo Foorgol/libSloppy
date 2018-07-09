@@ -45,7 +45,7 @@ namespace Sloppy
      *
      * Whitespaces around keys and values will be removed.
      *
-     * The a key occurs multiple times within a section the last value assigment "wins".
+     * If a key occurs multiple times within a section, the last value assigment "wins".
      *
      * Key and section names are case-sensitive.
      *
@@ -56,17 +56,21 @@ namespace Sloppy
   {
   public:
 
+    /** \brief Default ctor creating an empty, valid but essentially unusable instance
+     */
+    Parser() = default;
+
     /** \brief Ctor reading the ini-data from an input stream
      *
      * \throws std::invalid_argument if the input stream is empty or invalid
      */
-    Parser(istream& inStream);
+    explicit Parser(istream& inStream);
 
     /** \brief Ctor reading the ini-data from a file
      *
      * \throws std::invalid_argument if the file doesn't exist or is empty
      */
-    Parser(const string& fName);
+    explicit Parser(const string& fName);
 
     /** \returns true if the config file contains a given section
      */
@@ -165,7 +169,7 @@ namespace Sloppy
      */
     void fillFromStream(istream& inStream);
 
-    std::unordered_map<string, KeyValueMap> content;   ///< a map of key-value pairs for each section; this is the actual content of the ini file
+    std::unordered_map<string, KeyValueMap> content{};   ///< a map of key-value pairs for each section; this is the actual content of the ini file
 
     /** \brief Creates a new, empty key/value-map for a given section in the overall `content` container or returns a reference the section map if the section already exists.
      *

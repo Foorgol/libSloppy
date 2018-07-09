@@ -129,11 +129,11 @@ TEST(Sodium, SecureMemCopy)
   ASSERT_TRUE(mem.setAccess(SodiumSecureMemAccess::NoAccess));
 
   // try to get a copy
-  ASSERT_THROW(SodiumSecureMemory::asCopy(mem), SodiumMemoryGuardException);
+  ASSERT_THROW(SodiumSecureMemory{mem}, SodiumMemoryGuardException);
 
   // unlock and actually create the copy
   ASSERT_TRUE(mem.setAccess(SodiumSecureMemAccess::RO));
-  SodiumSecureMemory cpy = SodiumSecureMemory::asCopy(mem);
+  SodiumSecureMemory cpy{mem};
 
   // make sure the memory areas are different
   ASSERT_NE(mem.to_ucPtr_ro(), cpy.to_ucPtr_ro());
@@ -247,7 +247,7 @@ TEST(Sodium, SymmetricLowLevel)
   ASSERT_FALSE(sodium->memcmp(msg.view(), msg2.toMemView()));
 
   // tamper with the key and try again to decrypt
-  auto trueKey = SodiumLib::SecretBoxKey::asCopy(key);
+  SodiumLib::SecretBoxKey trueKey{key};
   ptr = reinterpret_cast<char *>(key.to_ucPtr_rw());
   ptr[12] += 1;
   msg2 = sodium->secretbox_open_easy__secure(trueCipher.view(), nonce, key);
@@ -256,7 +256,7 @@ TEST(Sodium, SymmetricLowLevel)
   ASSERT_FALSE(sodium->memcmp(msg.view(), msg2.toMemView()));
 
   // tamper with the nonce and try again to decrypt
-  auto trueNonce = SodiumLib::SecretBoxNonce::asCopy(nonce);
+  SodiumLib::SecretBoxNonce trueNonce{nonce};
   ptr = reinterpret_cast<char *>(nonce.to_ucPtr_rw());
   ptr[12] += 1;
   msg2 = sodium->secretbox_open_easy__secure(trueCipher.view(), nonce, trueKey);

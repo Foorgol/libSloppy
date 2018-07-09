@@ -215,13 +215,6 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    SodiumSecureMemory SodiumSecureMemory::copy() const
-    {
-      return asCopy(*this);
-    }
-
-    //----------------------------------------------------------------------------
-
     bool SodiumSecureMemory::operator ==(const SodiumSecureMemory& other) const
     {
       if ((this->rawPtr == other.rawPtr) && (this->nBytes == other.nBytes)) return true;   // identity
@@ -232,36 +225,28 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    SodiumSecureMemory SodiumSecureMemory::asCopy(const SodiumSecureMemory& src)
+    SodiumSecureMemory::SodiumSecureMemory(const SodiumSecureMemory& other)
+      :SodiumSecureMemory(other.nBytes, other.type)
     {
-      if (!(src.canRead()))
+      if (!(other.canRead()))
       {
         throw SodiumMemoryGuardException{"creating deep SodiumSecureMemory copy"};
       }
 
-      // allocate the same amount and type of memory
-      //
-      // this might throw exceptions if we're running out of memory
-      SodiumSecureMemory cpy{src.size(), src.getType()};
-
-      SodiumSecureMemAccess oldProtection = src.getProtection();
+      SodiumSecureMemAccess oldProtection = other.getProtection();
 
       // do the copy itself
-      memcpy(cpy.rawPtr, src.rawPtr, src.size());
+      memcpy(rawPtr, other.rawPtr, nBytes);
 
-      // re-lock the source
-      if ((src.getType() == SodiumSecureMemType::Guarded) && (oldProtection != SodiumSecureMemAccess::RW))
+      // apply the same protection as for the source
+      if ((other.getType() == SodiumSecureMemType::Guarded) && (oldProtection != SodiumSecureMemAccess::RW))
       {
-        // apply the same protection to the copy
-        bool isOkay = cpy.setAccess(oldProtection);
+        bool isOkay = setAccess(oldProtection);
         if (!isOkay)
         {
-          throw SodiumMemoryManagementException{"protecting the copy in asCopy() for an existing SodiumSecureMemory"};
+          throw SodiumMemoryManagementException{"protecting the copy in the copy ctor of SodiumSecureMemory"};
         }
       }
-
-      // return using move semantics
-      return cpy;
     }
 
     //----------------------------------------------------------------------------
@@ -270,7 +255,7 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    SodiumLib*SodiumLib::getInstance()
+    SodiumLib* SodiumLib::getInstance()
     {
       if (inst == nullptr)
       {
@@ -2423,13 +2408,12 @@ namespace Sloppy
     //----------------------------------------------------------------------------
 
     SodiumSecretBox::SodiumSecretBox(const SodiumLib::SecretBoxKey& _key, const SodiumLib::SecretBoxNonce& _nonce, bool autoIncNonce)
-      :lib{SodiumLib::getInstance()}, nonce{_nonce}, autoIncrementNonce{autoIncNonce}
+      :lib{SodiumLib::getInstance()}, key{_key}, nonce{_nonce}, autoIncrementNonce{autoIncNonce}
     {
       if (key.empty())
       {
         throw SodiumInvalidKey("ctor SodiumSecretBox");
       }
-      key = _key.copy();
 
       if (!(key.setAccess(SodiumSecureMemAccess::NoAccess)))
       {
@@ -2555,14 +2539,23 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    GenericHasher::GenericHasher(size_t hashLen)
-      :lib{SodiumLib::getInstance()}, outLen{hashLen}, isFinalized{false}
+    GenericHasher::GenericHasher()
+      :lib{SodiumLib::getInstance()}
     {
       if (lib == nullptr)
       {
         throw SodiumNotAvailableException{};
       }
 
+      lib->generichash_init(&state, outLen);
+    }
+
+    //----------------------------------------------------------------------------
+
+    GenericHasher::GenericHasher(size_t hashLen)
+      :GenericHasher{}
+    {
+      outLen = hashLen;
       lib->generichash_init(&state, outLen);
     }
 
@@ -2635,7 +2628,7 @@ namespace Sloppy
 
     SodiumLib::DH_PublicKey DiffieHellmannExchanger::getMyPublicKey()
     {
-      return SodiumLib::DH_PublicKey::asCopy(pk);
+      return SodiumLib::DH_PublicKey{pk};
     }
 
     //----------------------------------------------------------------------------

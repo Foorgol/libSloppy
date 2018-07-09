@@ -28,13 +28,20 @@ namespace Sloppy
 {
   namespace Logger
   {
-    Logger::Logger(const string& senderName)
-      :sender{senderName}
+    Logger::Logger()
     {
       add_common_attributes();
 
       sink = add_console_log(cout);
       sink->locked_backend()->auto_flush(true);
+    }
+
+    //----------------------------------------------------------------------------
+
+    Logger::Logger(const string& senderName)
+      :Logger{}
+    {
+      sender = senderName;
     }
 
     //----------------------------------------------------------------------------

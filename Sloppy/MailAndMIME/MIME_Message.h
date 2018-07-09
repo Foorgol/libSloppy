@@ -195,8 +195,7 @@ namespace Sloppy
 
       /** \returns the content of a given part or an empty string if the part number was invalid
        */
-      string getPart(
-          int i   ///< the zero-based index of the part to retrieve
+      string getPart(size_t i   ///< the zero-based index of the part to retrieve
           ) const;
 
       /** \returns the ContentType of this MIME message

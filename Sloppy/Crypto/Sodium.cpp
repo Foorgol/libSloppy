@@ -37,7 +37,7 @@ namespace Sloppy
     //----------------------------------------------------------------------------
 
     SodiumSecureMemory::SodiumSecureMemory(size_t _len, SodiumSecureMemType t)
-      :rawPtr{nullptr}, nBytes{_len}, type{t}, lib{SodiumLib::getInstance()},
+      :lib{SodiumLib::getInstance()}, rawPtr{nullptr}, nBytes{_len}, type{t},
         curProtection{SodiumSecureMemAccess::RW}
     {
       if (lib == nullptr)
@@ -297,70 +297,70 @@ namespace Sloppy
       }
 
       // initialize the lib pointers
-      *(void **)(&(sodium.init)) = dlsym(libHandle, "sodium_init");
-      *(void **)(&(sodium.bin2hex)) = dlsym(libHandle, "sodium_bin2hex");
-      *(void **)(&(sodium.hex2bin)) = dlsym(libHandle, "sodium_hex2bin");
-      *(void **)(&(sodium.bin2base64)) = dlsym(libHandle, "sodium_bin2base64");
-      *(void **)(&(sodium.base642bin)) = dlsym(libHandle, "sodium_base642bin");
-      *(void **)(&(sodium.memcmp)) = dlsym(libHandle, "sodium_memcmp");
-      *(void **)(&(sodium.isZero)) = dlsym(libHandle, "sodium_is_zero");
-      *(void **)(&(sodium.increment)) = dlsym(libHandle, "sodium_increment");
-      *(void **)(&(sodium.add)) = dlsym(libHandle, "sodium_add");
-      *(void **)(&(sodium.memzero)) = dlsym(libHandle, "sodium_memzero");
-      *(void **)(&(sodium.mlock)) = dlsym(libHandle, "sodium_mlock");
-      *(void **)(&(sodium.munlock)) = dlsym(libHandle, "sodium_munlock");
-      *(void **)(&(sodium.malloc)) = dlsym(libHandle, "sodium_malloc");
-      *(void **)(&(sodium.allocarray)) = dlsym(libHandle, "sodium_allocarray");
-      *(void **)(&(sodium.free)) = dlsym(libHandle, "sodium_free");
-      *(void **)(&(sodium.mprotect_noaccess)) = dlsym(libHandle, "sodium_mprotect_noaccess");
-      *(void **)(&(sodium.mprotect_readonly)) = dlsym(libHandle, "sodium_mprotect_readonly");
-      *(void **)(&(sodium.mprotect_readwrite)) = dlsym(libHandle, "sodium_mprotect_readwrite");
-      *(void **)(&(sodium.randombytes_random)) = dlsym(libHandle, "randombytes_random");
-      *(void **)(&(sodium.randombytes_uniform)) = dlsym(libHandle, "randombytes_uniform");
-      *(void **)(&(sodium.randombytes_buf)) = dlsym(libHandle, "randombytes_buf");
-      *(void **)(&(sodium.crypto_secretbox_easy)) = dlsym(libHandle, "crypto_secretbox_easy");
-      *(void **)(&(sodium.crypto_secretbox_open_easy)) = dlsym(libHandle, "crypto_secretbox_open_easy");
-      *(void **)(&(sodium.crypto_secretbox_detached)) = dlsym(libHandle, "crypto_secretbox_detached");
-      *(void **)(&(sodium.crypto_secretbox_open_detached)) = dlsym(libHandle, "crypto_secretbox_open_detached");
-      *(void **)(&(sodium.crypto_auth)) = dlsym(libHandle, "crypto_auth");
-      *(void **)(&(sodium.crypto_auth_verify)) = dlsym(libHandle, "crypto_auth_verify");
-      *(void **)(&(sodium.crypto_aead_xchacha20poly1305_ietf_encrypt)) = dlsym(libHandle, "crypto_aead_xchacha20poly1305_ietf_encrypt");
-      *(void **)(&(sodium.crypto_aead_xchacha20poly1305_ietf_decrypt)) = dlsym(libHandle, "crypto_aead_xchacha20poly1305_ietf_decrypt");
-      *(void **)(&(sodium.crypto_aead_xchacha20poly1305_ietf_encrypt_detached)) = dlsym(libHandle, "crypto_aead_xchacha20poly1305_ietf_encrypt_detached");
-      *(void **)(&(sodium.crypto_aead_xchacha20poly1305_ietf_decrypt_detached)) = dlsym(libHandle, "crypto_aead_xchacha20poly1305_ietf_decrypt_detached");
-      *(void **)(&(sodium.crypto_aead_aes256gcm_is_available)) = dlsym(libHandle, "crypto_aead_aes256gcm_is_available");
-      *(void **)(&(sodium.crypto_aead_aes256gcm_encrypt)) = dlsym(libHandle, "crypto_aead_aes256gcm_encrypt");
-      *(void **)(&(sodium.crypto_aead_aes256gcm_decrypt)) = dlsym(libHandle, "crypto_aead_aes256gcm_decrypt");
-      *(void **)(&(sodium.crypto_aead_aes256gcm_encrypt_detached)) = dlsym(libHandle, "crypto_aead_aes256gcm_encrypt_detached");
-      *(void **)(&(sodium.crypto_aead_aes256gcm_decrypt_detached)) = dlsym(libHandle, "crypto_aead_aes256gcm_decrypt_detached");
-      *(void **)(&(sodium.crypto_box_keypair)) = dlsym(libHandle, "crypto_box_keypair");
-      *(void **)(&(sodium.crypto_box_seed_keypair)) = dlsym(libHandle, "crypto_box_seed_keypair");
-      *(void **)(&(sodium.crypto_scalarmult_base)) = dlsym(libHandle, "crypto_scalarmult_base");
-      *(void **)(&(sodium.crypto_box_easy)) = dlsym(libHandle, "crypto_box_easy");
-      *(void **)(&(sodium.crypto_box_open_easy)) = dlsym(libHandle, "crypto_box_open_easy");
-      *(void **)(&(sodium.crypto_box_detached)) = dlsym(libHandle, "crypto_box_detached");
-      *(void **)(&(sodium.crypto_box_open_detached)) = dlsym(libHandle, "crypto_box_open_detached");
-      *(void **)(&(sodium.crypto_sign_keypair)) = dlsym(libHandle, "crypto_sign_keypair");
-      *(void **)(&(sodium.crypto_sign_seed_keypair)) = dlsym(libHandle, "crypto_sign_seed_keypair");
-      *(void **)(&(sodium.crypto_sign)) = dlsym(libHandle, "crypto_sign");
-      *(void **)(&(sodium.crypto_sign_open)) = dlsym(libHandle, "crypto_sign_open");
-      *(void **)(&(sodium.crypto_sign_detached)) = dlsym(libHandle, "crypto_sign_detached");
-      *(void **)(&(sodium.crypto_sign_verify_detached)) = dlsym(libHandle, "crypto_sign_verify_detached");
-      *(void **)(&(sodium.crypto_sign_ed25519_sk_to_seed)) = dlsym(libHandle, "crypto_sign_ed25519_sk_to_seed");
-      *(void **)(&(sodium.crypto_sign_ed25519_sk_to_pk)) = dlsym(libHandle, "crypto_sign_ed25519_sk_to_pk");
-      *(void **)(&(sodium.crypto_generichash)) = dlsym(libHandle, "crypto_generichash");
-      *(void **)(&(sodium.crypto_generichash_init)) = dlsym(libHandle, "crypto_generichash_init");
-      *(void **)(&(sodium.crypto_generichash_update)) = dlsym(libHandle, "crypto_generichash_update");
-      *(void **)(&(sodium.crypto_generichash_final)) = dlsym(libHandle, "crypto_generichash_final");
-      *(void **)(&(sodium.crypto_generichash_statebytes)) = dlsym(libHandle, "crypto_generichash_statebytes");
-      *(void **)(&(sodium.crypto_shorthash)) = dlsym(libHandle, "crypto_shorthash");
-      *(void **)(&(sodium.crypto_pwhash)) = dlsym(libHandle, "crypto_pwhash");
-      *(void **)(&(sodium.crypto_pwhash_str)) = dlsym(libHandle, "crypto_pwhash_str");
-      *(void **)(&(sodium.crypto_pwhash_str_verify)) = dlsym(libHandle, "crypto_pwhash_str_verify");
-      *(void **)(&(sodium.crypto_pwhash_scryptsalsa208sha256)) = dlsym(libHandle, "crypto_pwhash_scryptsalsa208sha256");
-      *(void **)(&(sodium.crypto_pwhash_scryptsalsa208sha256_str)) = dlsym(libHandle, "crypto_pwhash_scryptsalsa208sha256_str");
-      *(void **)(&(sodium.crypto_pwhash_scryptsalsa208sha256_str_verify)) = dlsym(libHandle, "crypto_pwhash_scryptsalsa208sha256_str_verify");
-      *(void **)(&(sodium.crypto_scalarmult)) = dlsym(libHandle, "crypto_scalarmult");
+      *(reinterpret_cast<void**>(&(sodium.init))) = dlsym(libHandle, "sodium_init");
+      *(reinterpret_cast<void**>(&(sodium.bin2hex))) = dlsym(libHandle, "sodium_bin2hex");
+      *(reinterpret_cast<void**>(&(sodium.hex2bin))) = dlsym(libHandle, "sodium_hex2bin");
+      *(reinterpret_cast<void**>(&(sodium.bin2base64))) = dlsym(libHandle, "sodium_bin2base64");
+      *(reinterpret_cast<void**>(&(sodium.base642bin))) = dlsym(libHandle, "sodium_base642bin");
+      *(reinterpret_cast<void**>(&(sodium.memcmp))) = dlsym(libHandle, "sodium_memcmp");
+      *(reinterpret_cast<void**>(&(sodium.isZero))) = dlsym(libHandle, "sodium_is_zero");
+      *(reinterpret_cast<void**>(&(sodium.increment))) = dlsym(libHandle, "sodium_increment");
+      *(reinterpret_cast<void**>(&(sodium.add))) = dlsym(libHandle, "sodium_add");
+      *(reinterpret_cast<void**>(&(sodium.memzero))) = dlsym(libHandle, "sodium_memzero");
+      *(reinterpret_cast<void**>(&(sodium.mlock))) = dlsym(libHandle, "sodium_mlock");
+      *(reinterpret_cast<void**>(&(sodium.munlock))) = dlsym(libHandle, "sodium_munlock");
+      *(reinterpret_cast<void**>(&(sodium.malloc))) = dlsym(libHandle, "sodium_malloc");
+      *(reinterpret_cast<void**>(&(sodium.allocarray))) = dlsym(libHandle, "sodium_allocarray");
+      *(reinterpret_cast<void**>(&(sodium.free))) = dlsym(libHandle, "sodium_free");
+      *(reinterpret_cast<void**>(&(sodium.mprotect_noaccess))) = dlsym(libHandle, "sodium_mprotect_noaccess");
+      *(reinterpret_cast<void**>(&(sodium.mprotect_readonly))) = dlsym(libHandle, "sodium_mprotect_readonly");
+      *(reinterpret_cast<void**>(&(sodium.mprotect_readwrite))) = dlsym(libHandle, "sodium_mprotect_readwrite");
+      *(reinterpret_cast<void**>(&(sodium.randombytes_random))) = dlsym(libHandle, "randombytes_random");
+      *(reinterpret_cast<void**>(&(sodium.randombytes_uniform))) = dlsym(libHandle, "randombytes_uniform");
+      *(reinterpret_cast<void**>(&(sodium.randombytes_buf))) = dlsym(libHandle, "randombytes_buf");
+      *(reinterpret_cast<void**>(&(sodium.crypto_secretbox_easy))) = dlsym(libHandle, "crypto_secretbox_easy");
+      *(reinterpret_cast<void**>(&(sodium.crypto_secretbox_open_easy))) = dlsym(libHandle, "crypto_secretbox_open_easy");
+      *(reinterpret_cast<void**>(&(sodium.crypto_secretbox_detached))) = dlsym(libHandle, "crypto_secretbox_detached");
+      *(reinterpret_cast<void**>(&(sodium.crypto_secretbox_open_detached))) = dlsym(libHandle, "crypto_secretbox_open_detached");
+      *(reinterpret_cast<void**>(&(sodium.crypto_auth))) = dlsym(libHandle, "crypto_auth");
+      *(reinterpret_cast<void**>(&(sodium.crypto_auth_verify))) = dlsym(libHandle, "crypto_auth_verify");
+      *(reinterpret_cast<void**>(&(sodium.crypto_aead_xchacha20poly1305_ietf_encrypt))) = dlsym(libHandle, "crypto_aead_xchacha20poly1305_ietf_encrypt");
+      *(reinterpret_cast<void**>(&(sodium.crypto_aead_xchacha20poly1305_ietf_decrypt))) = dlsym(libHandle, "crypto_aead_xchacha20poly1305_ietf_decrypt");
+      *(reinterpret_cast<void**>(&(sodium.crypto_aead_xchacha20poly1305_ietf_encrypt_detached))) = dlsym(libHandle, "crypto_aead_xchacha20poly1305_ietf_encrypt_detached");
+      *(reinterpret_cast<void**>(&(sodium.crypto_aead_xchacha20poly1305_ietf_decrypt_detached))) = dlsym(libHandle, "crypto_aead_xchacha20poly1305_ietf_decrypt_detached");
+      *(reinterpret_cast<void**>(&(sodium.crypto_aead_aes256gcm_is_available))) = dlsym(libHandle, "crypto_aead_aes256gcm_is_available");
+      *(reinterpret_cast<void**>(&(sodium.crypto_aead_aes256gcm_encrypt))) = dlsym(libHandle, "crypto_aead_aes256gcm_encrypt");
+      *(reinterpret_cast<void**>(&(sodium.crypto_aead_aes256gcm_decrypt))) = dlsym(libHandle, "crypto_aead_aes256gcm_decrypt");
+      *(reinterpret_cast<void**>(&(sodium.crypto_aead_aes256gcm_encrypt_detached))) = dlsym(libHandle, "crypto_aead_aes256gcm_encrypt_detached");
+      *(reinterpret_cast<void**>(&(sodium.crypto_aead_aes256gcm_decrypt_detached))) = dlsym(libHandle, "crypto_aead_aes256gcm_decrypt_detached");
+      *(reinterpret_cast<void**>(&(sodium.crypto_box_keypair))) = dlsym(libHandle, "crypto_box_keypair");
+      *(reinterpret_cast<void**>(&(sodium.crypto_box_seed_keypair))) = dlsym(libHandle, "crypto_box_seed_keypair");
+      *(reinterpret_cast<void**>(&(sodium.crypto_scalarmult_base))) = dlsym(libHandle, "crypto_scalarmult_base");
+      *(reinterpret_cast<void**>(&(sodium.crypto_box_easy))) = dlsym(libHandle, "crypto_box_easy");
+      *(reinterpret_cast<void**>(&(sodium.crypto_box_open_easy))) = dlsym(libHandle, "crypto_box_open_easy");
+      *(reinterpret_cast<void**>(&(sodium.crypto_box_detached))) = dlsym(libHandle, "crypto_box_detached");
+      *(reinterpret_cast<void**>(&(sodium.crypto_box_open_detached))) = dlsym(libHandle, "crypto_box_open_detached");
+      *(reinterpret_cast<void**>(&(sodium.crypto_sign_keypair))) = dlsym(libHandle, "crypto_sign_keypair");
+      *(reinterpret_cast<void**>(&(sodium.crypto_sign_seed_keypair))) = dlsym(libHandle, "crypto_sign_seed_keypair");
+      *(reinterpret_cast<void**>(&(sodium.crypto_sign))) = dlsym(libHandle, "crypto_sign");
+      *(reinterpret_cast<void**>(&(sodium.crypto_sign_open))) = dlsym(libHandle, "crypto_sign_open");
+      *(reinterpret_cast<void**>(&(sodium.crypto_sign_detached))) = dlsym(libHandle, "crypto_sign_detached");
+      *(reinterpret_cast<void**>(&(sodium.crypto_sign_verify_detached))) = dlsym(libHandle, "crypto_sign_verify_detached");
+      *(reinterpret_cast<void**>(&(sodium.crypto_sign_ed25519_sk_to_seed))) = dlsym(libHandle, "crypto_sign_ed25519_sk_to_seed");
+      *(reinterpret_cast<void**>(&(sodium.crypto_sign_ed25519_sk_to_pk))) = dlsym(libHandle, "crypto_sign_ed25519_sk_to_pk");
+      *(reinterpret_cast<void**>(&(sodium.crypto_generichash))) = dlsym(libHandle, "crypto_generichash");
+      *(reinterpret_cast<void**>(&(sodium.crypto_generichash_init))) = dlsym(libHandle, "crypto_generichash_init");
+      *(reinterpret_cast<void**>(&(sodium.crypto_generichash_update))) = dlsym(libHandle, "crypto_generichash_update");
+      *(reinterpret_cast<void**>(&(sodium.crypto_generichash_final))) = dlsym(libHandle, "crypto_generichash_final");
+      *(reinterpret_cast<void**>(&(sodium.crypto_generichash_statebytes))) = dlsym(libHandle, "crypto_generichash_statebytes");
+      *(reinterpret_cast<void**>(&(sodium.crypto_shorthash))) = dlsym(libHandle, "crypto_shorthash");
+      *(reinterpret_cast<void**>(&(sodium.crypto_pwhash))) = dlsym(libHandle, "crypto_pwhash");
+      *(reinterpret_cast<void**>(&(sodium.crypto_pwhash_str))) = dlsym(libHandle, "crypto_pwhash_str");
+      *(reinterpret_cast<void**>(&(sodium.crypto_pwhash_str_verify))) = dlsym(libHandle, "crypto_pwhash_str_verify");
+      *(reinterpret_cast<void**>(&(sodium.crypto_pwhash_scryptsalsa208sha256))) = dlsym(libHandle, "crypto_pwhash_scryptsalsa208sha256");
+      *(reinterpret_cast<void**>(&(sodium.crypto_pwhash_scryptsalsa208sha256_str))) = dlsym(libHandle, "crypto_pwhash_scryptsalsa208sha256_str");
+      *(reinterpret_cast<void**>(&(sodium.crypto_pwhash_scryptsalsa208sha256_str_verify))) = dlsym(libHandle, "crypto_pwhash_scryptsalsa208sha256_str_verify");
+      *(reinterpret_cast<void**>(&(sodium.crypto_scalarmult))) = dlsym(libHandle, "crypto_scalarmult");
       // *(void **)(&(sodium.)) = dlsym(libHandle, "sodium_");
 
       // make sure we've successfully loaded all symbols
@@ -485,7 +485,8 @@ namespace Sloppy
       result.resize(resultSize);  // this actually allocates size+1 bytes, because std::string internally manages a terminating zero
 
       // tell sodium that it may write size+1 bytes ("size" data bytes plus the terminating zero)
-      sodium.bin2hex((char *)result.c_str(), resultSize + 1, (unsigned char*)(binData.c_str()), binData.size());
+      sodium.bin2hex((char *)result.c_str(), resultSize + 1,
+                     reinterpret_cast<const unsigned char*>(binData.c_str()), binData.size());
 
       return result;
     }
@@ -594,7 +595,7 @@ namespace Sloppy
 
       // do the conversion
       char * rc = sodium.bin2base64((char *) out.c_str(), outLen,
-                        (const unsigned char*) bin.c_str(), bin.size(),
+                        reinterpret_cast<const unsigned char*>(bin.c_str()), bin.size(),
                         variant);
 
       if (rc == nullptr)
@@ -1022,7 +1023,7 @@ namespace Sloppy
 
       // decrypt
       int isOkay = sodium.crypto_secretbox_open_easy((unsigned char *)msg.c_str(),
-                                                     (const unsigned char *)cipher.c_str(), cipher.size(),
+                                                     reinterpret_cast<const unsigned char *>(cipher.c_str()), cipher.size(),
                                                      nonce.to_ucPtr_ro(), key.to_ucPtr_ro());
 
       // return the clear text or an invalid buffer
@@ -1054,7 +1055,7 @@ namespace Sloppy
 
       // do the actual encryption
       sodium.crypto_secretbox_detached((unsigned char *)cipher.c_str(), mac.to_ucPtr_rw(),
-                                       (const unsigned char *)msg.c_str(), msg.size(),
+                                       reinterpret_cast<const unsigned char *>(msg.c_str()), msg.size(),
                                        nonce.to_ucPtr_ro(), key.to_ucPtr_ro());
 
       // return the result
@@ -1089,7 +1090,7 @@ namespace Sloppy
 
       // decrypt
       int isOkay = sodium.crypto_secretbox_open_detached((unsigned char *)msg.c_str(),
-                                                         (const unsigned char *)cipher.c_str(),
+                                                         reinterpret_cast<const unsigned char *>(cipher.c_str()),
                                                          mac.to_ucPtr_ro(), cipher.size(),
                                                          nonce.to_ucPtr_ro(), key.to_ucPtr_ro());
 
@@ -1247,7 +1248,7 @@ namespace Sloppy
       size_t adLen = 0;
       if (!(ad.empty()))
       {
-        adPtr = (unsigned const char *)ad.c_str();
+        adPtr = reinterpret_cast<unsigned const char *>(ad.c_str());
         adLen = ad.size();
       }
 
@@ -1366,7 +1367,7 @@ namespace Sloppy
       size_t adLen = 0;
       if (!(ad.empty()))
       {
-        adPtr = (unsigned const char *)ad.c_str();
+        adPtr = reinterpret_cast<unsigned const char *>(ad.c_str());
         adLen = ad.size();
       }
 

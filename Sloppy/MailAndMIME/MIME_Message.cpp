@@ -53,7 +53,7 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    string MIME_Message::getPart(int i) const
+    string MIME_Message::getPart(size_t i) const
     {
       return (i >= static_cast<int>(parts.size())) ? string{} : parts[i].getContent();
     }

@@ -568,6 +568,8 @@ namespace Sloppy
       {
         InMessage::operator=(std::move(other));
         msgType = other.msgType;
+
+        return *this;
       }
 
       /** \returns the message type

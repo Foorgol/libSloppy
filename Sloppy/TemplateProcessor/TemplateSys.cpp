@@ -249,31 +249,31 @@ namespace Sloppy
 
         if (tt == TokenType::StartIf)
         {
-          smatch sm;
-          regex_match(token, sm, reIf);
+          smatch tokenMatch;
+          regex_match(token, tokenMatch, reIf);
 
           sti.t = SyntaxTreeItemType::Condition;
-          sti.varName = sm[2];
-          sti.invertCondition = (sm[1] == "!");
+          sti.varName = tokenMatch[2];
+          sti.invertCondition = (tokenMatch[1] == "!");
         }
 
         if (tt == TokenType::StartFor)
         {
-          smatch sm;
-          regex_match(token, sm, reFor);
+          smatch tokenMatch;
+          regex_match(token, tokenMatch, reFor);
 
           sti.t = SyntaxTreeItemType::ForLoop;
-          sti.varName = sm[1];
-          sti.listName = sm[2];
+          sti.varName = tokenMatch[1];
+          sti.listName = tokenMatch[2];
         }
 
         if (tt == TokenType::IncludeCmd)
         {
-          smatch sm;
-          regex_match(token, sm, reInclude);
+          smatch tokenMatch;
+          regex_match(token, tokenMatch, reInclude);
 
           sti.t = SyntaxTreeItemType::IncludeCmd;
-          sti.varName = sm[1];
+          sti.varName = tokenMatch[1];
         }
 
         // store the new item and adjust the levels, if necessary
@@ -780,7 +780,7 @@ namespace Sloppy
               const json& tmp = resolveVariable(sti.varName, dic, localScopeVars);
               result += json2String(tmp);
             }
-            catch (std::out_of_range ex)
+            catch (std::out_of_range &ex)
             {
               // ignore non-existing variables
             }
@@ -808,7 +808,7 @@ namespace Sloppy
           {
             val = resolveVariable(sti.varName, dic, localScopeVars);
           }
-          catch (std::out_of_range ex) {}
+          catch (std::out_of_range &ex) {}
 
           // only parse non-empty values. all empty values or non-existing variables
           // will be treated as "false" (see default)
@@ -870,7 +870,7 @@ namespace Sloppy
                 }
               }
             }
-            catch (std::out_of_range e) {}  // invalid, non-existing list
+            catch (std::out_of_range &e) {}  // invalid, non-existing list
           }
         }
 

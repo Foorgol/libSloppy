@@ -407,8 +407,8 @@ namespace Sloppy
 
     /** \brief Ctor from a char-pointer that is being reinterpreted as a byte-pointer
      */
-    MemView(const char* ptr, size_t len)
-      :ArrayView(reinterpret_cast<const uint8_t*>(ptr), len) {}
+    MemView(const char* _ptr, size_t len)
+      :ArrayView(reinterpret_cast<const uint8_t*>(_ptr), len) {}
 
     /** \brief Ctor from a standard string
      */

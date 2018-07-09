@@ -403,7 +403,7 @@ namespace Sloppy
 
     void SHA256::nextChunk(const string& input)
     {
-      update((unsigned char *)input.c_str(), input.length());
+      update(reinterpret_cast<const unsigned char *>(input.c_str()), input.length());
     }
 
     //----------------------------------------------------------------------------

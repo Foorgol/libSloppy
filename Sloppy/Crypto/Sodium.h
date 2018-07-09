@@ -2503,7 +2503,7 @@ namespace Sloppy
       NonceBox(
           const NonceType& _nonce   ///< the initial nonce
           )
-        :initialNonce{_nonce}, curNonce{_nonce}, prevNonce{_nonce}, nonceIncrementCount{0}, lib{SodiumLib::getInstance()}
+        :initialNonce{_nonce}, prevNonce{_nonce}, curNonce{_nonce}, nonceIncrementCount{0}, lib{SodiumLib::getInstance()}
       {
         if (lib == nullptr)
         {

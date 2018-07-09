@@ -42,9 +42,8 @@ namespace Sloppy
     public:
       /** Ctor
        */
-      ElementWithTextAndHorAlignment(
-          const string& elName,   ///< the name of the element to construct
-          const string& content,   ///< the content within the `<xxx>' tags
+      ElementWithTextAndHorAlignment(const string& elName,   ///< the name of the element to construct
+          const string& _content,   ///< the content within the `<xxx>' tags
           Alignment horAlignment = Alignment::Default   ///< the horizontal alignment of the content text
           );
     };
@@ -57,10 +56,10 @@ namespace Sloppy
       /** Ctor for a `&lt;span&gt;' element with plain text content
        */
       explicit Span(
-          const string& content,   ///< the content within the `<span>` tags
+          const string& _content,   ///< the content within the `<span>` tags
           Alignment horAlignment = Alignment::Default   ///< the horizontal alignment of the content text
           )
-        : ElementWithTextAndHorAlignment("span", content, horAlignment) {}
+        : ElementWithTextAndHorAlignment("span", _content, horAlignment) {}
 
       virtual ~Span(){}
     };
@@ -75,10 +74,10 @@ namespace Sloppy
       /** Ctor for a `&lt;p&gt;' element with plain text content
        */
       explicit Para(
-          const string& content,   ///< the content within the `<p>` tags
+          const string& _content,   ///< the content within the `<p>` tags
           Alignment horAlignment = Alignment::Default   ///< the horizontal alignment of the content text
           )
-        :ElementWithTextAndHorAlignment("p", content, horAlignment) {}
+        :ElementWithTextAndHorAlignment("p", _content, horAlignment) {}
 
       virtual ~Para(){}
     };
@@ -92,10 +91,10 @@ namespace Sloppy
     public:
       explicit Head(
           int lvl,   ///< the headline level, starting at 1. No range checks applied!
-          const string& content,   ///< the header itself
+          const string& _content,   ///< the header itself
           Alignment horAlignment = Alignment::Default   ///< the horizontal alignment of the header
           )
-        :ElementWithTextAndHorAlignment("h" + to_string(lvl), content, horAlignment) {}
+        :ElementWithTextAndHorAlignment("h" + to_string(lvl), _content, horAlignment) {}
 
       virtual ~Head(){}
     };
@@ -159,11 +158,10 @@ namespace Sloppy
     class Input : public StyledElement
     {
     public:
-      Input(
-          const string& id,   ///< the value to assign to the input's `id` attribute
+      Input(const string& id,   ///< the value to assign to the input's `id` attribute
           InputType it,   ///< the type of element to create
           const string& value="",   ///< the value to assign to the input's `value` attribute
-          const string& content="",   ///< the content between the opening and closing tags
+          const string& _content="",   ///< the content between the opening and closing tags
           const string& name=""   ///< the value for the `name` attribute; defaults to the `id` if empty
           );
 

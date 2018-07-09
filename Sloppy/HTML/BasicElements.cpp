@@ -22,11 +22,11 @@ namespace Sloppy
 {
   namespace HTML
   {
-    ElementWithTextAndHorAlignment::ElementWithTextAndHorAlignment(const string& elName, const string& content, Alignment horAlignment)
+    ElementWithTextAndHorAlignment::ElementWithTextAndHorAlignment(const string& elName, const string& _content, Alignment horAlignment)
       : StyledElement{elName, false}
     {
       setTextAlignment(horAlignment);
-      addPlainText(content);
+      addPlainText(_content);
     }
 
     //----------------------------------------------------------------------------
@@ -51,7 +51,7 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    Input::Input(const string& id, InputType it, const string& value, const string& content, const string& name)
+    Input::Input(const string& id, InputType it, const string& value, const string& _content, const string& name)
       :StyledElement("input", true)
     {
       addAttr("id", id);
@@ -86,9 +86,9 @@ namespace Sloppy
         addAttr("value", value);
       }
 
-      if (!(content.empty()))
+      if (!(_content.empty()))
       {
-        addPlainText(content);
+        addPlainText(_content);
       }
     }
 

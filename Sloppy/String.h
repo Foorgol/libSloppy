@@ -395,7 +395,7 @@ namespace Sloppy
     void arg(long i) { arg1<long>(i); }
     void arg(unsigned int i) { arg1<unsigned int>(i); }
     void arg(size_t i) { arg1<size_t>(i); }
-    void arg(uint8_t i) { arg1<uint8_t>(i); }
+    void arg(uint8_t i) { arg(to_string(static_cast<unsigned>(i))); }
 
     //----------------------------------------------------------------------------
 

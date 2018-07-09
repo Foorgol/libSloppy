@@ -67,6 +67,31 @@ target_link_libraries(${PROJECT_NAME} ${LIBS})
 target_compile_options(${PROJECT_NAME} PRIVATE "-Wall")
 target_compile_options(${PROJECT_NAME} PRIVATE "-Wextra")
 #target_compile_options(${PROJECT_NAME} PRIVATE "-Weffc++")
+target_compile_options(${PROJECT_NAME}
+    PRIVATE "-pedantic"
+    PRIVATE "-Wcast-align"
+    #PRIVATE "-Wcast-qual"
+    PRIVATE "-Wctor-dtor-privacy"
+    PRIVATE "-Wdisabled-optimization"
+    PRIVATE "-Wformat=2"
+    PRIVATE "-Winit-self"
+    PRIVATE "-Wlogical-op"
+    PRIVATE "-Wmissing-declarations"
+    PRIVATE "-Wmissing-include-dirs"
+    PRIVATE "-Wnoexcept"
+    #PRIVATE "-Wold-style-cast"
+    PRIVATE "-Woverloaded-virtual"
+    PRIVATE "-Wredundant-decls"
+    PRIVATE "-Wshadow"
+    #PRIVATE "-Wsign-conversion"
+    #PRIVATE "-Wsign-promo"
+    PRIVATE "-Wstrict-null-sentinel"
+    PRIVATE "-Wstrict-overflow=5"
+    #PRIVATE "-Wswitch-default"
+    PRIVATE "-Wundef"
+    PRIVATE "-Wno-unused"
+    PRIVATE "-Wno-format-nonliteral"
+    )
 set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 17)
 set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD_REQUIRED ON)
 

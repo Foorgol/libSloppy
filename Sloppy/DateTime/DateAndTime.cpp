@@ -181,7 +181,7 @@ namespace Sloppy
       {
         td = boost::posix_time::time_duration{hour, min, sec};
       }
-      catch (exception e)
+      catch (...)
       {
         return false;
       }
@@ -220,7 +220,7 @@ namespace Sloppy
         };
         return (!(d.is_special()));
       }
-      catch (exception e)
+      catch (...)
       {
       }
 
@@ -328,7 +328,7 @@ namespace Sloppy
           gsl::narrow_cast<unsigned short>(day)
         };
       }
-      catch (exception e)
+      catch (...)
       {
         throw std::invalid_argument("Invalid date values!");
       }
@@ -343,7 +343,7 @@ namespace Sloppy
       {
         td = time_duration{hour, min, sec, 0};
       }
-      catch (exception e)
+      catch (...)
       {
         throw std::invalid_argument("Invalid time values!");
       }
@@ -428,7 +428,7 @@ namespace Sloppy
         year = stoi(parts[0]);
         month = stoi(parts[1]);
         day = stoi(parts[2]);
-      } catch (exception e) {
+      } catch (...) {
         return nullptr;
       }
 
@@ -437,7 +437,7 @@ namespace Sloppy
       try
       {
         result = new LocalTimestamp(year, month, day, hour, min, sec, tzp);
-      } catch (exception e) {
+      } catch (...) {
         return nullptr;   // invalid parameters
       }
 

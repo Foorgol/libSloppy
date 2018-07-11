@@ -20,12 +20,14 @@
 #include <ctime>
 #include <cstring>
 #include <memory>
+#include <iostream>
 
 #include <gsl/gsl>
 
 #include <boost/date_time/gregorian/gregorian.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/date_time/local_time/local_time.hpp>
+#include <boost/date_time/local_time/tz_database.hpp>
 
 #include "DateAndTime.h"
 #include "../String.h"
@@ -63,6 +65,8 @@ namespace Sloppy
 {
   namespace DateTime
   {
+    extern const string defaultTzData;
+
     tuple<unsigned short, unsigned short, unsigned short> YearMonthDayFromInt(int ymd)
     {
       if (ymd < 100000101)
@@ -581,6 +585,18 @@ namespace Sloppy
       }
 
       return boost::gregorian::date{};   // set output to "not_a_date_time"
+    }
+
+    //----------------------------------------------------------------------------
+
+    boost::local_time::tz_database getPopulatedTzDatabase()
+    {
+      boost::local_time::tz_database tz_db{};
+
+      istringstream dbData(Sloppy::DateTime::defaultTzData);
+      tz_db.load_from_stream(dbData);
+
+      return tz_db;
     }
 
     //----------------------------------------------------------------------------

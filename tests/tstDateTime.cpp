@@ -151,3 +151,13 @@ TEST(CommonTimestamp, DateFromString)
 
 //----------------------------------------------------------------------------
 
+TEST(DateTimeFuncs, PopulatedTzDatabase)
+{
+  auto db = Sloppy::DateTime::getPopulatedTzDatabase();
+
+  ASSERT_TRUE(db.region_list().size() > 0);
+
+  auto tst = db.time_zone_from_region("Europe/Berlin");
+  ASSERT_TRUE(tst != nullptr);
+  ASSERT_TRUE(tst->has_dst());
+}

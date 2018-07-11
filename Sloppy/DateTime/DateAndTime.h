@@ -88,6 +88,8 @@ namespace Sloppy
 {
   namespace DateTime {
 
+    extern const string defaultTzData;
+
     /** \brief Converts a single integer into a 3-tuple of <year, month, day>
      *
      * The integer representation is quite simple, e.g. "20160801" = 2016-08-01
@@ -121,6 +123,16 @@ namespace Sloppy
         const string& fmtString="",  ///< the format of the string; if empty, "yyyy-mm-dd" will be used
         bool strictChecking=true     ///< enable or disable strict checking
         );
+
+    /** \brief Creates a standard Boost timezone database using compiled-in zone definitions.
+     *
+     * The zone definitions are taken from Boost's Github repository, see Zonespec.cpp
+     *
+     * Boost's tz_database is documented [here](https://www.boost.org/doc/libs/1_67_0/doc/html/date_time/local_time.html).
+     *
+     * \returns A instance of Boost's tz_database populated with standard, compiled-in timezone definitions
+     */
+    boost::local_time::tz_database getPopulatedTzDatabase();
 
     /** \brief A wrapper class for boost's ptime
      *

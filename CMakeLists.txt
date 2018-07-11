@@ -37,6 +37,7 @@ set(LIB_SOURCES
     Sloppy/String.cpp
     Sloppy/Memory.cpp
     Sloppy/Utils.cpp
+    Sloppy/DateTime/Zonespec.cpp
 )
 
 #

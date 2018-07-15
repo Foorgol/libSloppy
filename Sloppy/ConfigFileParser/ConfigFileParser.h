@@ -44,6 +44,7 @@ namespace Sloppy
     Digit,      ///< the value is not empty and contains only digits (not including a minus sign!)
     Numeric,    ///< the value must be numeric (int or float), including a possible minus sign
     Integer,    ///< the value must be an integer (not a float), including a possible minus sign
+    Bool,       ///< the value is either "0", "1", "o"n, "off", "true" or "false" (case insensitive)
     File,       ///< the value must point to an existing file (not a directory); it is not checked whether the file is accessible for reading or writing
     Directory,  ///< the value must point to an existing directory (not a file); it is not checked whether the directory is accessible for reading or writing
     StandardTimezone,   ///< the value must refer to one of the compiled-in timezone definitions (see LocalTime or `Zonespec.cpp`)

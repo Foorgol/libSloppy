@@ -272,6 +272,35 @@ TEST(ConfigParser, Constraints_Integer)
 
 //----------------------------------------------------------------------------
 
+TEST(ConfigParser, Constraints_Bool)
+{
+  string s = R"(
+      fail0 = _
+      fail1 = abc,123
+      fail2 = ö
+      fail3 =
+      fail4 = x
+      fail5 = 12.45.6
+      fail6 = 1,2
+      fail7 = 44a
+      fail8 = -4.5b
+      fail9 = 1.546
+      fail10 = -2.456
+      fail11 = 42
+      fail12 = -2
+      valid0 = 0
+      valid1 = 1
+      valid2 = on
+      valid3 = oFf
+      valid4 = TRue
+      valid5 = faLSe
+             )";
+
+  ASSERT_TRUE(constraintTestHelper(s, KeyValueConstraint::Bool, 12, 5));
+}
+
+//----------------------------------------------------------------------------
+
 TEST(ConfigParser, Constraints_File)
 {
   string s = R"(

@@ -314,6 +314,20 @@ namespace Sloppy
       return isOkay;
     }
 
+    // check the boolean constraint
+    if (c == KeyValueConstraint::Bool)
+    {
+      auto b = getValueAsBool(secName, keyName);
+      if ((!(b.has_value())) && (errMsg != nullptr))
+      {
+        estring e = prepErrMsg();
+        e += "does not contain valid boolean data ('1', '0', 'on', 'off', 'true' or 'false')!";
+        *errMsg = e;
+      }
+
+      return b.has_value();
+    }
+
     // check the file constraint using Boost's file system implementation
     if (c == KeyValueConstraint::File)
     {

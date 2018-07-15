@@ -391,7 +391,16 @@ TEST(ConfigParser, Constraints_Bulk)
    {"MySection", "k5", KeyValueConstraint::Directory},
    {"MySection", "k6", KeyValueConstraint::IsoDate},
         });
-
   ASSERT_TRUE(isOkay);
+
+  isOkay = cp.bulkCheckConstraints(
+  {{"MySection", "k1", KeyValueConstraint::NotEmpty},
+   {"MySection", "k2", KeyValueConstraint::Digit},
+   {"MySection", "k3", KeyValueConstraint::Numeric},
+   {"MySection", "k4", KeyValueConstraint::Bool},
+   {"MySection", "k5", KeyValueConstraint::File},
+   {"MySection", "k6", KeyValueConstraint::IsoDate},
+        });
+  ASSERT_FALSE(isOkay);
 }
 

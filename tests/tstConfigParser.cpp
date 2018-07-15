@@ -117,3 +117,223 @@ TEST(ConfigParser, Sections)
   ASSERT_TRUE(cp.hasSection("Sec with spaces"));
   ASSERT_FALSE(cp.hasSection("Garb"));
 }
+
+//----------------------------------------------------------------------------
+
+bool constraintTestHelper(const string& rawInput, KeyValueConstraint c, int idxFailMax, int idxValidMax)
+{
+  // parse the string
+  istringstream is{rawInput};
+  Parser cp(is);
+
+  // check the constraints
+  for (int i = 0; i <= idxFailMax; ++i)
+  {
+    string k = "fail" + to_string(i);
+    if (cp.checkConstraint(k, c))
+    {
+      cerr << "Parser constraint check: key " << k << " should fail the check but passed!";
+      return false;
+    };
+  }
+  for (int i = 0; i <= idxValidMax; ++i)
+  {
+    string k = "valid" + to_string(i);
+    if (!(cp.checkConstraint(k, c)))
+    {
+      cerr << "Parser constraint check: key " << k << " should pass the check but failed!";
+      return false;
+    };
+  }
+
+  return true;
+}
+//----------------------------------------------------------------------------
+
+TEST(ConfigParser, Constraints_NotEmpty)
+{
+  string s = R"(
+      empty =
+      valid = x
+             )";
+
+  // parse the string
+  istringstream is{s};
+  Parser cp(is);
+
+  // check the constraints
+  ASSERT_FALSE(cp.checkConstraint("nonexisting", KeyValueConstraint::NotEmpty));
+  ASSERT_FALSE(cp.checkConstraint("empty", KeyValueConstraint::NotEmpty));
+  ASSERT_TRUE(cp.checkConstraint("valid", KeyValueConstraint::NotEmpty));
+}
+
+//----------------------------------------------------------------------------
+
+TEST(ConfigParser, Constraints_Alnum)
+{
+  string s = R"(
+      fail0 = _
+      fail1 = abc,123
+      fail2 = ö
+      fail3 =
+      fail4 = -2
+      valid0 = x
+      valid1 = 2
+      valid2 = x42
+             )";
+
+  ASSERT_TRUE(constraintTestHelper(s, KeyValueConstraint::Alnum, 4, 2));
+}
+
+//----------------------------------------------------------------------------
+
+TEST(ConfigParser, Constraints_Alpha)
+{
+  string s = R"(
+      fail0 = _
+      fail1 = abc,123
+      fail2 = ö
+      fail3 =
+      fail4 = -2
+      fail5 = 2
+      fail6 = x42
+      valid0 = x
+      valid1 = xsfddf
+             )";
+
+  ASSERT_TRUE(constraintTestHelper(s, KeyValueConstraint::Alpha, 6, 1));
+}
+
+//----------------------------------------------------------------------------
+
+TEST(ConfigParser, Constraints_Digit)
+{
+  string s = R"(
+      fail0 = _
+      fail1 = abc,123
+      fail2 = ö
+      fail3 =
+      fail4 = -2
+      fail5 = x
+      valid0 = 0
+      valid1 = 42
+             )";
+
+  ASSERT_TRUE(constraintTestHelper(s, KeyValueConstraint::Digit, 5, 1));
+}
+
+//----------------------------------------------------------------------------
+
+TEST(ConfigParser, Constraints_Numeric)
+{
+  string s = R"(
+      fail0 = _
+      fail1 = abc,123
+      fail2 = ö
+      fail3 =
+      fail4 = x
+      fail5 = 12.45.6
+      fail6 = 1,2
+      fail7 = 44a
+      fail8 = -4.5b
+      valid0 = 0
+      valid1 = 42
+      valid2 = -2
+      valid3 = 1.546
+      valid4 = -2.456
+             )";
+
+  ASSERT_TRUE(constraintTestHelper(s, KeyValueConstraint::Numeric, 8, 4));
+}
+
+//----------------------------------------------------------------------------
+
+TEST(ConfigParser, Constraints_Integer)
+{
+  string s = R"(
+      fail0 = _
+      fail1 = abc,123
+      fail2 = ö
+      fail3 =
+      fail4 = x
+      fail5 = 12.45.6
+      fail6 = 1,2
+      fail7 = 44a
+      fail8 = -4.5b
+      fail9 = 1.546
+      fail10 = -2.456
+      valid0 = 0
+      valid1 = 42
+      valid2 = -2
+             )";
+
+  ASSERT_TRUE(constraintTestHelper(s, KeyValueConstraint::Integer, 10, 2));
+}
+
+//----------------------------------------------------------------------------
+
+TEST(ConfigParser, Constraints_File)
+{
+  string s = R"(
+      fail0 =
+      fail1 = /usr
+      fail2 = /dev/sda
+      fail3 = kfdjhsdkf
+      valid0 = /usr/bin/bash
+      valid1 = ./Sloppy_Tests
+             )";
+
+  ASSERT_TRUE(constraintTestHelper(s, KeyValueConstraint::File, 3, 1));
+}
+
+//----------------------------------------------------------------------------
+
+TEST(ConfigParser, Constraints_Dir)
+{
+  string s = R"(
+      fail0 =
+      fail1 = /usr/bin/bash
+      fail2 = ./Sloppy_Tests
+      fail3 = /dev/sda
+      fail4 = kfdjhsdkf
+      valid0 = .
+      valid1 = ..
+      valid2 = ../debug
+      valid3 = /usr
+             )";
+
+  ASSERT_TRUE(constraintTestHelper(s, KeyValueConstraint::Directory, 4, 3));
+}
+
+//----------------------------------------------------------------------------
+
+TEST(ConfigParser, Constraints_Timezone)
+{
+  string s = R"(
+      fail0 =
+      fail1 = dlkjgdfg
+      fail2 = Europe/Bla
+      valid0 = Europe/Berlin
+             )";
+
+  ASSERT_TRUE(constraintTestHelper(s, KeyValueConstraint::StandardTimezone, 2, 0));
+}
+
+//----------------------------------------------------------------------------
+
+TEST(ConfigParser, Constraints_IsoDate)
+{
+  string s = R"(
+      fail0 =
+      fail1 = dlkjgdfg
+      fail2 = 1234-vb-32
+      fail3 = 2000-0-0
+      fail4 = 2000-13-12
+      fail5 = 2001-2-29
+      fail6 = 2018-7-32
+      valid0 = 2018-7-15
+      valid1 = 2016-02-29
+             )";
+
+  ASSERT_TRUE(constraintTestHelper(s, KeyValueConstraint::IsoDate, 6, 1));
+}

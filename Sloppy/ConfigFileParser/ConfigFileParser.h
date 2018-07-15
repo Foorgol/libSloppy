@@ -33,6 +33,35 @@ namespace Sloppy
 
   using KeyValueMap = std::unordered_map<string, string>;
 
+  /** \brief An enum that defines a list of constraints that
+   * an entry in a config file can be checked against.
+   */
+  enum class KeyValueConstraint
+  {
+    NotEmpty,   ///< the key must exist and must have a value assigned
+    Alnum,      ///< the value is not empty and contains only alphanumeric characters
+    Alpha,      ///< the value is not empty and contains only alphabetic characters
+    Digit,      ///< the value is not empty and contains only digits (not including a minus sign!)
+    Numeric,    ///< the value must be numeric (int or float), including a possible minus sign
+    Integer,    ///< the value must be an integer (not a float), including a possible minus sign
+    File,       ///< the value must point to an existing file (not a directory); it is not checked whether the file is accessible for reading or writing
+    Directory,  ///< the value must point to an existing directory (not a file); it is not checked whether the directory is accessible for reading or writing
+    StandardTimezone,   ///< the value must refer to one of the compiled-in timezone definitions (see LocalTime or `Zonespec.cpp`)
+    IsoDate,    ///< the value is a valid ISO date (YYYY-MM-DD)
+  };
+
+  /** \brief A struct that takes section name, key name and constraint type for
+   * a constraint check.
+   *
+   * This is for the easy creation of "bulk checks" based a list of these structs.
+   */
+  struct ConstraintCheckData
+  {
+    string secName;
+    string keyName;
+    KeyValueConstraint c;
+  };
+
   /** \brief A class that parses ini-style text files for reading configuration data.
      *
      * Writing of ini-files is not supported.
@@ -163,6 +192,67 @@ namespace Sloppy
      * \returns an optional<int> that contains the requested value; for invalid keys or values, the return value is empty.
      */
     optional<int> getValueAsInt(const string& keyName) const;
+
+    /** \brief Checks whether a key/value-pair satisfies a given constraint.
+     *
+     * Optionally, this method generated a human-readable error message for
+     * displaying it to the user, e.g., on the console. The pointed-to string
+     * will only be modified if the requested constraint is not met.
+     *
+     * \throws std::invalid_argument if the provided key name is empty
+     *
+     * \returns `true` if the key and its value satisfy the requested constraint.
+     */
+    bool checkConstraint(
+        const string& keyName,    ///< the name of the key
+        KeyValueConstraint c,     ///< the constraint to check
+        string* errMsg = nullptr  ///< an optional pointer to a string for returning a human-readable error message
+        ) const;
+
+    /** \brief Checks whether a key/value-pair satisfies a given constraint.
+     *
+     * Optionally, this method generated a human-readable error message for
+     * displaying it to the user, e.g., on the console. The pointed-to string
+     * will only be modified if the requested constraint is not met.
+     *
+     * \throws std::invalid_argument if the provided key name or the provided section name is empty
+     *
+     * \returns `true` if the key and its value satisfy the requested constraint.
+     */
+    bool checkConstraint(
+        const string& secName,    ///< the name of the section containing the key
+        const string& keyName,    ///< the name of the key
+        KeyValueConstraint c,     ///< the constraint to check
+        string* errMsg = nullptr  ///< an optional pointer to a string for returning a human-readable error message
+        ) const;
+
+    /** \brief Checks whether a key/value-pair satisfies a given constraint.
+     *
+     * Optionally, this method generated a human-readable error message for
+     * displaying it to the user, e.g., on the console. The pointed-to string
+     * will only be modified if the requested constraint is not met.
+     *
+     * If the section name in the ConstraintCheckData instance is empty, the default
+     * section name is used.
+     *
+     * \throws std::invalid_argument if the provided key name in the ConstraintCheckData instance is empty
+     *
+     * \returns `true` if the key and its value satisfy the requested constraint.
+     */
+    bool checkConstraint(
+        const ConstraintCheckData& ccd,   ///< section name, key name and constraint for checking
+        string* errMsg = nullptr  ///< an optional pointer to a string for returning a human-readable error message
+        ) const;
+
+    /** \brief Bulk checks the config file agains a list of constraints
+     *
+     * \returns `true` if ALL of the provided constraints are met; `false` if ANY of the provided contraints failed.
+     */
+    bool bulkCheckConstraints(
+        vector<ConstraintCheckData> constraintList,   ///< the list of contraints to check
+        bool logErrorToConsole = true,   ///< if `true`, an error message for the frist unmet contraint is printed to `cerr`
+        string* errMsg = nullptr   ///< an optional pointer to a string for returning a human-readable error message for the first unmet constraint
+        ) const;
 
   protected:
     /** \brief Does the actual parsing job and is called from the various ctors

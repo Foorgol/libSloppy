@@ -452,6 +452,146 @@ namespace Sloppy
 
   //----------------------------------------------------------------------------
 
+  bool Parser::checkConstraint_IntRange(const string& secName, const string& keyName, optional<int> minVal, optional<int> maxVal, string* errMsg) const
+  {
+    bool hasMin = minVal.has_value();
+    bool hasMax = maxVal.has_value();
+
+    if (hasMin && hasMax)
+    {
+      if (*maxVal < *minVal)
+      {
+        throw std::range_error("Config file parser: parameters for integer range check are inconsistent.");
+      }
+    }
+
+    bool isOkay = checkConstraint(secName, keyName, KeyValueConstraint::Integer, errMsg);
+    if (!isOkay) return false;
+
+    // prepare a helper functions that puts keyname and
+    // an optional section name into the first two parameters
+    // of a error message
+    auto prepErrMsg = [&secName, &keyName]() {
+      estring msg{"The key %1 %2 "};
+      msg.arg(keyName);
+      if (secName != defaultSectionName) msg.arg("in section " + secName);
+      else msg.arg("");
+
+      return msg;
+    };
+
+    int v = getValueAsInt(secName, keyName).value();
+
+    if (hasMin)
+    {
+      isOkay = (v >= *minVal);
+      if (!isOkay && (errMsg != nullptr))
+      {
+        estring e = prepErrMsg();
+        e += "shall have a min value of at least %1";
+        e.arg(*minVal);
+        *errMsg = e;
+      }
+
+      if (!isOkay) return false;
+    }
+
+    if (hasMax)
+    {
+      isOkay = (v <= *maxVal);
+      if (!isOkay && (errMsg != nullptr))
+      {
+        estring e = prepErrMsg();
+        e += "shall have a max value of not more than %1";
+        e.arg(*maxVal);
+        *errMsg = e;
+      }
+
+      if (!isOkay) return false;
+    }
+
+    return true;
+  }
+
+  //----------------------------------------------------------------------------
+
+  bool Parser::checkConstraint_IntRange(const string& keyName, optional<int> minVal, optional<int> maxVal, string* errMsg) const
+  {
+    return checkConstraint_IntRange(defaultSectionName, keyName, minVal, maxVal, errMsg);
+  }
+
+  //----------------------------------------------------------------------------
+
+  bool Parser::checkConstraint_StrLen(const string& secName, const string& keyName, optional<size_t> minLen, optional<size_t> maxLen, string* errMsg) const
+  {
+    bool hasMin = minLen.has_value();
+    bool hasMax = maxLen.has_value();
+
+    if (hasMin && hasMax)
+    {
+      if (*maxLen < *minLen)
+      {
+        throw std::range_error("Config file parser: parameters for string length check are inconsistent.");
+      }
+    }
+
+    bool isOkay = checkConstraint(secName, keyName, KeyValueConstraint::NotEmpty, errMsg);
+    if (!isOkay) return false;
+
+    // prepare a helper functions that puts keyname and
+    // an optional section name into the first two parameters
+    // of a error message
+    auto prepErrMsg = [&secName, &keyName]() {
+      estring msg{"The key %1 %2 "};
+      msg.arg(keyName);
+      if (secName != defaultSectionName) msg.arg("in section " + secName);
+      else msg.arg("");
+
+      return msg;
+    };
+
+    const estring& v = getValue(secName, keyName).value();
+
+    if (hasMin && (*minLen > 0))
+    {
+      isOkay = (v.length() >= *minLen);
+      if (!isOkay && (errMsg != nullptr))
+      {
+        estring e = prepErrMsg();
+        e += "shall have a min length of at least %1 characters!";
+        e.arg(*minLen);
+        *errMsg = e;
+      }
+
+      if (!isOkay) return false;
+    }
+
+    if (hasMax && (*maxLen > 0))
+    {
+      isOkay = (v.length() <= *maxLen);
+      if (!isOkay && (errMsg != nullptr))
+      {
+        estring e = prepErrMsg();
+        e += "shall have a max length of not more than %1 characters!";
+        e.arg(*maxLen);
+        *errMsg = e;
+      }
+
+      if (!isOkay) return false;
+    }
+
+    return true;
+  }
+
+  //----------------------------------------------------------------------------
+
+  bool Parser::checkConstraint_StrLen(const string& keyName, optional<size_t> minLen, optional<size_t> maxLen, string* errMsg) const
+  {
+    return checkConstraint_StrLen(defaultSectionName, keyName, minLen, maxLen, errMsg);
+  }
+
+  //----------------------------------------------------------------------------
+
   void Parser::fillFromStream(istream& inStream)
   {
     // prepare a few regex; do this only once because

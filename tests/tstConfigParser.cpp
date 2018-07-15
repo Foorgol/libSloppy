@@ -366,6 +366,7 @@ TEST(ConfigParser, Constraints_IsoDate)
 
   ASSERT_TRUE(constraintTestHelper(s, KeyValueConstraint::IsoDate, 6, 1));
 }
+
 //----------------------------------------------------------------------------
 
 TEST(ConfigParser, Constraints_Bulk)
@@ -404,3 +405,48 @@ TEST(ConfigParser, Constraints_Bulk)
   ASSERT_FALSE(isOkay);
 }
 
+//----------------------------------------------------------------------------
+
+TEST(ConfigParser, Constraints_IntRange)
+{
+  string s = R"(
+      [MySection]
+      k1 = -3
+      k2 = 0
+      k3 = 42
+             )";
+
+  istringstream is{s};
+  Parser cp(is);
+  ASSERT_TRUE(cp.checkConstraint_IntRange("MySection", "k1", {}, 5));
+  ASSERT_TRUE(cp.checkConstraint_IntRange("MySection", "k1", -4, 5));
+  ASSERT_TRUE(cp.checkConstraint_IntRange("MySection", "k1", -4, {}));
+  ASSERT_TRUE(cp.checkConstraint_IntRange("MySection", "k2", 0, 0));
+
+  ASSERT_FALSE(cp.checkConstraint_IntRange("MySection", "k2", 1, {}));
+  ASSERT_FALSE(cp.checkConstraint_IntRange("MySection", "k2", {}, -1));
+
+  ASSERT_THROW(cp.checkConstraint_IntRange("MySection", "k2", 11, 10), std::range_error);
+}
+
+//----------------------------------------------------------------------------
+
+TEST(ConfigParser, Constraints_StrLen)
+{
+  string s = R"(
+      k = abc
+             )";
+
+  istringstream is{s};
+  Parser cp(is);
+
+  ASSERT_TRUE(cp.checkConstraint_StrLen("k", {}, 5));
+  ASSERT_TRUE(cp.checkConstraint_StrLen("k", 0, {}));
+  ASSERT_TRUE(cp.checkConstraint_StrLen("k", 2, {}));
+  ASSERT_TRUE(cp.checkConstraint_StrLen("k", 1, 5));
+
+  ASSERT_FALSE(cp.checkConstraint_StrLen("k", 4, {}));
+  ASSERT_FALSE(cp.checkConstraint_StrLen("k", {}, 2));
+
+  ASSERT_THROW(cp.checkConstraint_StrLen("k", 11, 10), std::range_error);
+}

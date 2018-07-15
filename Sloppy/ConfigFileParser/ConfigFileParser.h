@@ -255,6 +255,75 @@ namespace Sloppy
         string* errMsg = nullptr   ///< an optional pointer to a string for returning a human-readable error message for the first unmet constraint
         ) const;
 
+    /** \brief Checks whether a key contains an integer in a given value range.
+     *
+     * \throws std::invalid_argument if the provided key name or the provided section name is empty
+     *
+     * \throws std::range_error if both min and max are provided and max is less than min.
+     *
+     * \returns `true` if the key contains an integer and the value is within the given min/max range
+     */
+    bool checkConstraint_IntRange(
+        const string& secName,    ///< the name of the section containing the key
+        const string& keyName,    ///< the name of the key
+        optional<int> minVal,     ///< if provided, the value will be checked against this min value
+        optional<int> maxVal,     ///< if provided, the value will be checked against this max value
+        string* errMsg = nullptr  ///< an optional pointer to a string for returning a human-readable error message
+        ) const;
+
+    /** \brief Checks whether a key contains an integer in a given value range.
+     *
+     * \throws std::invalid_argument if the provided key name or the provided section name is empty
+     *
+     * \throws std::range_error if both min and max are provided and max is less than min.
+     *
+     * \returns `true` if the key contains an integer and the value is within the given min/max range
+     */
+    bool checkConstraint_IntRange(
+        const string& keyName,    ///< the name of the key
+        optional<int> minVal,     ///< if provided, the value will be checked against this min value
+        optional<int> maxVal,     ///< if provided, the value will be checked against this max value
+        string* errMsg = nullptr  ///< an optional pointer to a string for returning a human-readable error message
+        ) const;
+
+
+    /** \brief Checks whether a key contains an string with a length in a given range.
+     *
+     * \note A min/max length of 0 is ignored because we have an implicit
+     * "not empty" criterion for the string.
+     *
+     * \throws std::invalid_argument if the provided key name or the provided section name is empty
+     *
+     * \throws std::range_error if both min and max are provided and max is less than min.
+     *
+     * \returns `true` if the key contains a string and its length is within the given min/max range
+     */
+    bool checkConstraint_StrLen(
+        const string& secName,    ///< the name of the section containing the key
+        const string& keyName,    ///< the name of the key
+        optional<size_t> minLen,     ///< if provided, the string will be checked against this min length
+        optional<size_t> maxLen,     ///< if provided, the string will be checked against this max length
+        string* errMsg = nullptr  ///< an optional pointer to a string for returning a human-readable error message
+        ) const;
+
+    /** \brief Checks whether a key contains an string with a length in a given range.
+     *
+     * \note A min/max length of 0 is ignored because we have an implicit
+     * "not empty" criterion for the string.
+     *
+     * \throws std::invalid_argument if the provided key name or the provided section name is empty
+     *
+     * \throws std::range_error if both min and max are provided and max is less than min.
+     *
+     * \returns `true` if the key contains a string and its length is within the given min/max range
+     */
+    bool checkConstraint_StrLen(
+        const string& keyName,    ///< the name of the key
+        optional<size_t> minLen,     ///< if provided, the string will be checked against this min length
+        optional<size_t> maxLen,     ///< if provided, the string will be checked against this max length
+        string* errMsg = nullptr  ///< an optional pointer to a string for returning a human-readable error message
+        ) const;
+
   protected:
     /** \brief Does the actual parsing job and is called from the various ctors
      */

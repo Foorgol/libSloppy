@@ -366,3 +366,32 @@ TEST(ConfigParser, Constraints_IsoDate)
 
   ASSERT_TRUE(constraintTestHelper(s, KeyValueConstraint::IsoDate, 6, 1));
 }
+//----------------------------------------------------------------------------
+
+TEST(ConfigParser, Constraints_Bulk)
+{
+  string s = R"(
+      [MySection]
+      k1 = ssldfjsljf
+      k2 = 43234
+      k3 = -3.14
+      k4 = off
+      k5 = /usr/bin
+      k6 = 2018-07-15
+             )";
+
+  istringstream is{s};
+  Parser cp(is);
+
+  bool isOkay = cp.bulkCheckConstraints(
+  {{"MySection", "k1", KeyValueConstraint::NotEmpty},
+   {"MySection", "k2", KeyValueConstraint::Digit},
+   {"MySection", "k3", KeyValueConstraint::Numeric},
+   {"MySection", "k4", KeyValueConstraint::Bool},
+   {"MySection", "k5", KeyValueConstraint::Directory},
+   {"MySection", "k6", KeyValueConstraint::IsoDate},
+        });
+
+  ASSERT_TRUE(isOkay);
+}
+

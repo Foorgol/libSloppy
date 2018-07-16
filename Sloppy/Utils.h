@@ -32,7 +32,7 @@
 
 #include "String.h"
 #include "ManagedFileDescriptor.h"
-#include "../json_fwd.hpp"
+#include "json_fwd.hpp"
 
 using namespace std;
 

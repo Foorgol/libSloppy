@@ -26,7 +26,7 @@
 #include <regex>
 #include <optional>
 
-#include "../../json_fwd.hpp"
+#include "../json_fwd.hpp"
 #include "../ConfigFileParser/ConfigFileParser.h"
 
 using namespace std;

@@ -21,7 +21,7 @@
 #include <gtest/gtest.h>
 
 #include "../Sloppy/Utils.h"
-#include "../json.hpp"
+#include "../Sloppy/json.hpp"
 #include "../Sloppy/Memory.h"
 
 using namespace std;

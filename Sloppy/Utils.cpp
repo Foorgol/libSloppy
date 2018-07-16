@@ -25,7 +25,7 @@
 #include <boost/filesystem.hpp>
 
 #include "Utils.h"
-#include "../json.hpp"
+#include "json.hpp"
 #include "ManagedFileDescriptor.h"
 #include "Memory.h"
 

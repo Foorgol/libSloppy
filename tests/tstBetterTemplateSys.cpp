@@ -20,7 +20,7 @@
 
 #include <gtest/gtest.h>
 
-#include "../json.hpp"
+#include "../Sloppy/json.hpp"
 #include "../Sloppy/TemplateProcessor/TemplateSys.h"
 #include "BasicTestClass.h"
 

@@ -1,6 +1,6 @@
 /*
  *    This is libSloppy, a library of sloppily implemented helper functions.
- *    Copyright (C) 2016 - 2017  Volker Knollmann
+ *    Copyright (C) 2016 - 2018  Volker Knollmann
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
 #include <boost/filesystem.hpp>
 
 #include "Utils.h"
-#include "../json.hpp"
+#include "json.hpp"
 #include "ManagedFileDescriptor.h"
 #include "Memory.h"
 

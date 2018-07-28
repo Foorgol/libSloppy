@@ -16,8 +16,8 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __LIBSLOPPY_MEMORY_H
-#define __LIBSLOPPY_MEMORY_H
+#ifndef LIBSLOPPY_MEMORY_H
+#define LIBSLOPPY_MEMORY_H
 
 #include <memory>
 #include <stdexcept>
@@ -832,8 +832,9 @@ namespace Sloppy
         throw std::out_of_range("ManagedArray: copyOver would exceed array limits");
       }
 
-      void* dstPtr = to_voidPtr() + idxFirstDstElem * sizeof(T);
-      memcpy(dstPtr, src.to_voidPtr(), src.byteSize());
+      T* dstPtr = &(ptr[idxFirstDstElem]);
+
+      memcpy(reinterpret_cast<void *>(dstPtr), src.to_voidPtr(), src.byteSize());
     }
 
   protected:

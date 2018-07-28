@@ -450,3 +450,31 @@ TEST(ConfigParser, Constraints_StrLen)
 
   ASSERT_THROW(cp.checkConstraint_StrLen("k", 11, 10), std::range_error);
 }
+
+//----------------------------------------------------------------------------
+
+TEST(ConfigParser, GetAlLSections)
+{
+  string s = R"(
+      [s1]
+      k1 = ssldfjsljf
+      k2 = 43234
+      [s2]
+      k3 = -3.14
+      k4 = off
+      [s3]
+      k5 = /usr/bin
+      k6 = 2018-07-15
+             )";
+
+  istringstream is{s};
+  Parser cp(is);
+
+  vector<string> as = cp.allSections();
+  ASSERT_EQ(4, as.size());
+  for (const string& s : {"s1", "s2", "s3", "__DEFAULT__"})
+  {
+    auto it = std::find(as.cbegin(), as.cend(), s);
+    ASSERT_TRUE(it != as.cend());
+  }
+}

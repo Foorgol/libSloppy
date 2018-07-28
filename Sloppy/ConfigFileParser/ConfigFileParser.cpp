@@ -592,6 +592,20 @@ namespace Sloppy
 
   //----------------------------------------------------------------------------
 
+  vector<string> Parser::allSections() const
+  {
+    vector<string> result;
+
+    for (const auto& p : content)
+    {
+      result.push_back(p.first);
+    }
+
+    return result;
+  }
+
+  //----------------------------------------------------------------------------
+
   void Parser::fillFromStream(istream& inStream)
   {
     // prepare a few regex; do this only once because

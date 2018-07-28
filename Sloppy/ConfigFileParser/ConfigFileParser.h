@@ -324,6 +324,10 @@ namespace Sloppy
         string* errMsg = nullptr  ///< an optional pointer to a string for returning a human-readable error message
         ) const;
 
+    /** \returns a list of all sections including the default section
+     */
+    vector<string> allSections() const;
+
   protected:
     /** \brief Does the actual parsing job and is called from the various ctors
      */

@@ -725,6 +725,23 @@ namespace Sloppy
 
       // Diffie-Hellmann key exchange
       int (*crypto_scalarmult)(unsigned char *q, const unsigned char *n, const unsigned char *p);
+
+      // new cryptp_kx_* function for client/server key exchance
+      int (*crypto_kx_keypair)(unsigned char pk[crypto_kx_PUBLICKEYBYTES],
+                               unsigned char sk[crypto_kx_SECRETKEYBYTES]);
+      int (*crypto_kx_seed_keypair)(unsigned char pk[crypto_kx_PUBLICKEYBYTES],
+                                    unsigned char sk[crypto_kx_SECRETKEYBYTES],
+                                    const unsigned char seed[crypto_kx_SEEDBYTES]);
+      int (*crypto_kx_client_session_keys)(unsigned char rx[crypto_kx_SESSIONKEYBYTES],
+                                           unsigned char tx[crypto_kx_SESSIONKEYBYTES],
+                                           const unsigned char client_pk[crypto_kx_PUBLICKEYBYTES],
+                                           const unsigned char client_sk[crypto_kx_SECRETKEYBYTES],
+                                           const unsigned char server_pk[crypto_kx_PUBLICKEYBYTES]);
+      int (*crypto_kx_server_session_keys)(unsigned char rx[crypto_kx_SESSIONKEYBYTES],
+                                           unsigned char tx[crypto_kx_SESSIONKEYBYTES],
+                                           const unsigned char server_pk[crypto_kx_PUBLICKEYBYTES],
+                                           const unsigned char server_sk[crypto_kx_SECRETKEYBYTES],
+                                           const unsigned char client_pk[crypto_kx_PUBLICKEYBYTES]);
     };
 
     //----------------------------------------------------------------------------
@@ -2300,6 +2317,69 @@ namespace Sloppy
        */
       DH_PublicKey genPublicDHKeyFromSecretKey(const DH_SecretKey& sk);
 
+      //
+      // New key exchange functions introduced in libSodium 1.0.12
+      //
+      using KX_SessionKey = SodiumKey<SodiumKeyType::Secret, crypto_kx_SESSIONKEYBYTES>;
+      using KX_PublicKey = SodiumKey<SodiumKeyType::Public, crypto_kx_PUBLICKEYBYTES>;
+      using KX_SecretKey = SodiumKey<SodiumKeyType::Secret, crypto_kx_SECRETKEYBYTES>;
+      using KX_KeySeed = SodiumKey<SodiumKeyType::Secret, crypto_kx_SEEDBYTES>;
+
+      /** \brief Generates a random public / private key pair for the new crypto_kx_* key
+       * exchange functions;
+       * original documentation [here](https://download.libsodium.org/doc/key_exchange)
+       *
+       * \returns a pair of secret and public key for client/server key exchange
+       */
+      pair<KX_SecretKey, KX_PublicKey> genKeyExchangeKeyPair();
+
+      /** \brief Generates a deterministic public / private key pair for the new crypto_kx_* key
+       * exchange functions based on a given seed;
+       * original documentation [here](https://download.libsodium.org/doc/key_exchange)
+       *
+       * \throws SodiumInvalidKey if the provided seed was empty
+       *
+       * \returns a pair of secret and public key for client/server key exchange
+       */
+      pair<KX_SecretKey, KX_PublicKey> genKeyExchangeKeyPair(
+          const KX_KeySeed& seed   ///< seed to be used for key generation, ready/unlocked for reading
+          );
+
+      /** \brief Generates the client's session key pair from the client's
+       * public/secret keys and the server's public key;
+       * original documentation [here](https://download.libsodium.org/doc/key_exchange)
+       *
+       * \note The `tx` key should be used to transmit data from the client
+       * to the server and the 'rx' key should be used in the other direction.
+       *
+       * \throws SodiumInvalidKey if one of the provided keys was empty or
+       * the public key invalid.
+       *
+       * \returns a pair of 'rx` and `tx` session keys
+       */
+      pair<KX_SessionKey, KX_SessionKey> getClientSessionKeys(
+          const KX_PublicKey& clientPubKey,   ///< the client's public key
+          const KX_SecretKey& clientSecKey,   ///< the client's secret key, ready/unlocked for reading
+          const KX_PublicKey& serverPubKey    ///< the server's public key
+          );
+
+      /** \brief Generates the server's session key pair from the server's
+       * public/secret keys and the client's public key;
+       * original documentation [here](https://download.libsodium.org/doc/key_exchange)
+       *
+       * \note The `tx` key should be used to transmit data from the server
+       * to the client and the 'rx' key should be used in the other direction.
+       *
+       * \throws SodiumInvalidKey if one of the provided keys was empty or
+       * the public key invalid.
+       *
+       * \returns a pair of 'rx` and `tx` session keys
+       */
+      pair<KX_SessionKey, KX_SessionKey> getServerSessionKeys(
+          const KX_PublicKey& serverPubKey,   ///< the server's public key
+          const KX_SecretKey& serverSecKey,   ///< the server's secret key, ready/unlocked for reading
+          const KX_PublicKey& clientPubKey   ///< the client's public key
+          );
 
     protected:
       /** \brief Ctor for the lib wrapper; loads all necessary symbols / function pointers
@@ -2833,7 +2913,7 @@ namespace Sloppy
        *
        * \throws SodiumNotAvailableException if the sodium wrapper singleton could be initialized / retrieved
        */
-      DiffieHellmannExchanger(
+      explicit DiffieHellmannExchanger(
           bool _isClient   ///< set to `true` if we're on the client side or to `false` if we're on the server side
           );
 
@@ -2856,6 +2936,59 @@ namespace Sloppy
       SodiumLib* lib;
       SodiumLib::DH_SecretKey sk;
       SodiumLib::DH_PublicKey pk;
+    };
+
+    /** \brief A class that facilitates the Diffie-Hellmann key exchange between
+     * a client and a server.
+     *
+     * \note Internally, this class uses the new API of libsodium with the
+     * `crypto_kx_*` functions. In particular, it creates a dedicated session key
+     * for each direction of data flow (client -> server, server -> client).
+     */
+    class DiffieHellmannExchanger2
+    {
+    public:
+      /** \brief Ctor for a new instance; generates a new, random public / private key pair
+       * for the key exchange.
+       *
+       * \throws SodiumNotAvailableException if the sodium wrapper singleton could be initialized / retrieved
+       */
+      explicit DiffieHellmannExchanger2(
+          bool _isClient   ///< set to `true` if we're on the client side or to `false` if we're on the server side
+          );
+
+      /** \brief Ctor for a new instance; generates a deterministic, seed-based public / private key pair
+       * for the key exchange.
+       *
+       * \throws SodiumNotAvailableException if the sodium wrapper singleton could be initialized / retrieved
+       *
+       * \throws SodiumInvalidKey if the seed was invalid (wrong length or zero length)
+       */
+      DiffieHellmannExchanger2(
+          bool _isClient,   ///< set to `true` if we're on the client side or to `false` if we're on the server side
+          const string& seed_B64   ///< BASE64-encoded seed for the key generation
+          );
+
+      /** \returns the public key for sending it to the communication peer
+       */
+      SodiumLib::KX_PublicKey getMyPublicKey();
+
+      /** \brief Computes the shared secret between client and server.
+       *
+       * \throws SodiumInvalidKey if the peer's public key is empty
+       *
+       * \returns a `<rx, tx>` pair of secret, symmetric session keys shared
+       * between the peers
+       */
+      pair<SodiumLib::KX_SessionKey, SodiumLib::KX_SessionKey> getSessionKeys(
+          const SodiumLib::KX_PublicKey& othersPublicKey   ///< the public key of the communication partner
+          );
+
+    private:
+      bool isClient;
+      SodiumLib* lib;
+      SodiumLib::KX_SecretKey sk;
+      SodiumLib::KX_PublicKey pk;
     };
 
     /** A class that encapsulates a secret (e.g., a symmetric key) in a password protected container.

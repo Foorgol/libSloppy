@@ -361,7 +361,10 @@ namespace Sloppy
       *(reinterpret_cast<void**>(&(sodium.crypto_pwhash_scryptsalsa208sha256_str))) = dlsym(libHandle, "crypto_pwhash_scryptsalsa208sha256_str");
       *(reinterpret_cast<void**>(&(sodium.crypto_pwhash_scryptsalsa208sha256_str_verify))) = dlsym(libHandle, "crypto_pwhash_scryptsalsa208sha256_str_verify");
       *(reinterpret_cast<void**>(&(sodium.crypto_scalarmult))) = dlsym(libHandle, "crypto_scalarmult");
-      // *(void **)(&(sodium.)) = dlsym(libHandle, "sodium_");
+      *(reinterpret_cast<void**>(&(sodium.crypto_kx_keypair))) = dlsym(libHandle, "crypto_kx_keypair");
+      *(reinterpret_cast<void**>(&(sodium.crypto_kx_seed_keypair))) = dlsym(libHandle, "crypto_kx_seed_keypair");
+      *(reinterpret_cast<void**>(&(sodium.crypto_kx_client_session_keys))) = dlsym(libHandle, "crypto_kx_client_session_keys");
+      *(reinterpret_cast<void**>(&(sodium.crypto_kx_server_session_keys))) = dlsym(libHandle, "crypto_kx_server_session_keys");
 
       // make sure we've successfully loaded all symbols
       if ((sodium.init == nullptr) ||
@@ -427,8 +430,11 @@ namespace Sloppy
           (sodium.crypto_pwhash_scryptsalsa208sha256 == nullptr) ||
           (sodium.crypto_pwhash_scryptsalsa208sha256_str == nullptr) ||
           (sodium.crypto_pwhash_scryptsalsa208sha256_str_verify == nullptr) ||
-          (sodium.crypto_scalarmult == nullptr)
-          //(sodium.crypto_aead_chacha20poly1305 == nullptr) ||
+          (sodium.crypto_scalarmult == nullptr) ||
+          (sodium.crypto_kx_keypair == nullptr) ||
+          (sodium.crypto_kx_seed_keypair == nullptr) ||
+          (sodium.crypto_kx_client_session_keys == nullptr) ||
+          (sodium.crypto_kx_server_session_keys == nullptr)
           )
       {
         dlclose(libHandle);
@@ -2403,6 +2409,83 @@ namespace Sloppy
       return std::move(pk);
     }
 
+    //----------------------------------------------------------------------------
+
+    pair<SodiumLib::KX_SecretKey, SodiumLib::KX_PublicKey> SodiumLib::genKeyExchangeKeyPair()
+    {
+      KX_SecretKey sk;
+      KX_PublicKey pk;
+
+      sodium.crypto_kx_keypair(pk.to_ucPtr_rw(), sk.to_ucPtr_rw());
+
+      return make_pair(std::move(sk), std::move(pk));
+    }
+
+    //----------------------------------------------------------------------------
+
+    pair<SodiumLib::KX_SecretKey, SodiumLib::KX_PublicKey> SodiumLib::genKeyExchangeKeyPair(const SodiumLib::KX_KeySeed& seed)
+    {
+      if (seed.empty())
+      {
+        throw SodiumInvalidKey("genKeyExchangeKeyPair with seed");
+      }
+
+      KX_SecretKey sk;
+      KX_PublicKey pk;
+
+      sodium.crypto_kx_seed_keypair(pk.to_ucPtr_rw(), sk.to_ucPtr_rw(), seed.to_ucPtr_ro());
+
+      return make_pair(std::move(sk), std::move(pk));
+    }
+
+    //----------------------------------------------------------------------------
+
+    pair<SodiumLib::KX_SessionKey, SodiumLib::KX_SessionKey> SodiumLib::getClientSessionKeys(const SodiumLib::KX_PublicKey& clientPubKey, const SodiumLib::KX_SecretKey& clientSecKey, const SodiumLib::KX_PublicKey& serverPubKey)
+    {
+      if (clientPubKey.empty() || clientSecKey.empty() || serverPubKey.empty())
+      {
+        throw SodiumInvalidKey("getClientSessionKeys");
+      }
+
+      KX_SessionKey rx;
+      KX_SessionKey tx;
+      int rc = sodium.crypto_kx_client_session_keys(
+            rx.to_ucPtr_rw(), tx.to_ucPtr_rw(),
+            clientPubKey.to_ucPtr_ro(), clientSecKey.to_ucPtr_ro(),
+            serverPubKey.to_ucPtr_ro());
+
+      if (rc != 0)
+      {
+        throw SodiumInvalidKey("getClientSessionKeys");
+      }
+
+      return make_pair(std::move(rx), std::move(tx));
+    }
+
+    //----------------------------------------------------------------------------
+
+    pair<SodiumLib::KX_SessionKey, SodiumLib::KX_SessionKey> SodiumLib::getServerSessionKeys(const SodiumLib::KX_PublicKey& serverPubKey, const SodiumLib::KX_SecretKey& serverSecKey, const SodiumLib::KX_PublicKey& clientPubKey)
+    {
+      if (serverPubKey.empty() || serverSecKey.empty() || clientPubKey.empty())
+      {
+        throw SodiumInvalidKey("getServerSessionKeys");
+      }
+
+      KX_SessionKey rx;
+      KX_SessionKey tx;
+      int rc = sodium.crypto_kx_server_session_keys(
+            rx.to_ucPtr_rw(), tx.to_ucPtr_rw(),
+            serverPubKey.to_ucPtr_ro(), serverSecKey.to_ucPtr_ro(),
+            clientPubKey.to_ucPtr_ro());
+
+      if (rc != 0)
+      {
+        throw SodiumInvalidKey("getClientSessionKeys");
+      }
+
+      return make_pair(std::move(rx), std::move(tx));
+    }
+
 
     //----------------------------------------------------------------------------
     //----------------------------------------------------------------------------
@@ -2951,6 +3034,76 @@ namespace Sloppy
       }
 
       return sodium_base64_VARIANT_ORIGINAL;
+    }
+
+    //----------------------------------------------------------------------------
+
+    DiffieHellmannExchanger2::DiffieHellmannExchanger2(bool _isClient)
+      :isClient{_isClient}, lib{SodiumLib::getInstance()}
+    {
+      if (lib == nullptr)
+      {
+        throw SodiumNotAvailableException{};
+      }
+
+      tie(sk, pk) = lib->genKeyExchangeKeyPair();
+      sk.setAccess(SodiumSecureMemAccess::NoAccess);
+    }
+
+    //----------------------------------------------------------------------------
+    //----------------------------------------------------------------------------
+    //----------------------------------------------------------------------------
+
+    DiffieHellmannExchanger2::DiffieHellmannExchanger2(bool _isClient, const string& seed_B64)
+      :isClient{_isClient}, lib{SodiumLib::getInstance()}
+    {
+      if (lib == nullptr)
+      {
+        throw SodiumNotAvailableException{};
+      }
+
+      // convert the base64 data into binary data and
+      // initialize the seed
+      bool isOkay{false};
+      SodiumLib::KX_KeySeed seed;
+      try
+      {
+        string binSeed = lib->base642Bin(seed_B64);
+        isOkay = seed.fillFromString(binSeed);
+      }
+      catch (...)
+      {
+        throw SodiumInvalidKey("DiffieHellmannExchanger2 ctor");
+      }
+
+      if (!isOkay)
+      {
+        throw SodiumInvalidKey("DiffieHellmannExchanger2 ctor");
+      }
+
+      // do the actual key generation
+      tie(sk, pk) = lib->genKeyExchangeKeyPair(seed);
+      sk.setAccess(SodiumSecureMemAccess::NoAccess);
+    }
+
+    //----------------------------------------------------------------------------
+
+    SodiumLib::KX_PublicKey DiffieHellmannExchanger2::getMyPublicKey()
+    {
+      return SodiumLib::KX_PublicKey{pk};
+    }
+
+    //----------------------------------------------------------------------------
+
+    pair<SodiumLib::KX_SessionKey, SodiumLib::KX_SessionKey> DiffieHellmannExchanger2::getSessionKeys(const SodiumLib::KX_PublicKey& othersPublicKey)
+    {
+      sk.setAccess(SodiumSecureMemAccess::RO);
+      auto result = isClient ?
+            lib->getClientSessionKeys(pk, sk, othersPublicKey) :
+            lib->getServerSessionKeys(pk, sk, othersPublicKey);
+      sk.setAccess(SodiumSecureMemAccess::NoAccess);
+
+      return result;
     }
 
     //----------------------------------------------------------------------------

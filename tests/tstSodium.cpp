@@ -1286,3 +1286,73 @@ TEST(Sodium, DiffieHellmann)
 
 }
 
+//----------------------------------------------------------------------------
+
+TEST(Sodium, CryptoKx_FullProcess)
+{
+  SodiumLib* sodium = SodiumLib::getInstance();
+  ASSERT_TRUE(sodium != nullptr);
+
+  // generate one random key pair for each client and server
+  auto srvPair = sodium->genKeyExchangeKeyPair();
+  auto cliPair = sodium->genKeyExchangeKeyPair();
+
+  // compute session keys rx and tx for both client and server
+  auto srvSession = sodium->getServerSessionKeys(srvPair.second, srvPair.first, cliPair.second);
+  auto cliSession = sodium->getClientSessionKeys(cliPair.second, cliPair.first, srvPair.second);
+
+  // compare rx/tx pairs of client and server;
+  // client's rx must match server's tx and vice versa
+  ASSERT_TRUE(sodium->memcmp(srvSession.first.toMemView(), cliSession.second.toMemView()));
+  ASSERT_TRUE(sodium->memcmp(srvSession.second.toMemView(), cliSession.first.toMemView()));
+}
+
+//----------------------------------------------------------------------------
+
+TEST(Sodium, CryptoKx_SeededKeys)
+{
+  SodiumLib* sodium = SodiumLib::getInstance();
+  ASSERT_TRUE(sodium != nullptr);
+
+  SodiumLib::KX_KeySeed seed{SodiumKeyInitStyle::Random};
+  auto pair1 = sodium->genKeyExchangeKeyPair(seed);
+  auto pair2 = sodium->genKeyExchangeKeyPair(seed);
+
+  ASSERT_TRUE(sodium->memcmp(pair1.first.toMemView(), pair2.first.toMemView()));
+  ASSERT_TRUE(sodium->memcmp(pair1.second.toMemView(), pair2.second.toMemView()));
+}
+
+//----------------------------------------------------------------------------
+
+TEST(Sodium, DiffieHellmann2)
+{
+  SodiumLib* sodium = SodiumLib::getInstance();
+  ASSERT_TRUE(sodium != nullptr);
+
+  DiffieHellmannExchanger2 c{true};
+  DiffieHellmannExchanger2 s{false};
+
+  auto shared1 = c.getSessionKeys(s.getMyPublicKey());
+  auto shared2 = s.getSessionKeys(c.getMyPublicKey());
+
+  ASSERT_FALSE(shared1.first.empty());
+  ASSERT_FALSE(shared1.second.empty());
+  ASSERT_FALSE(shared2.first.empty());
+  ASSERT_FALSE(shared2.second.empty());
+  ASSERT_TRUE(sodium->memcmp(shared1.first.toMemView(), shared2.second.toMemView()));
+  ASSERT_TRUE(sodium->memcmp(shared1.second.toMemView(), shared2.first.toMemView()));
+
+  // tamper with a public key
+  SodiumLib::KX_PublicKey pkServ = s.getMyPublicKey();
+  unsigned char* ptr = pkServ.to_ucPtr_rw();
+  ptr[2] += 1;
+  shared1 = c.getSessionKeys(pkServ);
+  ASSERT_FALSE(sodium->memcmp(shared1.first.toMemView(), shared2.second.toMemView()));
+  ASSERT_FALSE(sodium->memcmp(shared1.second.toMemView(), shared2.first.toMemView()));
+
+  ptr[2] -= 1;
+  shared1 = c.getSessionKeys(pkServ);
+  ASSERT_TRUE(sodium->memcmp(shared1.first.toMemView(), shared2.second.toMemView()));
+  ASSERT_TRUE(sodium->memcmp(shared1.second.toMemView(), shared2.first.toMemView()));
+}
+

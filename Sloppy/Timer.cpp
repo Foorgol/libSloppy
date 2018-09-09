@@ -23,6 +23,8 @@ namespace Sloppy
 
   void Timer::stop()
   {
+    if (isStopped) return;
+
     stopTime = chrono::high_resolution_clock::now();
     isStopped = true;
   }

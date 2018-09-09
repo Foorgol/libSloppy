@@ -60,3 +60,19 @@ TEST(Timer, Timeouts)
   ASSERT_TRUE(t.isElapsed());
 }
 
+//----------------------------------------------------------------------------
+
+TEST(Timer, RemainingTime)
+{
+  Sloppy::Timer t;
+  ASSERT_EQ(-1, t.getRemainingTime__ms());
+
+  t.setTimeoutDuration__ms(70);
+  this_thread::sleep_for(chrono::milliseconds(50));
+  long r = t.getRemainingTime__ms();
+  ASSERT_TRUE(r <= 20);
+  ASSERT_TRUE(r > 18);
+  this_thread::sleep_for(chrono::milliseconds(50));
+  ASSERT_EQ(0, t.getRemainingTime__ms());
+}
+

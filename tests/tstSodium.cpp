@@ -1356,3 +1356,35 @@ TEST(Sodium, DiffieHellmann2)
   ASSERT_TRUE(sodium->memcmp(shared1.second.toMemView(), shared2.first.toMemView()));
 }
 
+
+//----------------------------------------------------------------------------
+
+TEST(Sodium, Base64)
+{
+  SodiumLib* sodium = SodiumLib::getInstance();
+  ASSERT_TRUE(sodium != nullptr);
+
+  // test encoding and decoding of random buffers
+  // with 1 to 16 bytes
+  for (size_t s = 1; s <= 16; ++s)
+  {
+    Sloppy::MemArray inData{s};
+    sodium->randombytes_buf(inData);
+    string inString{inData.to_charPtr(), inData.size()};
+    ASSERT_EQ(s, inString.size());
+
+    // encoding
+    Sloppy::MemArray b64 = sodium->bin2Base64(inData.view());
+    string b64String = sodium->bin2Base64(inString);
+
+    // decoding
+    Sloppy::MemArray decodedMem = sodium->base642Bin(b64.view());
+    string decodedString = sodium->base642Bin(b64String);
+
+    // compare
+    ASSERT_EQ(s, decodedString.size());
+    ASSERT_EQ(s, decodedMem.size());
+    ASSERT_TRUE(sodium->memcmp(inData.view(), decodedMem.view()));
+    ASSERT_EQ(decodedString, inString);
+  }
+}

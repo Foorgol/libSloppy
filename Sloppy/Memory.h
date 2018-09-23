@@ -447,6 +447,20 @@ namespace Sloppy
       return reinterpret_cast<MemView&>(ArrayView<uint8_t>::operator =(std::move(other)));
     }
 
+    /** \brief Copy-conversion from parent class
+     */
+    MemView(const ArrayView& other)
+      :ArrayView{other}
+    {
+    }
+
+    /** \brief Move-conversion from parent class
+     */
+    MemView(ArrayView&& other)
+      :ArrayView{std::move(other)}
+    {
+    }
+
   };
 
   //----------------------------------------------------------------------------

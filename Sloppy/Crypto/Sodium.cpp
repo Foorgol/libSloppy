@@ -592,10 +592,10 @@ namespace Sloppy
       // determine the encoding variant
       int variant = SodiumBase64Enconding2int(enc);
 
-      // calculate the number of output characters
+      // calculate the number of output characters including a trailing zero-byte
       size_t outLen = sodium_base64_ENCODED_LEN(bin.size(), variant);
 
-      // allocate sufficient memory
+      // allocate sufficient memory including a trailing zero-byte
       string out;
       out.resize(outLen);
 
@@ -609,7 +609,7 @@ namespace Sloppy
         throw SodiumConversionError{"bin2base64 encoding (string --> string)"};
       }
 
-      return out;
+      return out.substr(0, out.size() - 1);   // cut away the trailing zero provided by libSodium
     }
 
     //----------------------------------------------------------------------------
@@ -621,10 +621,10 @@ namespace Sloppy
       // determine the encoding variant
       int variant = SodiumBase64Enconding2int(enc);
 
-      // calculate the number of output characters
+      // calculate the number of output characters including a trailing zero-byte
       size_t outLen = sodium_base64_ENCODED_LEN(bin.size(), variant);
 
-      // allocate sufficient memory
+      // allocate sufficient memory including a trailing zero-byte
       MemArray out{outLen};
 
       // do the conversion
@@ -636,6 +636,11 @@ namespace Sloppy
       {
         throw SodiumConversionError{"bin2base64 encoding (MemView --> MemArray)"};
       }
+
+      // cut off the trailing zero provided by libSodium;
+      // unfortunately, this requires a memory re-allocation and
+      // a deep copy operation...
+      out.resize(out.size() - 1);
 
       return out;
     }

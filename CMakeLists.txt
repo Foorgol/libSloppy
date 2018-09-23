@@ -38,6 +38,7 @@ set(LIB_SOURCES
     Sloppy/Memory.cpp
     Sloppy/Utils.cpp
     Sloppy/DateTime/Zonespec.cpp
+    Sloppy/Crypto/MiniCert.cpp
 )
 
 #
@@ -153,6 +154,7 @@ set(LIB_SOURCES_TST
     tests/tstPosixFileFunc.cpp
     tests/tstTimer.cpp
     tests/tstStrings.cpp
+    tests/tstMiniCert.cpp
 )
 
 find_package(GTest)

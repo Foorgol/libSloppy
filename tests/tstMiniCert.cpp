@@ -44,6 +44,21 @@ protected:
   }
 
   //virtual void TearDown ();
+
+  string json2SignedCSR(const nlohmann::json& j)
+  {
+    string s = j.dump();
+    Sloppy::MemView v{s};
+    SodiumLib::AsymSign_Signature sig = sodium->sign_detached(v, ssk);
+    Sloppy::MemArray result{2 + spk.size() + sig.size() + s.size()};
+    result[0] = 0;
+    result[1] = 0;
+    result.copyOver(spk.toMemView(), 2);
+    result.copyOver(sig.toMemView(), 2 + spk.size());
+    result.copyOver(v, 2 + sig.size() + spk.size());
+    Sloppy::MemArray outB64 = sodium->bin2Base64(result.view());
+    return string{outB64.to_charPtr(), outB64.size()};
+  }
 };
 
 //----------------------------------------------------------------------------
@@ -182,3 +197,162 @@ TEST_F(MiniCertTestFixture, HandleInvalidCSR)
 
 //----------------------------------------------------------------------------
 
+TEST_F(MiniCertTestFixture, ParseValidCSR)
+{
+  // prep and sign a CSR with additional data
+  CertSignReqOut csrOut;
+  csrOut.cn = "Volker";
+  csrOut.cryptoPubKey.fillFromMemView(cpk.toMemView());
+  csrOut.addSubjectInfo = nlohmann::json::object({{"x", 42}, {"y", "abc"}});
+  MiniCertError err;
+  string csrExport;
+  tie(err, csrExport) = Sloppy::MiniCert::createCertSigningRequest(csrOut, ssk);
+  ASSERT_EQ(MiniCertError::Okay, err);
+
+  // parse the CSR
+  CertSignReqIn csrIn;
+  tie(err, csrIn) = Sloppy::MiniCert::parseCertSignRequest(csrExport);
+  ASSERT_EQ(MiniCertError::Okay, err);
+  ASSERT_EQ("Volker", csrIn.cn);
+  ASSERT_TRUE(sodium->memcmp(csrIn.cryptoPubKey.toMemView(), cpk.toMemView()));
+  ASSERT_TRUE(sodium->memcmp(csrIn.signPubKey.toMemView(), spk.toMemView()));
+  ASSERT_EQ(Sloppy::DateTime::UTCTimestamp{}, csrIn.signatureTimestamp);
+  ASSERT_EQ(2, csrIn.addSubjectInfo.size());
+  ASSERT_EQ(42, csrIn.addSubjectInfo["x"]);
+  ASSERT_EQ("abc", csrIn.addSubjectInfo["y"]);
+
+  // prep and sign a CSR without additional data
+  csrOut.addSubjectInfo = nlohmann::json{};
+  tie(err, csrExport) = Sloppy::MiniCert::createCertSigningRequest(csrOut, ssk);
+  ASSERT_EQ(MiniCertError::Okay, err);
+
+  // parse the CSR
+  tie(err, csrIn) = Sloppy::MiniCert::parseCertSignRequest(csrExport);
+  ASSERT_EQ(MiniCertError::Okay, err);
+  ASSERT_EQ("Volker", csrIn.cn);
+  ASSERT_TRUE(sodium->memcmp(csrIn.cryptoPubKey.toMemView(), cpk.toMemView()));
+  ASSERT_TRUE(sodium->memcmp(csrIn.signPubKey.toMemView(), spk.toMemView()));
+  ASSERT_EQ(Sloppy::DateTime::UTCTimestamp{}, csrIn.signatureTimestamp);
+  ASSERT_TRUE(csrIn.addSubjectInfo.is_object());
+  ASSERT_EQ(0, csrIn.addSubjectInfo.size());
+}
+
+//----------------------------------------------------------------------------
+
+TEST_F(MiniCertTestFixture, ParseInvalidCSR)
+{
+  MiniCertError err;
+  CertSignReqIn csrIn;
+
+  // empty input
+  string s{};
+  tie(err, csrIn) = Sloppy::MiniCert::parseCertSignRequest(s);
+  ASSERT_EQ(MiniCertError::BadFormat, err);
+
+  // invalid BASE64
+  s = "skjfskfdh";
+  tie(err, csrIn) = Sloppy::MiniCert::parseCertSignRequest(s);
+  ASSERT_EQ(MiniCertError::BadEncoding, err);
+
+  // not enough data
+  s = sodium->bin2Base64("NotEnough");
+  tie(err, csrIn) = Sloppy::MiniCert::parseCertSignRequest(s);
+  ASSERT_EQ(MiniCertError::BadFormat, err);
+
+  // create a valid request
+  CertSignReqOut csrOut;
+  csrOut.cn = "Volker";
+  csrOut.cryptoPubKey.fillFromMemView(cpk.toMemView());
+  string csrExport;
+  tie(err, csrExport) = Sloppy::MiniCert::createCertSigningRequest(csrOut, ssk);
+  ASSERT_EQ(MiniCertError::Okay, err);
+  string csrRaw = sodium->base642Bin(csrExport);
+
+  // fake the version tag
+  csrRaw[0] = 1;
+  csrExport = sodium->bin2Base64(csrRaw);
+  tie(err, csrIn) = Sloppy::MiniCert::parseCertSignRequest(csrExport);
+  ASSERT_EQ(MiniCertError::BadVersion, err);
+  csrRaw[0] = 0;
+
+  // fake the type tag
+  csrRaw[1] = 42;
+  csrExport = sodium->bin2Base64(csrRaw);
+  tie(err, csrIn) = Sloppy::MiniCert::parseCertSignRequest(csrExport);
+  ASSERT_EQ(MiniCertError::BadFormat, err);
+  csrRaw[1] = 0;
+
+  // invalidate the signature by fiddling with
+  // the fourth signature byte
+  size_t idx = 2 + spk.size() + 3;
+  csrRaw[idx] = csrRaw[idx] + 1;
+  csrExport = sodium->bin2Base64(csrRaw);
+  tie(err, csrIn) = Sloppy::MiniCert::parseCertSignRequest(csrExport);
+  ASSERT_EQ(MiniCertError::BadSignature, err);
+  csrRaw[idx] = csrRaw[idx] - 1;
+
+  // prep some invalid JSON but first ensure
+  // that our little CSR generator works correctly
+  nlohmann::json j = {{"cn", "xyz"}};
+  Sloppy::MemArray tmp = sodium->bin2Base64(cpk.toMemView());
+  j["cpk"] = string{tmp.to_charPtr(), tmp.size()};
+  tmp = sodium->bin2Base64(spk.toMemView());
+  j["spk"] = string{tmp.to_charPtr(), tmp.size()};
+  j["sts"] = Sloppy::DateTime::UTCTimestamp{}.getRawTime();
+  csrExport = json2SignedCSR(j);
+  tie(err, csrIn) = Sloppy::MiniCert::parseCertSignRequest(csrExport);
+  ASSERT_EQ(MiniCertError::Okay, err);
+  ASSERT_EQ("xyz", csrIn.cn);
+
+  // okay, the generator works
+
+  // JSON without cn
+  ASSERT_EQ(1, j.erase("cn"));
+  csrExport = json2SignedCSR(j);
+  tie(err, csrIn) = Sloppy::MiniCert::parseCertSignRequest(csrExport);
+  ASSERT_EQ(MiniCertError::BadFormat, err);
+
+  // JSON with empty cn
+  j["cn"] = "";
+  csrExport = json2SignedCSR(j);
+  tie(err, csrIn) = Sloppy::MiniCert::parseCertSignRequest(csrExport);
+  ASSERT_EQ(MiniCertError::BadFormat, err);
+
+  j["cn"] = "xyz";
+
+  // JSON without public key or with invalid public key
+  for (const string& k : {"spk", "cpk"})
+  {
+    string old = j[k];
+    ASSERT_EQ(1, j.erase(k));
+    csrExport = json2SignedCSR(j);
+    tie(err, csrIn) = Sloppy::MiniCert::parseCertSignRequest(csrExport);
+    ASSERT_EQ(MiniCertError::BadFormat, err);
+
+    for (const string& badKey : {
+         "",  // empty
+         "ddjkfg",  // invalid encoding
+         "c2hvcnQK"  // valid encoding but too short
+         })
+    {
+      j[k] = badKey;
+      csrExport = json2SignedCSR(j);
+      tie(err, csrIn) = Sloppy::MiniCert::parseCertSignRequest(csrExport);
+      ASSERT_EQ(MiniCertError::BadFormat, err);
+    }
+
+    j[k] = old;
+  }
+
+  // signature timestamp in the future
+  j["sts"] = Sloppy::DateTime::UTCTimestamp{}.getRawTime() + 10;
+  csrExport = json2SignedCSR(j);
+  tie(err, csrIn) = Sloppy::MiniCert::parseCertSignRequest(csrExport);
+  ASSERT_EQ(MiniCertError::BadFormat, err);
+
+  // restore everything and make sure that we're back at a valid request
+  j["sts"] = Sloppy::DateTime::UTCTimestamp{}.getRawTime() - 10;
+  csrExport = json2SignedCSR(j);
+  tie(err, csrIn) = Sloppy::MiniCert::parseCertSignRequest(csrExport);
+  ASSERT_EQ(MiniCertError::Okay, err);
+}

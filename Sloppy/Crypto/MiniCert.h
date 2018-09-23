@@ -52,6 +52,7 @@ namespace Sloppy
       BadSignature,   ///< a signature was invalid
       BadFormat,   ///< provided data was invalid or empty
       BadKey,   ///< a provided key was empty or otherwise invalid
+      BadVersion,   ///< invalid protocol version
     };
 
     /** \brief Internal representation of an OUTGOING Certificate Signing Request
@@ -104,6 +105,10 @@ namespace Sloppy
 
     /** \brief Takes an "exportet", BASE64-encoded Certificate Signing Request,
      * checks its cryptographical integrity and returns parsed subject description
+     *
+     * \note For the additional data we always return a JSON instance of type "Object" even if the request
+     * was signed without additional subject data. Without additional data the
+     * return JSON object instance is simply empty (--> "{}").
      *
      * \returns a pair of <error code, CertSignReqIn>; the CertSignReqIn object contains invalid
      * default data in case of errors

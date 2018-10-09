@@ -39,6 +39,7 @@ set(LIB_SOURCES
     Sloppy/Utils.cpp
     Sloppy/DateTime/Zonespec.cpp
     Sloppy/Crypto/MiniCert.cpp
+    Sloppy/BasicException.h
 )
 
 #

@@ -356,3 +356,140 @@ TEST_F(MiniCertTestFixture, ParseInvalidCSR)
   tie(err, csrIn) = Sloppy::MiniCert::parseCertSignRequest(csrExport);
   ASSERT_EQ(MiniCertError::Okay, err);
 }
+
+//----------------------------------------------------------------------------
+
+TEST_F(MiniCertTestFixture, MiniCertFrameCtor)
+{
+  // ctor with empty data
+  Sloppy::MemView v;
+  ASSERT_THROW(MiniCertFrame{v}, BadDataFormatException);
+
+  // insufficient data, just one byte below min size
+  Sloppy::MemArray m{2 + crypto_sign_PUBLICKEYBYTES + crypto_sign_BYTES + 1};
+  ASSERT_THROW(MiniCertFrame{m.view()}, BadDataFormatException);
+
+  // wrong version
+  m = Sloppy::MemArray{2 + crypto_sign_PUBLICKEYBYTES + crypto_sign_BYTES + 2};
+  for (uint8_t v = 1; ((v > 0) && (v <= 255)); ++v)
+  {
+    m[0] = v;
+    ASSERT_THROW(MiniCertFrame{m.view()}, BadVersionException);
+  }
+
+  // ugly data type IDs
+  const uint8_t maxEnumVal = 1;
+  m[0] = 0;
+  for (uint8_t v = maxEnumVal + 1; ((v > maxEnumVal) && (v <= 255)); ++v)
+  {
+    m[1] = v;
+    MiniCertFrame f{m.view()};
+    ASSERT_EQ(MiniCertDataType::Invalid, f.type());
+  }
+
+  // good data type IDs
+  for (uint8_t v = 0; v <= maxEnumVal; ++v)
+  {
+    m[1] = v;
+    MiniCertFrame f{m.view()};
+    ASSERT_EQ(static_cast<MiniCertDataType>(v), f.type());
+  }
+}
+
+//----------------------------------------------------------------------------
+
+TEST_F(MiniCertTestFixture, MiniCertFrameSigCheck)
+{
+  // prep a frame with 20 bytes payload
+  size_t payloadSize = 20;
+  Sloppy::MemArray m{2 + crypto_sign_PUBLICKEYBYTES + crypto_sign_BYTES + payloadSize};
+
+  // the payload itself
+  Sloppy::MemArray payload{payloadSize};
+  sodium->randombytes_buf(payload);
+
+  // create the signature
+  auto sig = sodium->sign_detached(payload.view(), ssk);
+
+  // build the frame
+  m[0] = 0;  // protocol version
+  m[1] = 0;  // valid data type
+  m.copyOver(spk.toMemView(), 2);
+  m.copyOver(sig.toMemView(), 2 + spk.size());
+  m.copyOver(payload.view(), 2 + spk.size() + sig.size());
+
+  // parse and check signature
+  MiniCertFrame f{m.view()};
+  ASSERT_TRUE(f.isValidSignature());
+
+  // tamper with the signature at byte 3
+  m[2 + spk.size() + 3] = m[2 + spk.size() + 3] + 1;
+  f = MiniCertFrame{m.view()};
+  ASSERT_FALSE(f.isValidSignature());
+  m[2 + spk.size() + 3] = m[2 + spk.size() + 3] - 1;
+  f = MiniCertFrame{m.view()};
+  ASSERT_TRUE(f.isValidSignature());
+
+  // tamper with the public key at byte 3
+  m[2 + 3] = m[2 + 3] + 1;
+  f = MiniCertFrame{m.view()};
+  ASSERT_FALSE(f.isValidSignature());
+  m[2 + 3] = m[2 + 3] - 1;
+  f = MiniCertFrame{m.view()};
+  ASSERT_TRUE(f.isValidSignature());
+
+  // tamper with the payload;
+  // since the payload is internally stored as a view,
+  // we do not need to re-create the minicertframe object
+  m[m.size() - 2] = m[m.size() - 2] + 1;
+  ASSERT_FALSE(f.isValidSignature());
+  m[m.size() - 2] = m[m.size() - 2] - 1;
+  ASSERT_TRUE(f.isValidSignature());
+}
+
+//----------------------------------------------------------------------------
+
+TEST_F(MiniCertTestFixture, MiniCertFrameJSONPayload)
+{
+  // prep a frame with 30 bytes random payload
+  size_t payloadSize = 30;
+  Sloppy::MemArray m{2 + crypto_sign_PUBLICKEYBYTES + crypto_sign_BYTES + payloadSize};
+  Sloppy::MemArray payload{payloadSize};
+  sodium->randombytes_buf(payload);
+
+  // build the frame, don't care about a valid key and signature
+  m[0] = 0;  // protocol version
+  m[1] = 0;  // valid data type
+  m.copyOver(spk.toMemView(), 2);
+  m.copyOver(payload.view(), 2 + crypto_sign_PUBLICKEYBYTES + crypto_sign_BYTES);
+  MiniCertFrame f{m.view()};
+
+  // try to parse the payload as JSON
+  ASSERT_THROW(f.payloadAsJSON(), BadDataFormatException);
+
+  // use syntactically correct JSON, but not a JSON object
+  nlohmann::json j = nlohmann::json::array({1, 2, 3, 4});  // JSON array instead of JSON object
+  string s = j.dump();
+  ASSERT_TRUE(s.size() <= payloadSize);
+  Sloppy::MemView sView{s};
+  m.copyOver(sView, 2 + crypto_sign_PUBLICKEYBYTES + crypto_sign_BYTES);
+  Sloppy::MemView mView = m.view();
+  mView.chopRight(payloadSize - s.size());
+  f = MiniCertFrame{mView};
+  ASSERT_THROW(f.payloadAsJSON(), BadDataFormatException);
+
+  // use syntactically and semantically correct JSON
+  j = nlohmann::json::object();
+  j["a"] = 1;
+  j["b"] = "c";
+  s = j.dump();
+  ASSERT_TRUE(s.size() <= payloadSize);
+  sView = Sloppy::MemView{s};
+  m.copyOver(sView, 2 + crypto_sign_PUBLICKEYBYTES + crypto_sign_BYTES);
+  mView = m.view();
+  mView.chopRight(payloadSize - s.size());
+  f = MiniCertFrame{mView};
+  nlohmann::json j1 = f.payloadAsJSON();
+  ASSERT_EQ(1, j1["a"]);
+  ASSERT_EQ("c", j1["b"]);
+}

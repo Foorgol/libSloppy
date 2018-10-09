@@ -543,6 +543,37 @@ namespace Sloppy
         return true;
       }
 
+      /** \returns Returns the key as a BASE64 encoded string
+       */
+      string toBase64() const
+      {
+        if (empty()) return "";
+        MemArray b64 = lib->bin2Base64(toMemView());
+        return string{b64.to_charPtr(), b64.size()};
+      }
+
+      /** \brief Copies content from a Base64 encoded string into the key, overwriting all existing key data.
+        *
+        * \returns `false` if the string could not be decoded, if the length of the memory block does not
+        * match the key size or if the key is not write-accessible.
+       */
+      bool fillFromBase64(
+            const string& b64   ///< a Base64 encoded string with key content
+            )
+      {
+        if (b64.empty()) return false;
+
+        string raw;
+        try
+        {
+          raw = lib->base642Bin(b64);
+        } catch (...) {
+          return false;
+        }
+
+        return fillFromString(raw);
+      }
+
     protected:
       SodiumKeyType keyType{kt};
     };

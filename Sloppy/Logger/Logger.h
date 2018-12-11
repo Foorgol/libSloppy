@@ -138,12 +138,22 @@ namespace Sloppy
         minLvl = newMinLvl;
       }
 
+      /** \brief Enables or disables a timestamp for the log messages; the
+       * default is `on`
+       */
+      void enableTimestamp(
+          bool isEnabled   ///< set to `true` to enable timestamps or to `false` for disabling them
+          );
+
     protected:
       sources::severity_logger<SeverityLevel> lg;
       boost::shared_ptr<sinks::synchronous_sink<sinks::text_ostream_backend>> sink;
       string sender{};
       SeverityLevel defaultLvl = SeverityLevel::normal;
       SeverityLevel minLvl = SeverityLevel::normal;
+
+    private:
+      static bool isInitialized;
     };
   }
 }

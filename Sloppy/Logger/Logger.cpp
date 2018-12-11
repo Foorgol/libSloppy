@@ -21,6 +21,8 @@
 #include <boost/log/sources/record_ostream.hpp>
 #include <boost/log/utility/setup/file.hpp>
 #include <boost/log/utility/setup/common_attributes.hpp>
+#include <boost/log/support/date_time.hpp>
+#include <boost/log/expressions.hpp>
 
 #include "Logger.h"
 
@@ -28,12 +30,20 @@ namespace Sloppy
 {
   namespace Logger
   {
+    bool Logger::isInitialized{false};
+
     Logger::Logger()
     {
-      add_common_attributes();
+      if (!isInitialized)
+      {
+        add_common_attributes();
 
-      sink = add_console_log(cout);
-      sink->locked_backend()->auto_flush(true);
+        sink = add_console_log(cerr);
+        sink->locked_backend()->auto_flush(true);
+        enableTimestamp(true);
+
+        isInitialized = true;
+      }
     }
 
     //----------------------------------------------------------------------------
@@ -61,6 +71,27 @@ namespace Sloppy
         strm << msg;
         strm.flush();
         lg.push_record(boost::move(rec));
+      }
+    }
+
+    //----------------------------------------------------------------------------
+
+    void Logger::enableTimestamp(bool isEnabled)
+    {
+      namespace expr = boost::log::expressions;
+      namespace keywords = boost::log::keywords;
+      if (isEnabled)
+      {
+        sink->set_formatter(
+              expr::stream
+              << expr::format_date_time< boost::posix_time::ptime >("TimeStamp", "%Y-%m-%d %H:%M:%S ")
+              << expr::smessage
+              );
+      } else {
+        sink->set_formatter(
+              expr::stream
+              << expr::smessage
+              );
       }
     }
 

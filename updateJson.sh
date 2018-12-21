@@ -6,6 +6,15 @@ echo "Niels Lohmann's header-only JSON implementation"
 echo and committing it to the repository
 echo
 
+if [ ! -e json.hpp ]; then
+  echo
+  echo Please call this script from the directory where
+  echo the file json.hpp and json_fwd.hpp are located!
+  echo
+
+  exit 1 
+fi
+
 curl https://raw.githubusercontent.com/nlohmann/json/master/single_include/nlohmann/json.hpp > json.hpp
 if [ $? -ne 0 ]; then
   echo

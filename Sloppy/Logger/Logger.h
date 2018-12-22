@@ -33,11 +33,11 @@ namespace Sloppy
      */
     enum class SeverityLevel
     {
-      trace,  ///< debug information
-      normal,  ///< normal status messages
-      warning,  ///< warnings, if something unusual has happened
-      error,   ///< an error has occurred but operation can continue
-      critical   ///< a severe error has occurred and we're doomed
+      trace = 0,  ///< debug information
+      normal = 10,  ///< normal status messages
+      warning = 20,  ///< warnings, if something unusual has happened
+      error = 30,   ///< an error has occurred but operation can continue
+      critical = 40   ///< a severe error has occurred and we're doomed
     };
 
     /** \brief A wrapper class for easy logging

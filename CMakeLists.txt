@@ -9,7 +9,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmakeModules/")
 find_package(Threads REQUIRED)
 set(LIBS ${LIBS} ${CMAKE_THREAD_LIBS_INIT})
 
-find_package(Boost REQUIRED COMPONENTS log log_setup thread date_time filesystem system)
+find_package(Boost REQUIRED COMPONENTS thread date_time filesystem system)
 include_directories(${Boost_INCLUDE_DIRS})
 set(LIBS ${LIBS} ${Boost_LIBRARIES})
 add_definitions(-DBOOST_LOG_DYN_LINK=1)  # linking fails if this is not set
@@ -100,7 +100,7 @@ set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD_REQUIRED ON)
 
 set(LIB_VERSION_MAJOR 0)
 set(LIB_VERSION_MINOR 4)
-set(LIB_VERSION_PATCH 4)
+set(LIB_VERSION_PATCH 5)
 set(LIB_VERSION_STRING ${LIB_VERSION_MAJOR}.${LIB_VERSION_MINOR}.${LIB_VERSION_PATCH})
 
 set_target_properties(${PROJECT_NAME} PROPERTIES VERSION ${LIB_VERSION_STRING}

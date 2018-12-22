@@ -21,8 +21,7 @@
 
 #include <string>
 
-#include <boost/log/utility/setup/console.hpp>
-#include <boost/log/sources/severity_logger.hpp>
+#include <boost/date_time/local_time/local_time.hpp>
 
 using namespace std;
 
@@ -30,8 +29,6 @@ namespace Sloppy
 {
   namespace Logger
   {
-    using namespace boost::log;
-
     /** \brief An enum class with severity levels for log messages
      */
     enum class SeverityLevel
@@ -43,12 +40,12 @@ namespace Sloppy
       critical   ///< a severe error has occurred and we're doomed
     };
 
-    /** \brief A wrapper class around Boost's logging functions.
+    /** \brief A wrapper class for easy logging
      *
-     * Provides a simple interface for logging to stdout through
-     * Boost's logging implementation. Each `Logger` instance can use
+     * Provides a simple interface for logging to stderr.
+     * Each `Logger` instance can use
      * an individual sender name so that multiple senders can be
-     * distinguished on stdout.
+     * distinguished on stderr.
      */
     class Logger
     {
@@ -129,7 +126,7 @@ namespace Sloppy
       }
 
       /** \brief Sets the minimum severity level that a message has to
-       * achieve in order to be printed on `stdout`
+       * achieve in order to appear on `stderr`
        */
       inline void setMinLogLevel(
           SeverityLevel newMinLvl   ///< the new minimum severity level
@@ -145,15 +142,20 @@ namespace Sloppy
           bool isEnabled   ///< set to `true` to enable timestamps or to `false` for disabling them
           );
 
+      /** \brief Defines the timezone (e.g., "Europe/Berlin") for the console
+       * timestamps.
+       *
+       * \returns `true` if the timezone was found and set successfully; `false` otherwise
+       */
+      bool setTimezone(const string& tzName);
+
     protected:
-      sources::severity_logger<SeverityLevel> lg;
-      boost::shared_ptr<sinks::synchronous_sink<sinks::text_ostream_backend>> sink;
+      bool useTimestamps{true};
       string sender{};
       SeverityLevel defaultLvl = SeverityLevel::normal;
       SeverityLevel minLvl = SeverityLevel::normal;
+      boost::local_time::time_zone_ptr tzp{nullptr};
 
-    private:
-      static bool isInitialized;
     };
   }
 }

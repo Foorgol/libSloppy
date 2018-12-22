@@ -17,12 +17,8 @@
  */
 
 #include <iostream>
-
-#include <boost/log/sources/record_ostream.hpp>
-#include <boost/log/utility/setup/file.hpp>
-#include <boost/log/utility/setup/common_attributes.hpp>
-#include <boost/log/support/date_time.hpp>
-#include <boost/log/expressions.hpp>
+#include "../String.h"
+#include "../DateTime/DateAndTime.h"
 
 #include "Logger.h"
 
@@ -30,20 +26,8 @@ namespace Sloppy
 {
   namespace Logger
   {
-    bool Logger::isInitialized{false};
-
     Logger::Logger()
     {
-      if (!isInitialized)
-      {
-        add_common_attributes();
-
-        sink = add_console_log(cerr);
-        sink->locked_backend()->auto_flush(true);
-        enableTimestamp(true);
-
-        isInitialized = true;
-      }
     }
 
     //----------------------------------------------------------------------------
@@ -60,39 +44,64 @@ namespace Sloppy
     {
       if (lvl < minLvl) return;
 
-      record rec = lg.open_record(keywords::severity = lvl);
-      if (rec)
+      estring outText{"%1%2%3: "};
+      if (useTimestamps)
       {
-        record_ostream strm{rec};
-        if (!(sender.empty()))
+        DateTime::UTCTimestamp now;
+        if (tzp != nullptr)
         {
-          strm << sender << ": ";
+          outText.arg(now.toLocalTime(tzp).getTimestamp() + " ");
+        } else {
+          outText.arg(now.getTimestamp() + "UTC ");
         }
-        strm << msg;
-        strm.flush();
-        lg.push_record(boost::move(rec));
+      } else {
+        outText.arg("");
       }
+
+      if (sender.empty())
+      {
+        outText.arg("");
+      } else {
+        outText.arg(sender + " ");
+      }
+
+      switch (lvl) {
+      case SeverityLevel::trace:
+        outText.arg("Info");
+        break;
+      case SeverityLevel::normal:
+        outText.arg("");
+        break;
+      case SeverityLevel::warning:
+        outText.arg("WARN");
+        break;
+      case SeverityLevel::error:
+        outText.arg("ERROR");
+        break;
+      case SeverityLevel::critical:
+        outText.arg("CRITICAL");
+        break;
+      }
+
+      cerr << outText << msg << endl;
+
     }
 
     //----------------------------------------------------------------------------
 
     void Logger::enableTimestamp(bool isEnabled)
     {
-      namespace expr = boost::log::expressions;
-      namespace keywords = boost::log::keywords;
-      if (isEnabled)
-      {
-        sink->set_formatter(
-              expr::stream
-              << expr::format_date_time< boost::posix_time::ptime >("TimeStamp", "%Y-%m-%d %H:%M:%S ")
-              << expr::smessage
-              );
-      } else {
-        sink->set_formatter(
-              expr::stream
-              << expr::smessage
-              );
-      }
+      useTimestamps = isEnabled;
+    }
+
+    //----------------------------------------------------------------------------
+
+    bool Logger::setTimezone(const string& tzName)
+    {
+      auto tzDb = DateTime::getPopulatedTzDatabase();
+      tzp = tzDb.time_zone_from_region(tzName);
+
+      return (tzp != nullptr);
     }
 
     //----------------------------------------------------------------------------

@@ -22,6 +22,7 @@
 #include <memory>
 #include <stdexcept>
 #include <string.h>    // for memcpy
+#include <limits.h>
 
 using namespace std;
 
@@ -410,6 +411,11 @@ namespace Sloppy
     MemView(const char* _ptr, size_t len)
       :ArrayView(reinterpret_cast<const uint8_t*>(_ptr), len) {}
 
+    /** \brief Ctor from a void-pointer that is being reinterpreted as a byte-pointer
+     */
+    MemView(const void* _ptr, size_t len)
+      :ArrayView(reinterpret_cast<const uint8_t*>(_ptr), len) {}
+
     /** \brief Ctor from a standard string
      */
     explicit MemView(const string& src)
@@ -506,7 +512,7 @@ namespace Sloppy
 
     /** \brief Ctor from the raw pointer of a previously allocated array of which we can, optionally, take ownership
      *
-     * \warning Arrays that we take ownership of have to be created with anything that is compatible
+     * \warning Arrays that we take ownership of have to be created with something that is compatible
      * with the `releaseMem()`-function because we're applying this custom function for releasing the provided pointer.
      *
      * \throws std::invalid_argument if the pointer is not `nullptr` and the number of elements is zero.
@@ -989,6 +995,151 @@ namespace Sloppy
      */
     MemArray& operator =(const MemArray& other) = delete;
   };
+
+  // we include some special file functions for
+  // non-Windows builds only
+#ifndef WIN32
+
+
+  /** \brief A memory-mapped file with read-only access*/
+  class MemFile
+  {
+  public:
+    /** \brief Default ctor; creates an empty, invalid object that is not associated with any file
+     */
+    MemFile() {}
+
+    /** \brief Standard ctor, memory-maps *THE WHOLE FILE*
+     *
+     * The file is opened in read-only mode and the memory map is created
+     * as PROT_READ (read-only) and MAP_PRIVATE (changes are only visible to
+     * the owner of the memory map).
+     *
+     * \throws std::invalid_argument if the provided file could not be opened for reading
+     * or if the creation of the memory-map failed
+     */
+    MemFile(
+        const string& fname   ///< path / name of the file to map
+        );
+
+    /** \brief Dtor, releases the memory map and all other ressources
+     */
+    ~MemFile();
+
+    /** \brief Disabled copy ctor */
+    MemFile(const MemFile& other) = delete;
+
+    /** \brief Disabled copy assignment */
+    MemFile& operator=(const MemFile& other) = delete;
+
+    /** \brief Move ctor */
+    MemFile(MemFile&& other);
+
+    /** \brief Move assignment */
+    MemFile& operator=(MemFile&& other);
+
+    /** \returns the size of the file in bytes
+     */
+    long size() const { return fSize; }
+
+    /** \returns the file contents as a MemView
+     */
+    MemView view() const { return MemView{mapAddr, static_cast<size_t>(fSize)}; }
+
+    /** \brief Reads the bytes starting at a given file offset and interprets
+     * these bytes as an object of type 'T'.
+     *
+     * We read `sizeof(T)` bytes from the file. The bytes are directly castet
+     * into a object of T and thus this template function should only be used
+     * for primitive data types such as `int`, `long`, etc.
+     *
+     * \throws std::out_of_range if the index is invalid
+     *
+     * \returns an object / a value of type `T` comprised of the bytes starting
+     * at position `idx'.
+     */
+    template<typename T>
+    T get(size_t idx) const
+    {
+      assertIndex(idx, sizeof(T));
+
+      // calculate the starting offset using byte-based
+      // pointer arithmetics
+      void* targetPtr_void = static_cast<char *>(mapAddr) + idx;
+
+      // cast the offset into a point to the target type
+      T* ptr = static_cast<T*>(targetPtr_void);
+
+      // return by-value by de-referencing the "fake pointer"
+      return *ptr;
+    }
+
+    /** \returns the unsigned long value at a given index using the hosts's endianess
+     *
+     * \throws std::out_of_range if the index is invalid
+     */
+    uint64_t getUI64(size_t idx) const { return get<uint64_t>(idx); }
+
+    /** \returns the signed long value at a given index using the hosts's endianess
+     *
+     * \throws std::out_of_range if the index is invalid
+     */
+    long getLong(size_t idx) const { return get<long>(idx); }
+
+    /** \returns the integer value at a given index using the hosts's endianess
+     *
+     * \throws std::out_of_range if the index is invalid
+     */
+    int getInt(size_t idx) const { return get<int>(idx); }
+
+    /** \returns the short int value at a given index using the hosts's endianess
+     *
+     * \throws std::out_of_range if the index is invalid
+     */
+    short getShort(size_t idx) const { return get<short>(idx); }
+
+    /** \returns the byte value at a given index
+     *
+     * \throws std::out_of_range if the index is invalid
+     */
+    uint8_t getByte(size_t idx) const { return get<uint8_t>(idx); }
+
+    /** \returns the zero-terminated string starting at a given index
+     *
+     * \throws std::out_of_range if the index is invalid
+     *
+     * \note The string contents are copied into the result value
+     */
+    string getString(size_t idxStart) const;
+
+    /** \returns a slice of the file as a string
+     *
+     * \throws std::out_of_range if the index or length is invalid
+     *
+     * \throws std::invalid_argument if the length is negative
+     *
+     * \note The string contents are copied into the result value
+     */
+    string getString(size_t idxStart, int len) const;
+
+  protected:
+    inline void assertIndex(size_t idx, int len) const
+    {
+      size_t lastIdx = idx + len -1;
+
+      if (lastIdx >= static_cast<size_t>(fSize))
+      {
+        throw std::out_of_range("MemFile: data access out of range");
+      }
+    }
+
+  private:
+    void *mapAddr{nullptr};
+    long fSize{-1};
+    int fd{-1};
+  };
+
+#endif
 
 }
 

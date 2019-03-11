@@ -157,6 +157,27 @@ namespace Sloppy
 
   //----------------------------------------------------------------------------
 
+  bool jsonObjectHasKey(const nlohmann::json& js, const string& key, nlohmann::json::value_t requiredValueType)
+  {
+    if (!js.is_object()) return false;
+
+    auto it = js.find(key);
+    if (it == js.end()) return false;
+
+    return (it->type() == requiredValueType);
+  }
+
+  //----------------------------------------------------------------------------
+
+  bool jsonObjectHasKey(const nlohmann::json& js, const string& key)
+  {
+    if (!js.is_object()) return false;
+    auto it = js.find(key);
+    return (it != js.end());
+  }
+
+  //----------------------------------------------------------------------------
+
 #ifndef WIN32
 
   BiDirPipeEnd::BiDirPipeEnd(int _fdRead, int _fdWrite)

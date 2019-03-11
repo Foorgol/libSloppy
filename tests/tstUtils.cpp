@@ -177,6 +177,36 @@ TEST(Utils, Json2String)
 
 //----------------------------------------------------------------------------
 
+TEST(Utils, JsonObjectHasKey)
+{
+  using json = nlohmann::json;
+
+  json j = json::object();
+  ASSERT_FALSE(Sloppy::jsonObjectHasKey(j, "key", json::value_t::number_integer));
+
+  j["sdfsdf"] = "fsfdlks";
+  ASSERT_FALSE(Sloppy::jsonObjectHasKey(j, "key", json::value_t::number_integer));
+
+  j["key"] = "abc";
+  ASSERT_FALSE(Sloppy::jsonObjectHasKey(j, "key", json::value_t::number_integer));
+
+  j["key"] = 1.111;
+  ASSERT_FALSE(Sloppy::jsonObjectHasKey(j, "key", json::value_t::number_integer));
+
+  j["key"] = 42;
+  ASSERT_TRUE(Sloppy::jsonObjectHasKey(j, "key", json::value_t::number_integer));
+
+  j = 42;
+  ASSERT_FALSE(Sloppy::jsonObjectHasKey(j, "key", json::value_t::number_integer));
+
+  j = "abc";
+  ASSERT_FALSE(Sloppy::jsonObjectHasKey(j, "key", json::value_t::number_integer));
+
+  json j_null;
+  ASSERT_FALSE(Sloppy::jsonObjectHasKey(j_null, "key", json::value_t::number_integer));
+}
+//----------------------------------------------------------------------------
+
 TEST(Utils, BiDirPipe)
 {
   auto pipePair= Sloppy::createBirectionalPipe();

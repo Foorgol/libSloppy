@@ -32,7 +32,7 @@
 
 #include "String.h"
 #include "ManagedFileDescriptor.h"
-#include "json_fwd.hpp"
+#include "json.hpp"
 
 using namespace std;
 
@@ -209,6 +209,28 @@ namespace Sloppy
           const nlohmann::json& jv,   ///< the JSON value to convert
           int numDigits = 6   ///< an optional value that defines the number of digits for the conversion of floating point numbers
           );
+
+  /** \brief Checks whether a json instance is an object that contains a given key
+   * with a given value type.
+   *
+   * \returns `true` only if all three conditions are satisfied (is an object,
+   * contains the key and the key's value has the right type)
+   */
+  bool jsonObjectHasKey(
+      const nlohmann::json& js,   ///< the JSON object instance to check
+      const string& key,   ///< the key to search for in the object
+      nlohmann::json::value_t requiredValueType   ///< the required type of the value associated with the key
+      );
+
+  /** \brief Checks whether a json instance is an object that contains a given key
+   *
+   * \returns `true` only if all two conditions are satisfied (is an object,
+   * and contains the key)
+   */
+  bool jsonObjectHasKey(
+      const nlohmann::json& js,   ///< the JSON object instance to check
+      const string& key   ///< the key to search for in the object
+      );
 
   //----------------------------------------------------------------------------
 

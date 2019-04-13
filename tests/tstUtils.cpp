@@ -240,3 +240,24 @@ TEST(Utils, SimplePipe)
   string sDat{data.to_charPtr(), data.size()};
   ASSERT_EQ("abcd", sDat);
 }
+
+//----------------------------------------------------------------------------
+
+TEST(Utils, CommaSepListFromVals)
+{
+  ASSERT_EQ("1,2,3", Sloppy::commaSepStringFromValues({1,2,3}));
+  ASSERT_EQ("42", Sloppy::commaSepStringFromValues({42}));
+  ASSERT_EQ("", Sloppy::commaSepStringFromValues<int>({}));
+  ASSERT_EQ("123", Sloppy::commaSepStringFromValues({1,2,3}, ""));
+  ASSERT_EQ("1x2x3", Sloppy::commaSepStringFromValues({1,2,3}, "x"));
+
+  ASSERT_EQ("a,b,c", Sloppy::commaSepStringFromValues({"a", "b", "c"}));
+
+  vector<int> v{1,2,3};
+  ASSERT_EQ("1,2,3", Sloppy::commaSepStringFromValues(v));
+
+  vector<string> vs{"a", "", "b", "c"};
+  ASSERT_EQ("axxbxc", Sloppy::commaSepStringFromValues(vs, "x"));
+
+}
+

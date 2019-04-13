@@ -39,6 +39,25 @@ using namespace std;
 // a forward declaration
 namespace boost { namespace filesystem { class path; }}
 
+namespace std
+{
+  /** \brief A helper function in namespace `std` provided by libSloppy for easy conversion
+   * of string literals to `string` objects; useful in template functions because we can call
+   * 'to_string()` on a broader range of types.
+   *
+   * \returns a `std::string` that contains a copy of the provided C string
+   */
+  string to_string(const char* cString);
+
+  /** \brief A helper function in namespace `std` provided by libSloppy for
+   * usage in template functions because we can call
+   * 'to_string()` on a broader range of types.
+   *
+   * \returns the provided parameter
+   */
+  const string& to_string(const string& s);
+}
+
 namespace Sloppy
 {
   // another forward
@@ -60,6 +79,60 @@ namespace Sloppy
           )
   {
     if (ptr != nullptr) *ptr = val;
+  }
+
+  /** \brief Takes a list of values and converts them to a comma-separated list.
+   *
+   * A `to_string()` function for the used data type has to be available.
+   *
+   * \returns a string with a comma-separated list of values
+   */
+  template<typename T>
+  string commaSepStringFromValues(
+      vector<T> vals,   ///< the list of values that shall be converted
+      const string& delim = ","   ///< the delimiter between two items
+      )
+  {
+    string result;
+    for (const T& v : vals)
+    {
+      if (!result.empty()) result += delim;
+      result += to_string(v);
+    }
+
+    return result;
+  }
+
+  /** \brief Takes a list of values and converts them to a comma-separated list.
+   *
+   * A `to_string()` function for the used data type has to be available.
+   *
+   * \returns a string with a comma-separated list of values
+   */
+  template<typename T>
+  string commaSepStringFromValues(
+      initializer_list<T> vals,   ///< the list of values that shall be converted
+      const string& delim = ","   ///< the delimiter between two items
+      )
+  {
+    // repeat the code from the `vector` implementation above.
+    //
+    // we could also do a simple
+    //
+    //    return commaSepStringFromValues<T>(vector<T>(vals), delim)
+    //
+    // but that would imply a copy of all values from the list to the vector
+    // which is probably a bad idea
+
+
+    string result;
+    for (const T& v : vals)
+    {
+      if (!result.empty()) result += delim;
+      result += to_string(v);
+    }
+
+    return result;
   }
 
   /** \brief Checks whether a string is a valid email adress.

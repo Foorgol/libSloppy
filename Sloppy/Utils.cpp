@@ -32,6 +32,20 @@
 namespace bfs = boost::filesystem;
 using json = nlohmann::json;
 
+namespace std
+{
+  string to_string(const char* cString)
+  {
+    return string{cString};
+  }
+
+  const string& to_string(const string& s)
+  {
+    return s;
+  }
+
+}
+
 namespace Sloppy
 {
   bool isValidEmailAddress(const string& email)
@@ -178,6 +192,7 @@ namespace Sloppy
 
   //----------------------------------------------------------------------------
 
+
 #ifndef WIN32
 
   BiDirPipeEnd::BiDirPipeEnd(int _fdRead, int _fdWrite)
@@ -318,7 +333,6 @@ namespace Sloppy
 
     return make_pair(std::move(fdRead), std::move(fdWrite));
   }
-
 #endif
 
   //----------------------------------------------------------------------------

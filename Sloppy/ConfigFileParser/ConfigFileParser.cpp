@@ -194,16 +194,7 @@ namespace Sloppy
       throw std::invalid_argument("ConfigFileParser constraint check: received empty section name!");
     }
 
-    // regexs are expensive to create and thus we keep a few
-    // of them in static local variables
-    static regex reAlnum{"[[:alnum:]]+"};
-    static regex reAlpha{"[[:alpha:]]+"};
-    static regex reDigit{"[[:digit:]]+"};
-    static regex reIsoDate{"(\\d{4})-(\\d{1,2})-(\\d{1,2})"};
-
-    // prepare a helper functions that puts keyname and
-    // an optional section name into the first two parameters
-    // of a error message
+    // a helper function for preparing the first part of an error message
     auto prepErrMsg = [&secName, &keyName]() {
       estring msg{"The key %1 %2 "};
       msg.arg(keyName);
@@ -227,190 +218,19 @@ namespace Sloppy
       return false;
     }
 
-    // is the value non-empty?
-    if (v->empty())
+    // leave all further checks to the
+    // separate constraint checker
+    if (!Sloppy::checkConstraint(v, c, errMsg))
     {
       if (errMsg != nullptr)
       {
-        estring e = prepErrMsg();
-        e += "is empty!";
-        *errMsg = e;
+        *errMsg = prepErrMsg() + *errMsg;
       }
 
       return false;
     }
 
-    // the checks so far where enough to satisfy KeyValueConstraint::NotEmpty
-    if (c == KeyValueConstraint::NotEmpty) return true;
-
-    // check the AlNum constraint with a regex
-    if (c == KeyValueConstraint::Alnum)
-    {
-      bool isOkay = regex_match(*v, reAlnum);
-      if (!isOkay && (errMsg != nullptr))
-      {
-        estring e = prepErrMsg();
-        e += "is not purely alphanumeric!";
-        *errMsg = e;
-      }
-
-      return isOkay;
-    }
-
-    // check the Alpha constraint with a regex
-    if (c == KeyValueConstraint::Alpha)
-    {
-      bool isOkay = regex_match(*v, reAlpha);
-      if (!isOkay && (errMsg != nullptr))
-      {
-        estring e = prepErrMsg();
-        e += "is not purely alphabetic!";
-        *errMsg = e;
-      }
-
-      return isOkay;
-    }
-
-    // check the Digit constraint with a regex
-    if (c == KeyValueConstraint::Digit)
-    {
-      bool isOkay = regex_match(*v, reDigit);
-      if (!isOkay && (errMsg != nullptr))
-      {
-        estring e = prepErrMsg();
-        e += "contains non-digit characters!";
-        *errMsg = e;
-      }
-
-      return isOkay;
-    }
-
-    // check the Numeric constraint by checking against
-    // a double value. isDouble() is also true for pure integers
-    if (c == KeyValueConstraint::Numeric)
-    {
-      bool isOkay = v->isDouble();
-      if (!isOkay && (errMsg != nullptr))
-      {
-        estring e = prepErrMsg();
-        e += "contains a non-numeric value!";
-        *errMsg = e;
-      }
-
-      return isOkay;
-    }
-
-    // check the integer constraint
-    if (c == KeyValueConstraint::Integer)
-    {
-      bool isOkay = v->isInt();
-      if (!isOkay && (errMsg != nullptr))
-      {
-        estring e = prepErrMsg();
-        e += "is not a valid integer!";
-        *errMsg = e;
-      }
-
-      return isOkay;
-    }
-
-    // check the boolean constraint
-    if (c == KeyValueConstraint::Bool)
-    {
-      auto b = getValueAsBool(secName, keyName);
-      if ((!(b.has_value())) && (errMsg != nullptr))
-      {
-        estring e = prepErrMsg();
-        e += "does not contain valid boolean data ('1', '0', 'on', 'off', 'true' or 'false')!";
-        *errMsg = e;
-      }
-
-      return b.has_value();
-    }
-
-    // check the file constraint using Boost's file system implementation
-    if (c == KeyValueConstraint::File)
-    {
-      bfs::path p{*v};
-      bool isOkay = bfs::is_regular_file(p);
-      if (!isOkay && (errMsg != nullptr))
-      {
-        estring e = prepErrMsg();
-        e += "does not point to an existing, regular file!";
-        *errMsg = e;
-      }
-
-      return isOkay;
-    }
-
-    // check the directory constraint using Boost's file system implementation
-    if (c == KeyValueConstraint::Directory)
-    {
-      bfs::path p{*v};
-      bool isOkay = bfs::is_directory(p);
-      if (!isOkay && (errMsg != nullptr))
-      {
-        estring e = prepErrMsg();
-        e += "does not point to an existing directory!";
-        *errMsg = e;
-      }
-
-      return isOkay;
-    }
-
-    // check against one of the compiled-in timezone specs
-    if (c == KeyValueConstraint::StandardTimezone)
-    {
-      auto db = DateTime::getPopulatedTzDatabase();
-      auto tz = db.time_zone_from_region(*v);
-
-      bool isOkay =  (tz != nullptr);
-      if (!isOkay && (errMsg != nullptr))
-      {
-        estring e = prepErrMsg();
-        e += "does not contain a known timezone name!";
-        *errMsg = e;
-      }
-
-      return isOkay;
-    }
-
-    // check ISO dates
-    if (c == KeyValueConstraint::IsoDate)
-    {
-      smatch sm;
-      bool isOkay = regex_match(*v, sm, reIsoDate);
-      if (!isOkay && (errMsg != nullptr))
-      {
-        estring e = prepErrMsg();
-        e += "does not match for ISO date format YYYY-MM-DD!";
-        *errMsg = e;
-      }
-      if (!isOkay) return false;
-
-      int y = stoi(sm[1]);
-      int m = stoi(sm[2]);
-      int d = stoi(sm[3]);
-
-      isOkay = DateTime::CommonTimestamp::isValidDate(y, m, d);
-      if (!isOkay && (errMsg != nullptr))
-      {
-        estring e = prepErrMsg();
-        e += "does not contain a valid date!";
-        *errMsg = e;
-      }
-
-      return isOkay;
-    }
-
-    //
-    // we should never reach this point
-    //
-    if (errMsg != nullptr)
-    {
-      *errMsg = "Unknown error when checking key " + keyName + " in section " + secName;
-    }
-    return false;
+    return true;
   }
 
   //----------------------------------------------------------------------------

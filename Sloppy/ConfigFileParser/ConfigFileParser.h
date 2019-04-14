@@ -25,6 +25,7 @@
 #include <unordered_map>
 #include <optional>
 
+#include "ConstraintChecker.h"
 #include "../String.h"
 
 namespace Sloppy
@@ -32,24 +33,6 @@ namespace Sloppy
   static constexpr const char* defaultSectionName = "__DEFAULT__";
 
   using KeyValueMap = std::unordered_map<string, string>;
-
-  /** \brief An enum that defines a list of constraints that
-   * an entry in a config file can be checked against.
-   */
-  enum class KeyValueConstraint
-  {
-    NotEmpty,   ///< the key must exist and must have a value assigned
-    Alnum,      ///< the value is not empty and contains only alphanumeric characters
-    Alpha,      ///< the value is not empty and contains only alphabetic characters
-    Digit,      ///< the value is not empty and contains only digits (not including a minus sign!)
-    Numeric,    ///< the value must be numeric (int or float), including a possible minus sign
-    Integer,    ///< the value must be an integer (not a float), including a possible minus sign
-    Bool,       ///< the value is either "0", "1", "o"n, "off", "true" or "false" (case insensitive)
-    File,       ///< the value must point to an existing file (not a directory); it is not checked whether the file is accessible for reading or writing
-    Directory,  ///< the value must point to an existing directory (not a file); it is not checked whether the directory is accessible for reading or writing
-    StandardTimezone,   ///< the value must refer to one of the compiled-in timezone definitions (see LocalTime or `Zonespec.cpp`)
-    IsoDate,    ///< the value is a valid ISO date (YYYY-MM-DD)
-  };
 
   /** \brief A struct that takes section name, key name and constraint type for
    * a constraint check.

@@ -43,7 +43,7 @@ namespace Sloppy
   {
     string secName;
     string keyName;
-    KeyValueConstraint c;
+    ValueConstraint c;
   };
 
   /** \brief A class that parses ini-style text files for reading configuration data.
@@ -189,7 +189,7 @@ namespace Sloppy
      */
     bool checkConstraint(
         const string& keyName,    ///< the name of the key
-        KeyValueConstraint c,     ///< the constraint to check
+        ValueConstraint c,     ///< the constraint to check
         string* errMsg = nullptr  ///< an optional pointer to a string for returning a human-readable error message
         ) const;
 
@@ -206,7 +206,7 @@ namespace Sloppy
     bool checkConstraint(
         const string& secName,    ///< the name of the section containing the key
         const string& keyName,    ///< the name of the key
-        KeyValueConstraint c,     ///< the constraint to check
+        ValueConstraint c,     ///< the constraint to check
         string* errMsg = nullptr  ///< an optional pointer to a string for returning a human-readable error message
         ) const;
 

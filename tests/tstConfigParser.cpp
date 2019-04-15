@@ -120,7 +120,7 @@ TEST(ConfigParser, Sections)
 
 //----------------------------------------------------------------------------
 
-bool constraintTestHelper(const string& rawInput, KeyValueConstraint c, int idxFailMax, int idxValidMax)
+bool constraintTestHelper(const string& rawInput, ValueConstraint c, int idxFailMax, int idxValidMax)
 {
   // parse the string
   istringstream is{rawInput};
@@ -162,9 +162,9 @@ TEST(ConfigParser, Constraints_NotEmpty)
   Parser cp(is);
 
   // check the constraints
-  ASSERT_FALSE(cp.checkConstraint("nonexisting", KeyValueConstraint::NotEmpty));
-  ASSERT_FALSE(cp.checkConstraint("empty", KeyValueConstraint::NotEmpty));
-  ASSERT_TRUE(cp.checkConstraint("valid", KeyValueConstraint::NotEmpty));
+  ASSERT_FALSE(cp.checkConstraint("nonexisting", ValueConstraint::NotEmpty));
+  ASSERT_FALSE(cp.checkConstraint("empty", ValueConstraint::NotEmpty));
+  ASSERT_TRUE(cp.checkConstraint("valid", ValueConstraint::NotEmpty));
 }
 
 //----------------------------------------------------------------------------
@@ -182,7 +182,7 @@ TEST(ConfigParser, Constraints_Alnum)
       valid2 = x42
              )";
 
-  ASSERT_TRUE(constraintTestHelper(s, KeyValueConstraint::Alnum, 4, 2));
+  ASSERT_TRUE(constraintTestHelper(s, ValueConstraint::Alnum, 4, 2));
 }
 
 //----------------------------------------------------------------------------
@@ -201,7 +201,7 @@ TEST(ConfigParser, Constraints_Alpha)
       valid1 = xsfddf
              )";
 
-  ASSERT_TRUE(constraintTestHelper(s, KeyValueConstraint::Alpha, 6, 1));
+  ASSERT_TRUE(constraintTestHelper(s, ValueConstraint::Alpha, 6, 1));
 }
 
 //----------------------------------------------------------------------------
@@ -219,7 +219,7 @@ TEST(ConfigParser, Constraints_Digit)
       valid1 = 42
              )";
 
-  ASSERT_TRUE(constraintTestHelper(s, KeyValueConstraint::Digit, 5, 1));
+  ASSERT_TRUE(constraintTestHelper(s, ValueConstraint::Digit, 5, 1));
 }
 
 //----------------------------------------------------------------------------
@@ -243,7 +243,7 @@ TEST(ConfigParser, Constraints_Numeric)
       valid4 = -2.456
              )";
 
-  ASSERT_TRUE(constraintTestHelper(s, KeyValueConstraint::Numeric, 8, 4));
+  ASSERT_TRUE(constraintTestHelper(s, ValueConstraint::Numeric, 8, 4));
 }
 
 //----------------------------------------------------------------------------
@@ -267,7 +267,7 @@ TEST(ConfigParser, Constraints_Integer)
       valid2 = -2
              )";
 
-  ASSERT_TRUE(constraintTestHelper(s, KeyValueConstraint::Integer, 10, 2));
+  ASSERT_TRUE(constraintTestHelper(s, ValueConstraint::Integer, 10, 2));
 }
 
 //----------------------------------------------------------------------------
@@ -296,7 +296,7 @@ TEST(ConfigParser, Constraints_Bool)
       valid5 = faLSe
              )";
 
-  ASSERT_TRUE(constraintTestHelper(s, KeyValueConstraint::Bool, 12, 5));
+  ASSERT_TRUE(constraintTestHelper(s, ValueConstraint::Bool, 12, 5));
 }
 
 //----------------------------------------------------------------------------
@@ -312,7 +312,7 @@ TEST(ConfigParser, Constraints_File)
       valid1 = ./Sloppy_Tests
              )";
 
-  ASSERT_TRUE(constraintTestHelper(s, KeyValueConstraint::File, 3, 1));
+  ASSERT_TRUE(constraintTestHelper(s, ValueConstraint::File, 3, 1));
 }
 
 //----------------------------------------------------------------------------
@@ -331,7 +331,7 @@ TEST(ConfigParser, Constraints_Dir)
       valid3 = /usr
              )";
 
-  ASSERT_TRUE(constraintTestHelper(s, KeyValueConstraint::Directory, 4, 3));
+  ASSERT_TRUE(constraintTestHelper(s, ValueConstraint::Directory, 4, 3));
 }
 
 //----------------------------------------------------------------------------
@@ -345,7 +345,7 @@ TEST(ConfigParser, Constraints_Timezone)
       valid0 = Europe/Berlin
              )";
 
-  ASSERT_TRUE(constraintTestHelper(s, KeyValueConstraint::StandardTimezone, 2, 0));
+  ASSERT_TRUE(constraintTestHelper(s, ValueConstraint::StandardTimezone, 2, 0));
 }
 
 //----------------------------------------------------------------------------
@@ -364,7 +364,7 @@ TEST(ConfigParser, Constraints_IsoDate)
       valid1 = 2016-02-29
              )";
 
-  ASSERT_TRUE(constraintTestHelper(s, KeyValueConstraint::IsoDate, 6, 1));
+  ASSERT_TRUE(constraintTestHelper(s, ValueConstraint::IsoDate, 6, 1));
 }
 
 //----------------------------------------------------------------------------
@@ -385,22 +385,22 @@ TEST(ConfigParser, Constraints_Bulk)
   Parser cp(is);
 
   bool isOkay = cp.bulkCheckConstraints(
-  {{"MySection", "k1", KeyValueConstraint::NotEmpty},
-   {"MySection", "k2", KeyValueConstraint::Digit},
-   {"MySection", "k3", KeyValueConstraint::Numeric},
-   {"MySection", "k4", KeyValueConstraint::Bool},
-   {"MySection", "k5", KeyValueConstraint::Directory},
-   {"MySection", "k6", KeyValueConstraint::IsoDate},
+  {{"MySection", "k1", ValueConstraint::NotEmpty},
+   {"MySection", "k2", ValueConstraint::Digit},
+   {"MySection", "k3", ValueConstraint::Numeric},
+   {"MySection", "k4", ValueConstraint::Bool},
+   {"MySection", "k5", ValueConstraint::Directory},
+   {"MySection", "k6", ValueConstraint::IsoDate},
         });
   ASSERT_TRUE(isOkay);
 
   isOkay = cp.bulkCheckConstraints(
-  {{"MySection", "k1", KeyValueConstraint::NotEmpty},
-   {"MySection", "k2", KeyValueConstraint::Digit},
-   {"MySection", "k3", KeyValueConstraint::Numeric},
-   {"MySection", "k4", KeyValueConstraint::Bool},
-   {"MySection", "k5", KeyValueConstraint::File},
-   {"MySection", "k6", KeyValueConstraint::IsoDate},
+  {{"MySection", "k1", ValueConstraint::NotEmpty},
+   {"MySection", "k2", ValueConstraint::Digit},
+   {"MySection", "k3", ValueConstraint::Numeric},
+   {"MySection", "k4", ValueConstraint::Bool},
+   {"MySection", "k5", ValueConstraint::File},
+   {"MySection", "k6", ValueConstraint::IsoDate},
         });
   ASSERT_FALSE(isOkay);
 }

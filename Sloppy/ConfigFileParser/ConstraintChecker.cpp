@@ -33,7 +33,29 @@ namespace bfs = boost::filesystem;
 namespace Sloppy
 {
 
-  bool checkConstraint(const optional<estring>& val, Sloppy::KeyValueConstraint c, string* errMsg)
+  bool checkConstraint(const optional<estring>& val, Sloppy::ValueConstraint c, string* errMsg)
+  {
+    // first basic check: does the value exist at all?
+    if (!(val.has_value()))
+    {
+      if (errMsg != nullptr)
+      {
+        *errMsg = "does not exist!";
+      }
+
+      return false;
+    }
+
+    // the checks so far where enough to satisfy KeyValueConstraint::Exist
+    if (c == ValueConstraint::Exist) return true;
+
+    // in all other cases, continue with the value-based evaluations
+    return checkConstraint(val.value(), c, errMsg);
+  }
+
+  //----------------------------------------------------------------------------
+
+  bool checkConstraint(const estring& val, ValueConstraint c, string* errMsg)
   {
     // regexs are expensive to create and thus we keep a few
     // of them in static local variables
@@ -43,7 +65,7 @@ namespace Sloppy
     static regex reIsoDate{"(\\d{4})-(\\d{1,2})-(\\d{1,2})"};
 
     // is the value non-empty?
-    if (val->empty())
+    if (val.empty())
     {
       if (errMsg != nullptr)
       {
@@ -54,12 +76,12 @@ namespace Sloppy
     }
 
     // the checks so far where enough to satisfy KeyValueConstraint::NotEmpty
-    if (c == KeyValueConstraint::NotEmpty) return true;
+    if (c == ValueConstraint::NotEmpty) return true;
 
     // check the AlNum constraint with a regex
-    if (c == KeyValueConstraint::Alnum)
+    if (c == ValueConstraint::Alnum)
     {
-      bool isOkay = regex_match(val.value(), reAlnum);
+      bool isOkay = regex_match(val, reAlnum);
       if (!isOkay && (errMsg != nullptr))
       {
         *errMsg = "is not purely alphanumeric!";
@@ -69,9 +91,9 @@ namespace Sloppy
     }
 
     // check the Alpha constraint with a regex
-    if (c == KeyValueConstraint::Alpha)
+    if (c == ValueConstraint::Alpha)
     {
-      bool isOkay = regex_match(val.value(), reAlpha);
+      bool isOkay = regex_match(val, reAlpha);
       if (!isOkay && (errMsg != nullptr))
       {
         *errMsg = "is not purely alphabetic!";
@@ -81,9 +103,9 @@ namespace Sloppy
     }
 
     // check the Digit constraint with a regex
-    if (c == KeyValueConstraint::Digit)
+    if (c == ValueConstraint::Digit)
     {
-      bool isOkay = regex_match(val.value(), reDigit);
+      bool isOkay = regex_match(val, reDigit);
       if (!isOkay && (errMsg != nullptr))
       {
         *errMsg = "contains non-digit characters!";
@@ -94,9 +116,9 @@ namespace Sloppy
 
     // check the Numeric constraint by checking against
     // a double value. isDouble() is also true for pure integers
-    if (c == KeyValueConstraint::Numeric)
+    if (c == ValueConstraint::Numeric)
     {
-      bool isOkay = val->isDouble();
+      bool isOkay = val.isDouble();
       if (!isOkay && (errMsg != nullptr))
       {
         *errMsg = "contains a non-numeric value!";
@@ -106,9 +128,9 @@ namespace Sloppy
     }
 
     // check the integer constraint
-    if (c == KeyValueConstraint::Integer)
+    if (c == ValueConstraint::Integer)
     {
-      bool isOkay = val->isInt();
+      bool isOkay = val.isInt();
       if (!isOkay && (errMsg != nullptr))
       {
         *errMsg = "is not a valid integer!";
@@ -118,9 +140,9 @@ namespace Sloppy
     }
 
     // check the boolean constraint
-    if (c == KeyValueConstraint::Bool)
+    if (c == ValueConstraint::Bool)
     {
-      estring tmp{val.value()};
+      estring tmp{val};
       tmp.toLower();
 
       bool isOkay{false};
@@ -153,9 +175,9 @@ namespace Sloppy
     }
 
     // check the file constraint using Boost's file system implementation
-    if (c == KeyValueConstraint::File)
+    if (c == ValueConstraint::File)
     {
-      bfs::path p{val.value()};
+      bfs::path p{val};
       bool isOkay = bfs::is_regular_file(p);
       if (!isOkay && (errMsg != nullptr))
       {
@@ -166,9 +188,9 @@ namespace Sloppy
     }
 
     // check the directory constraint using Boost's file system implementation
-    if (c == KeyValueConstraint::Directory)
+    if (c == ValueConstraint::Directory)
     {
-      bfs::path p{val.value()};
+      bfs::path p{val};
       bool isOkay = bfs::is_directory(p);
       if (!isOkay && (errMsg != nullptr))
       {
@@ -179,10 +201,10 @@ namespace Sloppy
     }
 
     // check against one of the compiled-in timezone specs
-    if (c == KeyValueConstraint::StandardTimezone)
+    if (c == ValueConstraint::StandardTimezone)
     {
       auto db = DateTime::getPopulatedTzDatabase();
-      auto tz = db.time_zone_from_region(val.value());
+      auto tz = db.time_zone_from_region(val);
 
       bool isOkay =  (tz != nullptr);
       if (!isOkay && (errMsg != nullptr))
@@ -194,10 +216,10 @@ namespace Sloppy
     }
 
     // check ISO dates
-    if (c == KeyValueConstraint::IsoDate)
+    if (c == ValueConstraint::IsoDate)
     {
       smatch sm;
-      bool isOkay = regex_match(val.value(), sm, reIsoDate);
+      bool isOkay = regex_match(val, sm, reIsoDate);
       if (!isOkay && (errMsg != nullptr))
       {
         *errMsg = "does not match for ISO date format YYYY-MM-DD!";
@@ -222,14 +244,31 @@ namespace Sloppy
     //
     if (errMsg != nullptr)
     {
-      *errMsg = "Unknown error when checking constraints on '" + val.value() + "'";
+      *errMsg = "Unknown error when checking constraints on '" + val + "'";
     }
     return false;
   }
 
   //----------------------------------------------------------------------------
 
-  bool checkConstraint_IntRange(optional<estring> val, optional<int> minVal, optional<int> maxVal, string* errMsg)
+  bool checkConstraint_IntRange(const optional<estring>& val, const optional<int>& minVal, const optional<int> maxVal, string* errMsg)
+  {
+    if (!val.has_value())
+    {
+      if (errMsg != nullptr)
+      {
+        *errMsg = "does not exist!";
+      }
+
+      return false;
+    }
+
+    return checkConstraint_IntRange(val.value(), minVal, maxVal, errMsg);
+  }
+
+  //----------------------------------------------------------------------------
+
+  bool checkConstraint_IntRange(const estring& val, const optional<int>& minVal, const optional<int>& maxVal, string* errMsg)
   {
     bool hasMin = minVal.has_value();
     bool hasMax = maxVal.has_value();
@@ -242,11 +281,11 @@ namespace Sloppy
       }
     }
 
-    bool isOkay = checkConstraint(val, KeyValueConstraint::Integer, errMsg);
+    bool isOkay = checkConstraint(val, ValueConstraint::Integer, errMsg);
     if (!isOkay) return false;
 
     // after the previous check, the following should always succeed
-    int v = stoi(*val);
+    int v = stoi(val);
 
     if (hasMin)
     {
@@ -279,7 +318,24 @@ namespace Sloppy
 
   //----------------------------------------------------------------------------
 
-  bool checkConstraint_StrLen(optional<estring> val, optional<size_t> minLen, optional<size_t> maxLen, string* errMsg)
+  bool checkConstraint_StrLen(const optional<estring>& val, const optional<size_t>& minLen, const optional<size_t>& maxLen, string* errMsg)
+  {
+    if (!val.has_value())
+    {
+      if (errMsg != nullptr)
+      {
+        *errMsg = "does not exist!";
+      }
+
+      return false;
+    }
+
+    return checkConstraint_StrLen(val.value(), minLen, maxLen, errMsg);
+  }
+
+  //----------------------------------------------------------------------------
+
+  bool checkConstraint_StrLen(const estring& val, const optional<size_t>& minLen, const optional<size_t>& maxLen, string* errMsg)
   {
     bool hasMin = minLen.has_value();
     bool hasMax = maxLen.has_value();
@@ -292,14 +348,19 @@ namespace Sloppy
       }
     }
 
-    bool isOkay = checkConstraint(val, KeyValueConstraint::NotEmpty, errMsg);
-    if (!isOkay) return false;
+    if (val.empty())
+    {
+      if (errMsg != nullptr)
+      {
+        *errMsg = "is empty!";
+      }
 
-    const estring& v = val.value();
+      return false;
+    }
 
     if (hasMin && (*minLen > 0))
     {
-      isOkay = (v.length() >= *minLen);
+      bool isOkay = (val.length() >= *minLen);
       if (!isOkay && (errMsg != nullptr))
       {
         estring e = "shall have a min length of at least %1 characters!";
@@ -312,7 +373,7 @@ namespace Sloppy
 
     if (hasMax && (*maxLen > 0))
     {
-      isOkay = (v.length() <= *maxLen);
+      bool isOkay = (val.length() <= *maxLen);
       if (!isOkay && (errMsg != nullptr))
       {
         estring e = "shall have a max length of not more than %1 characters!";
@@ -325,4 +386,5 @@ namespace Sloppy
 
     return true;
   }
+
 }

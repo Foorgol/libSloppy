@@ -175,14 +175,14 @@ namespace Sloppy
 
   //----------------------------------------------------------------------------
 
-  bool Parser::checkConstraint(const string& keyName, KeyValueConstraint c, string* errMsg) const
+  bool Parser::checkConstraint(const string& keyName, ValueConstraint c, string* errMsg) const
   {
     return checkConstraint(defaultSectionName, keyName, c, errMsg);
   }
 
   //----------------------------------------------------------------------------
 
-  bool Parser::checkConstraint(const string& secName, const string& keyName, KeyValueConstraint c, string* errMsg) const
+  bool Parser::checkConstraint(const string& secName, const string& keyName, ValueConstraint c, string* errMsg) const
   {
     if (keyName.empty())
     {
@@ -204,22 +204,10 @@ namespace Sloppy
       return msg;
     };
 
-    // first basic check: does the key-value pair exist at all?
-    optional<estring> v = getValue(secName, keyName);
-    if (!(v.has_value()))
-    {
-      if (errMsg != nullptr)
-      {
-        estring e = prepErrMsg();
-        e += "does not exist!";
-        *errMsg = e;
-      }
-
-      return false;
-    }
-
+    // get the value as an optional string and
     // leave all further checks to the
     // separate constraint checker
+    optional<estring> v = getValue(secName, keyName);
     if (!Sloppy::checkConstraint(v, c, errMsg))
     {
       if (errMsg != nullptr)
@@ -285,7 +273,7 @@ namespace Sloppy
       }
     }
 
-    bool isOkay = checkConstraint(secName, keyName, KeyValueConstraint::Integer, errMsg);
+    bool isOkay = checkConstraint(secName, keyName, ValueConstraint::Integer, errMsg);
     if (!isOkay) return false;
 
     // prepare a helper functions that puts keyname and
@@ -355,7 +343,7 @@ namespace Sloppy
       }
     }
 
-    bool isOkay = checkConstraint(secName, keyName, KeyValueConstraint::NotEmpty, errMsg);
+    bool isOkay = checkConstraint(secName, keyName, ValueConstraint::NotEmpty, errMsg);
     if (!isOkay) return false;
 
     // prepare a helper functions that puts keyname and

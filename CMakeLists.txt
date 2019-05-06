@@ -41,6 +41,8 @@ set(LIB_SOURCES
     Sloppy/DateTime/Zonespec.cpp
     Sloppy/Crypto/MiniCert.cpp
     Sloppy/BasicException.h
+    Sloppy/CyclicWorkerThread.h
+    Sloppy/CyclicWorkerThread.cpp
 )
 
 #
@@ -158,6 +160,7 @@ set(LIB_SOURCES_TST
     tests/tstStrings.cpp
     tests/tstMiniCert.cpp
     tests/tstMemFile.cpp
+    tests/tstCyclicThread.cpp
 )
 
 find_package(GTest)

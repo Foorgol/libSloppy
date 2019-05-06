@@ -26,6 +26,7 @@ namespace Sloppy
   CyclicWorkerThread::CyclicWorkerThread(int minWorkerCycle_ms)
     :workerCycle_ms{minWorkerCycle_ms}
   {
+    stats.workerCycleTime_ms = workerCycle_ms;
     workerThread = thread([&]{mainLoop();});
   }
 
@@ -33,8 +34,6 @@ namespace Sloppy
 
   CyclicWorkerThread::~CyclicWorkerThread()
   {
-    //this->terminate();
-    //waitForStateChange();
     forceQuitThreadFromDtor = true;
     workerThread.join();
   }
@@ -43,7 +42,7 @@ namespace Sloppy
 
   bool CyclicWorkerThread::run()
   {
-    //if (isTransitionPending) return false;
+    if (isTransitionPending) return false;
 
     lock_guard<mutex> lk{stateMutex};
 
@@ -69,7 +68,7 @@ namespace Sloppy
 
   bool CyclicWorkerThread::pause()
   {
-    //if (isTransitionPending) return false;
+    if (isTransitionPending) return false;
 
     lock_guard<mutex> lk{stateMutex};
 
@@ -95,7 +94,7 @@ namespace Sloppy
 
   bool CyclicWorkerThread::resume()
   {
-    //if (isTransitionPending) return false;
+    if (isTransitionPending) return false;
 
     lock_guard<mutex> lk{stateMutex};
 
@@ -140,11 +139,16 @@ namespace Sloppy
   {
     while (isTransitionPending)
     {
-      /*lock_guard<mutex> lk{stateMutex};
-      if (reqState == curState) return;*/
-
       this_thread::sleep_for(chrono::milliseconds(WaitForStateChangePollingTime_ms));
     }
+  }
+
+  //----------------------------------------------------------------------------
+
+  const CyclicThreadStats& CyclicWorkerThread::workerStats()
+  {
+    lock_guard<mutex> lk{stateMutex};
+    return stats;
   }
 
   //----------------------------------------------------------------------------
@@ -161,7 +165,7 @@ namespace Sloppy
     while (!forceQuitThreadFromDtor)
     {
       // just for testing
-      assert(lk.owns_lock());
+      //assert(lk.owns_lock());
 
       Sloppy::Timer t;
 
@@ -175,6 +179,12 @@ namespace Sloppy
 
         // re-lock after the worker
         lk.lock();
+
+        // now that we own the lock, we can update
+        // the internal stats
+        stats.nCalls++;
+        stats.totalRuntime_ms += workerTime;
+        stats.lastRuntime_ms = workerTime;
 
         // check after every (potentially long) operation
         if (forceQuitThreadFromDtor) return;
@@ -217,7 +227,7 @@ namespace Sloppy
         // lk being (re-)locked!
 
         // just for testing
-        assert(lk.owns_lock());
+        //assert(lk.owns_lock());
 
         // start all over waiting for events, if there is
         // still enough time left
@@ -226,7 +236,7 @@ namespace Sloppy
       // lk is ALWAYS locked at this point
 
       // just for testing
-      assert(lk.owns_lock());
+      //assert(lk.owns_lock());
     }
   }
 
@@ -248,14 +258,15 @@ namespace Sloppy
     //
 
     // Termination takes precedence, check that first
-    if (reqState == CyclicWorkerThreadState::Finished)
+    if ((reqState == CyclicWorkerThreadState::Finished) &&
+        (curState != CyclicWorkerThreadState::Finished))
     {
       curState = CyclicWorkerThreadState::Terminating;
+
       lk.unlock();
-
       onTerminate();
-
       lk.lock();
+
       curState = CyclicWorkerThreadState::Finished;
       isTransitionPending = false;
       return;
@@ -266,11 +277,11 @@ namespace Sloppy
         (reqState == CyclicWorkerThreadState::Running))
     {
       curState = CyclicWorkerThreadState::Preparing;
+
       lk.unlock();
-
       onFirstRun();
-
       lk.lock();
+
       curState = CyclicWorkerThreadState::Running;
 
       isTransitionPending = false;
@@ -282,11 +293,11 @@ namespace Sloppy
         (reqState == CyclicWorkerThreadState::Suspended))
     {
       curState = CyclicWorkerThreadState::Suspending;
+
       lk.unlock();
-
       onSuspend();
-
       lk.lock();
+
       curState = CyclicWorkerThreadState::Suspended;
 
       isTransitionPending = false;
@@ -298,11 +309,11 @@ namespace Sloppy
         (reqState == CyclicWorkerThreadState::Running))
     {
       curState = CyclicWorkerThreadState::Resuming;
+
       lk.unlock();
-
       onResume();
-
       lk.lock();
+
       curState = CyclicWorkerThreadState::Running;
 
       isTransitionPending = false;
@@ -313,6 +324,22 @@ namespace Sloppy
     //
     // we should never reach this point
     throw std::runtime_error("CyclicWorkerThread: state machine inconsistency or missing state transition!");
+  }
+
+  //----------------------------------------------------------------------------
+  //----------------------------------------------------------------------------
+  //----------------------------------------------------------------------------
+
+  double CyclicThreadStats::avgWorkerExecTime_ms() const
+  {
+    return (nCalls == 0) ? 0 : (double(totalRuntime_ms) / nCalls);
+  }
+
+  //----------------------------------------------------------------------------
+
+  double CyclicThreadStats::dutyPercentage() const
+  {
+    return avgWorkerExecTime_ms() / workerCycleTime_ms;
   }
 
   //----------------------------------------------------------------------------

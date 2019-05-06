@@ -24,10 +24,11 @@
 
 #include "../Sloppy/CyclicWorkerThread.h"
 
-static constexpr int BaseCycle_ms = 1;
+static constexpr int BaseCycle_ms = 10;
 static constexpr int HookDuration_ms = 10 * BaseCycle_ms;
 static constexpr int WorkerDuration_ms = 4 * BaseCycle_ms;
-static constexpr int WorkerCycle_ms = 2 * (WorkerDuration_ms + HookDuration_ms);
+//static constexpr int WorkerCycle_ms = 1.2 * (WorkerDuration_ms + HookDuration_ms);
+static constexpr int WorkerCycle_ms = 1.2 * WorkerDuration_ms;
 static constexpr int MaxStateChangeTime_ms = WorkerDuration_ms + HookDuration_ms;
 static constexpr int MaxTimeToTransition_ms = WorkerDuration_ms;
 
@@ -178,6 +179,12 @@ TEST(CyclicThread, BasicUsage)
   tw.waitForStateChange();
   ASSERT_TRUE(t.getTime__ms() <= MaxStateChangeTime_ms);
   ASSERT_TRUE(tw.assertCntAndState(CTS::Finished, 1, 1, 1, 1, 22, 2));
+
+  // show stats
+  const auto& stats = tw.workerStats();
+  cout << "Number of worker calls: " << stats.nCalls << endl;
+  cout << "Avg. worker duration: " << stats.avgWorkerExecTime_ms() << endl;
+  cout << "Duty percentage: " << stats.dutyPercentage() * 100 << endl;
 }
 
 //----------------------------------------------------------------------------

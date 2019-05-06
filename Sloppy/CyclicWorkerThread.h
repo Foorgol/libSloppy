@@ -23,6 +23,7 @@
 #include <thread>
 #include <mutex>
 #include <atomic>
+#include <condition_variable>
 
 #include "Timer.h"
 
@@ -43,6 +44,7 @@ namespace Sloppy
   class CyclicWorkerThread
   {
   public:
+    static constexpr int WaitForStateChangePollingTime_ms = 2;
 
     /** \brief The basic states of a cyclic worker */
     enum class CyclicWorkerThreadState
@@ -64,8 +66,8 @@ namespace Sloppy
     /** \brief Ctor that sets up the cyclic behaviour of the thread
      */
     CyclicWorkerThread(
-        int minWorkerCycle_ms, ///< minimum time in millisecs between two calls of the worker function
-        int minIdleCycle_ms = -1 ///< minimum time in millisecs between checks for a status change if the worker is not currently running (-1 = use the worker cycle)
+        int minWorkerCycle_ms ///< minimum time in millisecs between two calls of the worker function
+        //int minIdleCycle_ms = -1 ///< minimum time in millisecs between checks for a status change if the worker is not currently running (-1 = use the worker cycle)
         );
 
     /** \brief Dtor, calls `join()` on the underlying thread for proper clean-up*/
@@ -159,7 +161,7 @@ namespace Sloppy
      *
      * \note This function is for execution in the CONTROLLER THREAD CONTEXT only!
      */
-    void waitForStateChange() const;
+    void waitForStateChange();
 
   protected:
 
@@ -207,17 +209,18 @@ namespace Sloppy
     //
     // Returns `true` if the worker should be forcefully executing afterwards,
     // regardless of any timer values
-    bool doStateMachine();
+    void doStateMachine(unique_lock<mutex>& lk);
 
     mutex stateMutex;
+    condition_variable cvState;
 
     CyclicWorkerThreadState curState{CyclicWorkerThreadState::Initialized};   ///< our current state
     CyclicWorkerThreadState reqState{CyclicWorkerThreadState::Initialized};   ///< the next state requested by the owner
     thread workerThread;
     int workerCycle_ms;
-    int idleCycle_ms;
 
     atomic<bool> isTransitionPending{false};  ///< not strictly necessary, but makes sync easier
+    bool forceQuitThreadFromDtor{false}; // may only be set by the dtor!
   };
 }
 

@@ -16,19 +16,16 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <assert.h>
+
 #include "CyclicWorkerThread.h"
 
 namespace Sloppy
 {
 
-  CyclicWorkerThread::CyclicWorkerThread(int minWorkerCycle_ms, int minIdleCycle_ms)
-    :workerCycle_ms{minWorkerCycle_ms}, idleCycle_ms{minIdleCycle_ms}
+  CyclicWorkerThread::CyclicWorkerThread(int minWorkerCycle_ms)
+    :workerCycle_ms{minWorkerCycle_ms}
   {
-    if (minIdleCycle_ms < 0)
-    {
-      minIdleCycle_ms = minWorkerCycle_ms;
-    }
-
     workerThread = thread([&]{mainLoop();});
   }
 
@@ -36,8 +33,9 @@ namespace Sloppy
 
   CyclicWorkerThread::~CyclicWorkerThread()
   {
-    this->terminate();
-    waitForStateChange();
+    //this->terminate();
+    //waitForStateChange();
+    forceQuitThreadFromDtor = true;
     workerThread.join();
   }
 
@@ -45,7 +43,7 @@ namespace Sloppy
 
   bool CyclicWorkerThread::run()
   {
-    if (isTransitionPending) return false;
+    //if (isTransitionPending) return false;
 
     lock_guard<mutex> lk{stateMutex};
 
@@ -63,6 +61,7 @@ namespace Sloppy
 
     reqState = CyclicWorkerThreadState::Running;
     isTransitionPending = true;
+    cvState.notify_one();
     return true;
   }
 
@@ -70,7 +69,7 @@ namespace Sloppy
 
   bool CyclicWorkerThread::pause()
   {
-    if (isTransitionPending) return false;
+    //if (isTransitionPending) return false;
 
     lock_guard<mutex> lk{stateMutex};
 
@@ -88,6 +87,7 @@ namespace Sloppy
 
     reqState = CyclicWorkerThreadState::Suspended;
     isTransitionPending = true;
+    cvState.notify_one();
     return true;
   }
 
@@ -95,7 +95,7 @@ namespace Sloppy
 
   bool CyclicWorkerThread::resume()
   {
-    if (isTransitionPending) return false;
+    //if (isTransitionPending) return false;
 
     lock_guard<mutex> lk{stateMutex};
 
@@ -113,6 +113,7 @@ namespace Sloppy
 
     reqState = CyclicWorkerThreadState::Running;
     isTransitionPending = true;
+    cvState.notify_one();
     return true;
   }
 
@@ -130,15 +131,19 @@ namespace Sloppy
 
     reqState = CyclicWorkerThreadState::Finished;
     isTransitionPending = true;
+    cvState.notify_one();
   }
 
   //----------------------------------------------------------------------------
 
-  void CyclicWorkerThread::waitForStateChange() const
+  void CyclicWorkerThread::waitForStateChange()
   {
     while (isTransitionPending)
     {
-      this_thread::sleep_for(chrono::milliseconds(idleCycle_ms));
+      /*lock_guard<mutex> lk{stateMutex};
+      if (reqState == curState) return;*/
+
+      this_thread::sleep_for(chrono::milliseconds(WaitForStateChangePollingTime_ms));
     }
   }
 
@@ -149,76 +154,94 @@ namespace Sloppy
     // short-cut
     using Clock = chrono::high_resolution_clock;
 
-    // action after the next sleep()
-    enum class NextAction
+    // initially lock the mutex because that's a pre-condition
+    // when starting the while loop
+    unique_lock<mutex> lk{stateMutex};  // implicitly calls `lock()`
+
+    while (!forceQuitThreadFromDtor)
     {
-      StateMachine,
-      Worker
-    };
-    NextAction next{NextAction::StateMachine};
+      // just for testing
+      assert(lk.owns_lock());
 
-    // time points when to trigger which action
-    chrono::high_resolution_clock::time_point nextStateMachineExecution;
-    chrono::high_resolution_clock::time_point nextWorkerExecution;
+      Sloppy::Timer t;
 
-    while (true)
-    {
-      bool forceRunWorker{false};
-
-      if (next == NextAction::StateMachine)
+      if (reqState == CyclicWorkerThreadState::Running)
       {
-        // handle pending state changes
-        Clock::time_point start = Clock::now();
-        forceRunWorker = doStateMachine();
-        nextStateMachineExecution = start + chrono::milliseconds(idleCycle_ms);
+        lk.unlock();  // release the lock while we're executing the worker
 
-        // terminate this thread function and
-        // make the thread joinable
-        //
-        // no need for locking here because "Finished" is
-        // a dead end; once we're in this state there is no
-        // way of changing that
-        if (curState == CyclicWorkerThreadState::Finished) return;
-      }
+        // execute the worker and measure its runtime
+        worker();
+        int workerTime = t.getTime__ms();
 
-      if ((next == NextAction::Worker) || forceRunWorker)
-      {
-        unique_lock<mutex> lk{stateMutex};  // implicitly calls `lock()`
-        Clock::time_point workerStart = Clock::now();
+        // re-lock after the worker
+        lk.lock();
 
-        if (curState == CyclicWorkerThreadState::Running)
+        // check after every (potentially long) operation
+        if (forceQuitThreadFromDtor) return;
+
+        // process pending state machine events
+        // at least once in every cycle, regardless
+        // of how much time is left after executing the worker
+        if (isTransitionPending)
         {
-          lk.unlock();  // release the lock while we're executing the worker
+          // process the pending notification
+          //
+          // should unlock, relock and return immediately
+          cvState.wait(lk);
 
-          // execute the worker and measure its runtime
-          worker();
-          int workerTime = chrono::duration_cast<chrono::milliseconds>(Clock::now() - workerStart).count();
+          // process the event
+          doStateMachine(lk);
         }
 
-        nextWorkerExecution = workerStart + chrono::milliseconds(workerCycle_ms);
+        // at this point, lk is always locked
       }
 
-      // what is the next action? state machine or worker?
-      if (nextStateMachineExecution < nextWorkerExecution)
+      // at this point, lk is always locked
+
+      // wait / process state machine events
+      // for the remaining time until the next worker call
+      while (!forceQuitThreadFromDtor)
       {
-        this_thread::sleep_until(nextStateMachineExecution);
-        next = NextAction::StateMachine;
-      } else {
-        this_thread::sleep_until(nextWorkerExecution);
-        next = NextAction::Worker;
+        int remainTime = workerCycle_ms - t.getTime__ms();
+        if (remainTime <= 0) break;
+
+        // wait for any state machine event triggered
+        // by the controlling thread
+        cv_status eventStatus = cvState.wait_for(lk, chrono::milliseconds(remainTime));
+        if (eventStatus == cv_status::timeout) break;
+
+        doStateMachine(lk);
+        if (curState == CyclicWorkerThreadState::Finished) return;  // leave the thread func to prepare for join()
+
+        // doStateMachine guarantees that it returnes with
+        // lk being (re-)locked!
+
+        // just for testing
+        assert(lk.owns_lock());
+
+        // start all over waiting for events, if there is
+        // still enough time left
       }
+
+      // lk is ALWAYS locked at this point
+
+      // just for testing
+      assert(lk.owns_lock());
     }
   }
 
   //----------------------------------------------------------------------------
 
-  bool CyclicWorkerThread::doStateMachine()
+  void CyclicWorkerThread::doStateMachine(unique_lock<mutex>& lk)
   {
-    if (!isTransitionPending) return false;
+    // PRECONDITION:
+    // lk is locked by the caller! In our case this is guaranteed
+    // by calling this method ONLY after we have been notified
+    // through the condition variable
 
-    // use a unique_lock here instead of a lock_guard, because
-    // a unique_lock allows for multiple locking / unlocking operations
-    unique_lock<mutex> lk{stateMutex};  // implicitly calls `lock()`
+    // POSTCONDITION:
+    // lk is re-locked by this method or even left untouched.
+
 
     //
     // Transition logic
@@ -235,8 +258,7 @@ namespace Sloppy
       lk.lock();
       curState = CyclicWorkerThreadState::Finished;
       isTransitionPending = false;
-
-      return false;
+      return;
     }
 
     // Initialized --> Preparing --> Running
@@ -250,9 +272,9 @@ namespace Sloppy
 
       lk.lock();
       curState = CyclicWorkerThreadState::Running;
-      isTransitionPending = false;
 
-      return true;  // force-run the worker NOW
+      isTransitionPending = false;
+      return;
     }
 
     // Running --> Suspending --> Suspended
@@ -266,9 +288,9 @@ namespace Sloppy
 
       lk.lock();
       curState = CyclicWorkerThreadState::Suspended;
-      isTransitionPending = false;
 
-      return false;
+      isTransitionPending = false;
+      return;
     }
 
     // Suspended --> Resuming --> Running
@@ -282,9 +304,9 @@ namespace Sloppy
 
       lk.lock();
       curState = CyclicWorkerThreadState::Running;
-      isTransitionPending = false;
 
-      return true;  // force-run the worker NOW
+      isTransitionPending = false;
+      return;
     }
 
     // consistency check

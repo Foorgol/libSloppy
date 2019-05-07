@@ -43,6 +43,8 @@ public:
   atomic<int> onSuspendCnt{0};
   atomic<int> onTermCnt{0};
   atomic<int> workerCnt{0};
+  Sloppy::Timer cycleTimer;
+  bool verifyCycleTime{false};
 
   bool assertCntAndState(Sloppy::CyclicWorkerThread::CyclicWorkerThreadState st, int prep, int suspend, int resume, int term, int w, int tolerance = 1)
   {
@@ -112,12 +114,22 @@ protected:
   void onTerminate() override
   {
     ++onTermCnt;
+
     this_thread::sleep_for(chrono::milliseconds(HookDuration_ms));
   }
 
   void worker() override
   {
     ++workerCnt;
+
+    if (verifyCycleTime)
+    {
+      int cycleTime = cycleTimer.getTime__ms();
+      ASSERT_TRUE(abs(WorkerCycle_ms - cycleTime) <= 1);
+    }
+    verifyCycleTime = true;
+    cycleTimer.restart();
+
     this_thread::sleep_for(chrono::milliseconds(WorkerDuration_ms));
   }
 
@@ -159,6 +171,7 @@ TEST(CyclicThread, BasicUsage)
   ASSERT_TRUE(tw.assertCntAndState(CTS::Suspended, 1, 1, 0, 0, 11, 2));
 
   // resume operation
+  tw.verifyCycleTime = false;  // ignore measurement in the first cycle
   t.restart();
   ASSERT_TRUE(tw.resume());
   this_thread::sleep_for(chrono::milliseconds(MaxTimeToTransition_ms));
@@ -185,7 +198,74 @@ TEST(CyclicThread, BasicUsage)
   cout << "Number of worker calls: " << stats.nCalls << endl;
   cout << "Avg. worker duration: " << stats.avgWorkerExecTime_ms() << endl;
   cout << "Duty percentage: " << stats.dutyPercentage() * 100 << endl;
+  cout << "Min / max exec time: " << stats.minWorkerTime_ms << " / " << stats.maxWorkerTime_ms << endl;
 }
 
 //----------------------------------------------------------------------------
 
+TEST(CyclicThread, InvalidTransitions)
+{
+  using CTS = Sloppy::CyclicWorkerThread::CyclicWorkerThreadState;
+
+  TestWorker tw;
+
+  ASSERT_EQ(CTS::Initialized, tw.state());
+
+  // No "resume" in Initialized
+  ASSERT_FALSE(tw.resume());
+  this_thread::sleep_for(chrono::milliseconds(MaxTimeToTransition_ms));
+  ASSERT_EQ(CTS::Initialized, tw.state());
+
+  // No "pause" in Initialized
+  ASSERT_FALSE(tw.pause());
+  this_thread::sleep_for(chrono::milliseconds(MaxTimeToTransition_ms));
+  ASSERT_EQ(CTS::Initialized, tw.state());
+
+  // request switch to run
+  ASSERT_TRUE(tw.run());
+
+  // no other requests while the transition is in progress
+  ASSERT_FALSE(tw.pause());
+
+  this_thread::sleep_for(chrono::milliseconds(MaxStateChangeTime_ms));
+  ASSERT_EQ(CTS::Running, tw.state());
+
+  // "resume" while "running" is a no-op
+  ASSERT_TRUE(tw.resume());
+  this_thread::sleep_for(chrono::milliseconds(MaxStateChangeTime_ms));
+  ASSERT_EQ(CTS::Running, tw.state());
+
+  // "run" while "running" is a no-op
+  ASSERT_TRUE(tw.run());
+  this_thread::sleep_for(chrono::milliseconds(MaxStateChangeTime_ms));
+  ASSERT_EQ(CTS::Running, tw.state());
+
+  // request switch to pause
+  ASSERT_TRUE(tw.pause());
+
+  // no other requests while the transition is in progress
+  ASSERT_FALSE(tw.resume());
+  this_thread::sleep_for(chrono::milliseconds(MaxStateChangeTime_ms));
+  ASSERT_EQ(CTS::Suspended, tw.state());
+
+  // "pause" while "suspended" is a no-op
+  ASSERT_TRUE(tw.pause());
+  this_thread::sleep_for(chrono::milliseconds(MaxStateChangeTime_ms));
+  ASSERT_EQ(CTS::Suspended, tw.state());
+
+  // "run" and "resume" are both okay to exit "suspended"
+  tw.verifyCycleTime = false;  // ignore measurement in the first cycle
+  ASSERT_TRUE(tw.resume());
+  this_thread::sleep_for(chrono::milliseconds(MaxStateChangeTime_ms));
+  ASSERT_EQ(CTS::Running, tw.state());
+  ASSERT_TRUE(tw.pause());
+  this_thread::sleep_for(chrono::milliseconds(MaxStateChangeTime_ms));
+  ASSERT_EQ(CTS::Suspended, tw.state());
+  tw.verifyCycleTime = false;  // ignore measurement in the first cycle
+  ASSERT_TRUE(tw.run());
+  this_thread::sleep_for(chrono::milliseconds(MaxStateChangeTime_ms));
+  ASSERT_EQ(CTS::Running, tw.state());
+
+  tw.terminateAndJoin();
+
+}

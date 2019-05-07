@@ -24,6 +24,7 @@
 #include <mutex>
 #include <atomic>
 #include <condition_variable>
+#include <climits>
 
 #include "Timer.h"
 
@@ -40,6 +41,8 @@ namespace Sloppy
     unsigned long totalRuntime_ms{0};   ///< the accumulated execution time of all worker function calls
     int lastRuntime_ms{0};   ///< the number of millisecs the last worker function call lasted
     int workerCycleTime_ms{0};
+    int minWorkerTime_ms{INT_MAX};
+    int maxWorkerTime_ms{0};
 
     /** \returns the average execution time across all
      * worker calls so far (0 if no calls were performed so far)
@@ -139,7 +142,7 @@ namespace Sloppy
      *
      * \note This function is for execution in the CONTROLLER THREAD CONTEXT only!
      *
-     * \returns `true` if the state change request was valid, `false` otherwise
+     * \returns `true` if the state change request was valid or the thread is already paused, `false` otherwise
      */
     bool pause();
 
@@ -156,7 +159,7 @@ namespace Sloppy
      *
      * \note This function is for execution in the CONTROLLER THREAD CONTEXT only!
      *
-     * \returns `true` if the state change request was valid, `false` otherwise
+     * \returns `true` if the state change request was valid or if the thread is already `Running`, `false` otherwise
      */
     bool resume();
 
@@ -169,11 +172,26 @@ namespace Sloppy
      * actual state transition. The transition doesn't take place before
      * an ongoing iteration of the worker has finished.
      *
-     * Before we re-enter `Finished` state, `onTerminate()` is executed.
+     * Before we enter `Finished` state, `onTerminate()` is executed.
      *
      * \note This function is for execution in the CONTROLLER THREAD CONTEXT only!
      */
     void terminate();
+
+    /** \brief Ultimately stops the cyclic execution of the worker and
+     * deletes the worker thread in order to free up resources.
+     *
+     * A request for termination will always succeed, regardless of
+     * the current state.
+     *
+     * This is blocking call that doesn't return until the worker is
+     * stopped and the thread is join()ed.
+     *
+     * Before we enter `Finished` state, `onTerminate()` is executed.
+     *
+     * \note This function is for execution in the CONTROLLER THREAD CONTEXT only!
+     */
+    void terminateAndJoin();
 
     /** \brief Blocks until pending state transitions are completed
      *

@@ -16,8 +16,6 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <assert.h>
-
 #include "CyclicWorkerThread.h"
 
 namespace Sloppy
@@ -34,8 +32,11 @@ namespace Sloppy
 
   CyclicWorkerThread::~CyclicWorkerThread()
   {
-    forceQuitThreadFromDtor = true;
-    workerThread.join();
+    if (workerThread.joinable())
+    {
+      forceQuitThreadFromDtor = true;
+      workerThread.join();
+    }
   }
 
   //----------------------------------------------------------------------------
@@ -135,6 +136,17 @@ namespace Sloppy
 
   //----------------------------------------------------------------------------
 
+  void CyclicWorkerThread::terminateAndJoin()
+  {
+    if (workerThread.joinable())
+    {
+      terminate();
+      workerThread.join();
+    }
+  }
+
+  //----------------------------------------------------------------------------
+
   void CyclicWorkerThread::waitForStateChange()
   {
     while (isTransitionPending)
@@ -162,16 +174,17 @@ namespace Sloppy
     // when starting the while loop
     unique_lock<mutex> lk{stateMutex};  // implicitly calls `lock()`
 
-    while (!forceQuitThreadFromDtor)
+    Sloppy::Timer t;
+    bool isNewWorkerCycle{true};
+
+    while (!forceQuitThreadFromDtor && (curState != CyclicWorkerThreadState::Finished))
     {
-      // just for testing
-      //assert(lk.owns_lock());
+      if (isNewWorkerCycle) t.restart();
 
-      Sloppy::Timer t;
-
-      if (reqState == CyclicWorkerThreadState::Running)
+      if ((reqState == CyclicWorkerThreadState::Running) && isNewWorkerCycle)
       {
-        lk.unlock();  // release the lock while we're executing the worker
+        // release the lock while we're executing the worker
+        lk.unlock();
 
         // execute the worker and measure its runtime
         worker();
@@ -185,58 +198,35 @@ namespace Sloppy
         stats.nCalls++;
         stats.totalRuntime_ms += workerTime;
         stats.lastRuntime_ms = workerTime;
+        if (workerTime > stats.maxWorkerTime_ms) stats.maxWorkerTime_ms = workerTime;
+        if (workerTime < stats.minWorkerTime_ms) stats.minWorkerTime_ms = workerTime;
 
         // check after every (potentially long) operation
-        if (forceQuitThreadFromDtor) return;
-
-        // process pending state machine events
-        // at least once in every cycle, regardless
-        // of how much time is left after executing the worker
-        if (isTransitionPending)
-        {
-          // process the pending notification
-          //
-          // should unlock, relock and return immediately
-          cvState.wait(lk);
-
-          // process the event
-          doStateMachine(lk);
-        }
+        if (forceQuitThreadFromDtor || (curState == CyclicWorkerThreadState::Finished)) return;
 
         // at this point, lk is always locked
       }
 
       // at this point, lk is always locked
 
-      // wait / process state machine events
-      // for the remaining time until the next worker call
-      while (!forceQuitThreadFromDtor)
-      {
-        int remainTime = workerCycle_ms - t.getTime__ms();
-        if (remainTime <= 0) break;
+      // process pending state machine events
+      // at least once in every cycle, regardless
+      // of how much time is left after executing the worker
+      doStateMachine(lk);
 
+      cv_status eventStatus{cv_status::timeout};
+      int remainTime = workerCycle_ms - t.getTime__ms();
+      if (remainTime > 0)
+      {
         // wait for any state machine event triggered
         // by the controlling thread
-        cv_status eventStatus = cvState.wait_for(lk, chrono::milliseconds(remainTime));
-        if (eventStatus == cv_status::timeout) break;
-
-        doStateMachine(lk);
-        if (curState == CyclicWorkerThreadState::Finished) return;  // leave the thread func to prepare for join()
-
-        // doStateMachine guarantees that it returnes with
-        // lk being (re-)locked!
-
-        // just for testing
-        //assert(lk.owns_lock());
-
-        // start all over waiting for events, if there is
-        // still enough time left
+        eventStatus = cvState.wait_for(lk, chrono::milliseconds(remainTime));
+        if (eventStatus != cv_status::timeout) doStateMachine(lk);
       }
 
-      // lk is ALWAYS locked at this point
+      isNewWorkerCycle = ((remainTime < 0) || (eventStatus == cv_status::timeout));
 
-      // just for testing
-      //assert(lk.owns_lock());
+      // lk is ALWAYS locked at this point
     }
   }
 
@@ -257,9 +247,14 @@ namespace Sloppy
     // Transition logic
     //
 
+    // is there anything to do at all?
+    // this check is necessary because after every worker
+    // cycle we call the statemachine, regardless of any
+    // pending events
+    if (reqState == curState) return;
+
     // Termination takes precedence, check that first
-    if ((reqState == CyclicWorkerThreadState::Finished) &&
-        (curState != CyclicWorkerThreadState::Finished))
+    if (reqState == CyclicWorkerThreadState::Finished)
     {
       curState = CyclicWorkerThreadState::Terminating;
 

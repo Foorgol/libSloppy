@@ -43,6 +43,8 @@ set(LIB_SOURCES
     Sloppy/BasicException.h
     Sloppy/CyclicWorkerThread.h
     Sloppy/CyclicWorkerThread.cpp
+    Sloppy/ThreadSafeQueue.h
+    Sloppy/ThreadSafeQueue.cpp
 )
 
 #
@@ -161,6 +163,7 @@ set(LIB_SOURCES_TST
     tests/tstMiniCert.cpp
     tests/tstMemFile.cpp
     tests/tstCyclicThread.cpp
+    tests/tstThreadSafeQueue.cpp
 )
 
 find_package(GTest)

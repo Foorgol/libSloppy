@@ -21,20 +21,5 @@
 namespace Sloppy
 {
 
-  double AsyncWorkerStats::avgWorkerExecTime_ms() const
-  {
-    return (nCalls == 0) ? 0 : (double(totalRuntime_ms) / nCalls);
-  }
-
-  void AsyncWorkerStats::update(int execTime_ms)
-  {
-    nCalls++;
-    totalRuntime_ms += execTime_ms;
-    lastRuntime_ms = execTime_ms;
-    if (execTime_ms > maxWorkerTime_ms) maxWorkerTime_ms = execTime_ms;
-    if (execTime_ms < minWorkerTime_ms) minWorkerTime_ms = execTime_ms;
-  }
-
-
 
 }

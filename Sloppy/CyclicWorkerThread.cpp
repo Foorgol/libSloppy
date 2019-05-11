@@ -157,7 +157,7 @@ namespace Sloppy
 
   //----------------------------------------------------------------------------
 
-  const CyclicThreadStats& CyclicWorkerThread::workerStats()
+  CyclicThreadStats CyclicWorkerThread::workerStats()
   {
     lock_guard<mutex> lk{stateMutex};
     return stats;
@@ -195,11 +195,7 @@ namespace Sloppy
 
         // now that we own the lock, we can update
         // the internal stats
-        stats.nCalls++;
-        stats.totalRuntime_ms += workerTime;
-        stats.lastRuntime_ms = workerTime;
-        if (workerTime > stats.maxWorkerTime_ms) stats.maxWorkerTime_ms = workerTime;
-        if (workerTime < stats.minWorkerTime_ms) stats.minWorkerTime_ms = workerTime;
+        stats.update(workerTime);
 
         // check after every (potentially long) operation
         if (forceQuitThreadFromDtor || (curState == CyclicWorkerThreadState::Finished)) return;
@@ -324,21 +320,6 @@ namespace Sloppy
   //----------------------------------------------------------------------------
   //----------------------------------------------------------------------------
   //----------------------------------------------------------------------------
-
-  double CyclicThreadStats::avgWorkerExecTime_ms() const
-  {
-    return (nCalls == 0) ? 0 : (double(totalRuntime_ms) / nCalls);
-  }
-
-  //----------------------------------------------------------------------------
-
-  double CyclicThreadStats::dutyPercentage() const
-  {
-    return avgWorkerExecTime_ms() / workerCycleTime_ms;
-  }
-
-  //----------------------------------------------------------------------------
-
 
 
   //----------------------------------------------------------------------------

@@ -24,36 +24,14 @@
 #include <mutex>
 #include <atomic>
 #include <condition_variable>
-#include <climits>
 
 #include "Timer.h"
+#include "ThreadStats.h"
 
 using namespace std;
 
 namespace Sloppy
 {
-  /** \brief A simple struct that contains some statistics
-   * about a cyclically running task
-   */
-  struct CyclicThreadStats
-  {
-    unsigned long nCalls{0};   ///< the number of calls to the worker function
-    unsigned long totalRuntime_ms{0};   ///< the accumulated execution time of all worker function calls
-    int lastRuntime_ms{0};   ///< the number of millisecs the last worker function call lasted
-    int workerCycleTime_ms{0};
-    int minWorkerTime_ms{INT_MAX};
-    int maxWorkerTime_ms{0};
-
-    /** \returns the average execution time across all
-     * worker calls so far (0 if no calls were performed so far)
-     */
-    double avgWorkerExecTime_ms() const;
-
-    /** \returns a value between 0...1 that represents the average
-     * duty percentage of the worker loop (0 if no calls were performed so far)
-     */
-    double dutyPercentage() const;
-  };
 
   /** \brief Base class for a thread that cyclically calls
    * a worker function.
@@ -204,7 +182,7 @@ namespace Sloppy
 
     /** \returns Some basic stats about the worker thread
      */
-    const CyclicThreadStats& workerStats();
+    CyclicThreadStats workerStats();
 
   protected:
 

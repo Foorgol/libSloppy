@@ -45,39 +45,12 @@
 #include <type_traits>
 
 #include "ThreadSafeQueue.h"
+#include "ThreadStats.h"
 
 using namespace std;
 
 namespace Sloppy
 {
-  /** \brief A simple struct that contains some statistics
-   * about a cyclically running task
-   */
-  struct AsyncWorkerStats
-  {
-    unsigned long nCalls{0};   ///< the number of calls to the worker function
-    unsigned long totalRuntime_ms{0};   ///< the accumulated execution time of all worker function calls
-    int lastRuntime_ms{0};   ///< the number of millisecs the last worker function call lasted
-    int minWorkerTime_ms{INT_MAX};
-    int maxWorkerTime_ms{0};
-
-    /** \returns the average execution time across all
-     * worker calls so far (0 if no calls were performed so far)
-     *
-     * \warning If this struct is accessed from different threads, proper
-     * locking (e.g., through a mutex) has to be guaranteed by the caller!
-     */
-    double avgWorkerExecTime_ms() const;
-
-    /** \brief Updates the stats with the execution time of the
-     * last worker call
-     *
-     * \warning If this struct is accessed from different threads, proper
-     * locking (e.g., through a mutex) has to be guaranteed by the caller!
-     */
-    void update(int execTime_ms);
-  };
-
   /** \brief Template class for a "data consumer" or "worker" that takes input
    * data from an input queue, processes it async to the "feeder thread"
    * and stores the result in an output queue.

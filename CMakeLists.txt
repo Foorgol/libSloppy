@@ -45,6 +45,8 @@ set(LIB_SOURCES
     Sloppy/CyclicWorkerThread.cpp
     Sloppy/ThreadSafeQueue.h
     Sloppy/ThreadSafeQueue.cpp
+    Sloppy/AsyncWorker.h
+    Sloppy/AsyncWorker.cpp
 )
 
 #
@@ -164,6 +166,7 @@ set(LIB_SOURCES_TST
     tests/tstMemFile.cpp
     tests/tstCyclicThread.cpp
     tests/tstThreadSafeQueue.cpp
+    tests/tstAsyncWorker.cpp
 )
 
 find_package(GTest)

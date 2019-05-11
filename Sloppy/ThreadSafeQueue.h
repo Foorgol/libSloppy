@@ -83,7 +83,8 @@ namespace Sloppy
       cv.notify_one();
     }
 
-    /** \brief Reads data from the queue into a caller-provided reference
+    /** \brief Reads data from the queue into a caller-provided reference; blocks
+     * until data is available
      */
     void get(
         T& outData   ///< the reference to copy the data to (will be transfered by copy-assignment)
@@ -184,6 +185,14 @@ namespace Sloppy
     {
       lock_guard<mutex> lg{listMutex};
       return queue.size();
+    }
+
+    /** \brief Erases all elements from the queue
+     */
+    void clear()
+    {
+      lock_guard<mutex> lg{listMutex};
+      queue.clear();
     }
 
   private:

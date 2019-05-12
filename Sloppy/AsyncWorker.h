@@ -59,19 +59,28 @@ namespace Sloppy
    *
    * Each input element produces exactly one output element.
    *
+   * The input and output queues have to be provided by the caller.
+   * This allows for best synchronization with other threads / workers that
+   * produce or consume data for or from this worker.
+   *
+   * This class guarantees to only call `get` on the input queue and only
+   * `put` on the output queue.
+   *
    * \note `InputDataType` has to be default constructible and copy assignable.
    * `OutputDataType` has to be copy assignable.
    */
   template<typename InputDataType, typename OutputDataType>
-  class AsyncWorkerWithOutput
+  class AsyncWorker
   {
   public:
     /** \brief Default ctor; creates the worker thread
      */
-    AsyncWorkerWithOutput(
+    AsyncWorker(
+        ThreadSafeQueue<InputDataType>* inQueuePtr,   ///< pointer to the queue that we'll take our input data from
+        ThreadSafeQueue<OutputDataType>* outQueuePtr,   ///< pointer to the queue to which we'll write our result; if `nullptr`, worker results will be discarded
         int preemptionTime_ms_ = 200   ///< time after which we check for pause / run / join requests, if our input queue is empty
         )
-      :preemptionTime_ms{preemptionTime_ms_}
+      :inPtr{inQueuePtr}, outPtr{outQueuePtr}, preemptionTime_ms{preemptionTime_ms_}
     {
       static_assert (std::is_default_constructible<InputDataType>::value,
                      "The input data type for the AsyncWorkerWithOutput has to be default constructible!");
@@ -86,109 +95,9 @@ namespace Sloppy
     /** \brief Dtor; stops the worker loop at the next occastion and `join`s
      * the worker thread
      */
-    ~AsyncWorkerWithOutput()
+    ~AsyncWorker()
     {
       join();
-    }
-
-    /** \brief Copy-append data to the end of the input queue
-     */
-    void put(
-        const InputDataType& inData   ///< the data that shall be copy-appended to the queue
-        )
-    {
-      inQueue.put(inData);
-    }
-
-    /** \brief Move-append data to the end of the input queue
-     */
-    void put(
-        InputDataType&& inData   ///< the data that shall be moved to the queue
-        )
-    {
-      inQueue.put(std::move(inData));
-    }
-
-    /** \brief Reads data from the out queue into a caller-provided reference; blocks
-     * until data is available
-     */
-    void get(
-        OutputDataType& outData   ///< the reference to copy the data to (will be transfered by copy-assignment)
-        )
-    {
-      outQueue.get(outData);
-    }
-
-    /** \brief Reads data from the output queue into a caller-provided reference
-     *
-     * \returns `true` if data was returned, `false` otherwise
-     */
-    bool get(
-        OutputDataType& outData,   ///< the reference to copy the data to
-        int timeout_ms   /// an optional timeout after which the function returns without value if the queue remains empty (< 0 means: wait forever)
-        )
-    {
-      return outQueue.get(outData, timeout_ms);
-    }
-
-    /** \returns `true` if the input queue has data available
-     *
-     * \note It is not recommended to cyclically poll this function
-     * to wait for fresh data, because each call requires getting
-     * and releasing a lock on a mutex.
-     */
-    bool hasInputData()
-    {
-      return inQueue.hasData();
-    }
-
-    /** \returns `true` if the output queue has data available
-     *
-     * \note It is not recommended to cyclically poll this function
-     * to wait for fresh data, because each call requires getting
-     * and releasing a lock on a mutex.
-     */
-    bool hasOutputData()
-    {
-      return outQueue.hasData();
-    }
-
-    /** \returns the number of items that are currently in the input queue
-     *
-     * \note It is not recommended to cyclically poll this function
-     * to wait for fresh data, because each call requires getting
-     * and releasing a lock on a mutex.
-     */
-    int inputQueueSize()
-    {
-      return inQueue.size();
-    }
-
-    /** \returns the number of items that are currently in the input queue
-     *
-     * \note It is not recommended to cyclically poll this function
-     * to wait for fresh data, because each call requires getting
-     * and releasing a lock on a mutex.
-     */
-    int outputQueueSize()
-    {
-      return outQueue.size();
-    }
-
-    /** \brief Drops all pending elements from the input queue
-     *
-     */
-    void clearInput()
-    {
-      inQueue.clear();
-    }
-
-    /** \brief Drops all pending elements from the output queue
-     *
-     */
-    void clearOutput()
-    {
-      outQueue.clear();
     }
 
     /** \returns `true` if the worker is active, `false` otherwise
@@ -277,13 +186,13 @@ namespace Sloppy
 
         // execute the worker
         InputDataType inData;
-        bool hasData = inQueue.get(inData, preemptionTime_ms);
+        bool hasData = inPtr->get(inData, preemptionTime_ms);
         if (hasData)
         {
           Sloppy::Timer t;
           OutputDataType outData = worker(inData);
           int execTime = t.getTime__ms();
-          outQueue.put(outData);
+          if (outPtr != nullptr) outPtr->put(outData);
 
           lock_guard<mutex> lgStats{statsMutex};
           statData.update(execTime);
@@ -293,8 +202,8 @@ namespace Sloppy
 
     int preemptionTime_ms;
     thread workerThread;
-    ThreadSafeQueue<InputDataType> inQueue;
-    ThreadSafeQueue<OutputDataType> outQueue;
+    ThreadSafeQueue<InputDataType>* inPtr{nullptr};
+    ThreadSafeQueue<OutputDataType>* outPtr{nullptr};
     atomic_bool isRunning{true};
     atomic_bool joinRequested{false};
     atomic_bool suspendRequested{false};

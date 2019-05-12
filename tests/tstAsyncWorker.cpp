@@ -36,11 +36,14 @@ struct AsyncWorkInput
   AsyncWorkInput() = default;
 };
 
-class AsyncTestWorker : public Sloppy::AsyncWorkerWithOutput<AsyncWorkInput, int>
+class AsyncTestWorker : public Sloppy::AsyncWorker<AsyncWorkInput, int>
 {
 public:
-  AsyncTestWorker()
-    : Sloppy::AsyncWorkerWithOutput<AsyncWorkInput, int>{PreemptionTime_ms} {}
+  AsyncTestWorker(
+      Sloppy::ThreadSafeQueue<AsyncWorkInput>* inQueue,
+      Sloppy::ThreadSafeQueue<int>* outQueue
+      )
+    : Sloppy::AsyncWorker<AsyncWorkInput, int>{inQueue, outQueue, PreemptionTime_ms} {}
 
   int worker(const AsyncWorkInput& inData) override
   {
@@ -52,17 +55,21 @@ public:
 
 TEST(AsyncWorker, BasicUsage)
 {
+  // create two queues
+  Sloppy::ThreadSafeQueue<AsyncWorkInput> iq;  // input queue
+  Sloppy::ThreadSafeQueue<int> oq;  // output queue
+
   // create a new worker and make sure it's "running"
-  AsyncTestWorker w;
+  AsyncTestWorker w{&iq, &oq};
   ASSERT_TRUE(w.running());
 
   // push some simple data and wait for the result
   AsyncWorkInput inData{20, 30};
   Sloppy::Timer t;
-  w.put(inData);
+  iq.put(inData);
 
   int out{-42};
-  w.get(out);
+  oq.get(out);
   int execTime = t.getTime__ms();
   ASSERT_TRUE(execTime < (PreemptionTime_ms + WorkerDuration_ms));
   ASSERT_EQ(50, out);
@@ -78,14 +85,14 @@ TEST(AsyncWorker, BasicUsage)
   for (int i = 0; i < nElem; ++i)
   {
     AsyncWorkInput inData{i + 100, 2 * i};
-    w.put(inData);
+    iq.put(inData);
   }
-  ASSERT_EQ(nElem, w.inputQueueSize());
-  ASSERT_EQ(0, w.outputQueueSize());
+  ASSERT_EQ(nElem, iq.size());
+  ASSERT_EQ(0, oq.size());
   this_thread::sleep_for(chrono::milliseconds{PreemptionTime_ms * 2});
   ASSERT_FALSE(w.running());
-  ASSERT_EQ(nElem, w.inputQueueSize());
-  ASSERT_EQ(0, w.outputQueueSize());
+  ASSERT_EQ(nElem, iq.size());
+  ASSERT_EQ(0, oq.size());
 
   // re-enable the worker and let it run
   t.restart();
@@ -94,18 +101,18 @@ TEST(AsyncWorker, BasicUsage)
   while (true)
   {
     int out;
-    bool hasData = w.get(out, PreemptionTime_ms + WorkerDuration_ms);
+    bool hasData = oq.get(out, PreemptionTime_ms + WorkerDuration_ms);
     if (!hasData) break;
 
     ASSERT_EQ(cnt + 100 + 2 * cnt, out);
     ++cnt;
   }
-  ASSERT_FALSE(w.hasInputData());
-  ASSERT_FALSE(w.hasOutputData());
+  ASSERT_FALSE(iq.hasData());
+  ASSERT_FALSE(oq.hasData());
   ASSERT_EQ(nElem, cnt);
   this_thread::sleep_for(chrono::milliseconds{PreemptionTime_ms * 2});
-  ASSERT_FALSE(w.hasInputData());
-  ASSERT_FALSE(w.hasOutputData());
+  ASSERT_FALSE(iq.hasData());
+  ASSERT_FALSE(oq.hasData());
 
   w.join();
 

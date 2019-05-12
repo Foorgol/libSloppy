@@ -90,7 +90,7 @@ TEST(ManagedArray, DeepCopy)
 
 //----------------------------------------------------------------------------
 
-TEST(ManagedArray, MoveOps)
+TEST(ManagedArray, MoveOpsAndCopyOps)
 {
   static constexpr int n = 1000;
 
@@ -109,6 +109,14 @@ TEST(ManagedArray, MoveOps)
   ASSERT_EQ(n, ia.size());
   ASSERT_TRUE(ia2.empty());
   for (int i=0; i < n; ++i) ASSERT_EQ(i, ia[i]);
+
+  // copy assignment
+  ia2 = ia;
+  ASSERT_EQ(n, ia.size());
+  ASSERT_EQ(n, ia2.size());
+  for (int i=0; i < n; ++i) ASSERT_EQ(i, ia2[i]);
+  for (int i=0; i < n; ++i) ia[i] = -i;  // modify ia
+  for (int i=0; i < n; ++i) ASSERT_EQ(ia[i], -ia2[i]);  // show that ia2 has not been modified (--> true copy)
 }
 
 //----------------------------------------------------------------------------

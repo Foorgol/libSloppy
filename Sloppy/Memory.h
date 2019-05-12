@@ -573,12 +573,38 @@ namespace Sloppy
       memcpy(to_voidPtr(), other.to_voidPtr(), byteSize());
     }
 
-    /** \brief Disabled copy assignment operator.
-     *
-     * If I need copy assignment, I want to make it explicit using
-     * the copy constructor.
+    /** \brief Copy assignment operator, creates a deep copy of the source data
      */
-    ManagedArray& operator= (const ManagedArray& other) = delete;
+    ManagedArray& operator= (const ManagedArray& other)
+    {
+      // free currently owned resources
+      if (owning && (ptr != nullptr)) releaseMem(ptr);
+      cnt = 0;
+      ptr = nullptr;
+      owning = false;
+
+      // we're done here if the other array is empty
+      if (other.cnt == 0)
+      {
+        return *this;
+      }
+
+      // actually allocate the memory.
+      // Do not catch any exceptions, leave that to the caller
+      ptr = allocateMem(other.cnt);
+      if (ptr == nullptr)
+      {
+        throw std::runtime_error("ManagedArray: couldn't allocate memory for array!");
+      }
+
+      cnt = other.cnt;
+      owning = true;
+
+      // copy the contents over to our own buffer
+      memcpy(to_voidPtr(), other.to_voidPtr(), byteSize());
+
+      return *this;
+    }
 
     /** \brief Move ctor
      */
@@ -989,11 +1015,14 @@ namespace Sloppy
     MemArray (const MemArray& other)
       :ManagedArray<uint8_t>(other) {}
 
-    /** \brief Disabled copy assignment operator
+    /** \brief Copy assignment operator
      *
-     * If you need copy assignment, make it explicit using the copy ctor
+     * Delegates the call to the parent's copy assignment operator.
      */
-    MemArray& operator =(const MemArray& other) = delete;
+    MemArray& operator =(const MemArray& other)
+    {
+      return static_cast<MemArray&>(ManagedArray<uint8_t>::operator =(other));
+    }
   };
 
   // we include some special file functions for

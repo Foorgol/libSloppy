@@ -44,8 +44,6 @@
 #include <condition_variable>
 #include <Sloppy/Timer.h>
 
-using namespace std;
-
 namespace Sloppy
 {
   /** \brief Template class for a queue that can be used by independent threads,
@@ -67,7 +65,7 @@ namespace Sloppy
         const T& inData   ///< the data that shall be copy-appended to the queue
         )
     {
-      lock_guard<mutex> lg{listMutex};
+      std::lock_guard<std::mutex> lg{listMutex};
       queue.push_back(inData);
       cv.notify_one();
     }
@@ -78,7 +76,7 @@ namespace Sloppy
         T&& inData   ///< the data that shall be moved to the queue
         )
     {
-      lock_guard<mutex> lg{listMutex};
+      std::lock_guard<std::mutex> lg{listMutex};
       queue.push_back(std::move(inData));
       cv.notify_one();
     }
@@ -91,7 +89,7 @@ namespace Sloppy
         )
     {
       // condition variables only work with unique_lock, not with lock_guard
-      unique_lock<mutex> lock{listMutex};
+      std::unique_lock<std::mutex> lock{listMutex};
 
       // wait for a notification that new data has arrived;
       // ignores spurious wakeups and is guaranteed to not return
@@ -123,14 +121,14 @@ namespace Sloppy
       //
 
       // condition variables only work with unique_lock, not with lock_guard
-      unique_lock<mutex> lock{listMutex};
+      std::unique_lock<std::mutex> lock{listMutex};
 
       Sloppy::Timer t;
       t.setTimeoutDuration__ms(timeout_ms);
       bool hasData = false;
       while (!t.isElapsed())
       {
-        hasData = cv.wait_for(lock, chrono::milliseconds{timeout_ms - t.getTime__ms()},
+        hasData = cv.wait_for(lock, std::chrono::milliseconds{timeout_ms - t.getTime__ms()},
                           [this](){ return !queue.empty(); });
 
         if (hasData) break;
@@ -159,7 +157,7 @@ namespace Sloppy
      */
     bool hasData()
     {
-      lock_guard<mutex> lg{listMutex};
+      std::lock_guard<std::mutex> lg{listMutex};
       return !queue.empty();
     }
 
@@ -171,7 +169,7 @@ namespace Sloppy
      */
     bool empty()
     {
-      lock_guard<mutex> lg{listMutex};
+      std::lock_guard<std::mutex> lg{listMutex};
       return queue.empty();
     }
 
@@ -183,7 +181,7 @@ namespace Sloppy
      */
     int size()
     {
-      lock_guard<mutex> lg{listMutex};
+      std::lock_guard<std::mutex> lg{listMutex};
       return queue.size();
     }
 
@@ -191,14 +189,14 @@ namespace Sloppy
      */
     void clear()
     {
-      lock_guard<mutex> lg{listMutex};
+      std::lock_guard<std::mutex> lg{listMutex};
       queue.clear();
     }
 
   private:
-    mutex listMutex;
-    condition_variable cv;
-    deque<T> queue;
+    std::mutex listMutex;
+    std::condition_variable cv;
+    std::deque<T> queue;
   };
 }
 

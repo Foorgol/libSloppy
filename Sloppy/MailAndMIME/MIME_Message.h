@@ -28,8 +28,6 @@
 #include "Message.h"
 #include "../String.h"
 
-using namespace std;
-
 namespace Sloppy
 {
   namespace RFC2045
@@ -74,12 +72,12 @@ namespace Sloppy
 
       /** \returns `true` if the header body contains a given parameter (e.g., `charset`)
        */
-      bool hasParameter(const string& paraName) const;
+      bool hasParameter(const std::string& paraName) const;
 
       /** \returns the value of a given parameter or an empty string
        * if the parameter does not exist
        */
-      estring getParameter(const string& paraName) const;
+      estring getParameter(const std::string& paraName) const;
 
       /** \returns the value of the header body (everything up to the first semicolon)
        */
@@ -87,7 +85,7 @@ namespace Sloppy
 
     private:
       estring val;   ///< the body's value
-      unordered_map<estring, estring> params;   ///< a key-value map of all parameters in the header field
+      std::unordered_map<estring, estring> params;   ///< a key-value map of all parameters in the header field
     };
 
     //----------------------------------------------------------------------------
@@ -110,7 +108,7 @@ namespace Sloppy
        * \throws RFC2045::MalformedHeader if the header body could not be parsed
        */
       explicit ContentTypeHeader(
-          const string& hdrBody   ///< the header body to parse
+          const std::string& hdrBody   ///< the header body to parse
           );
 
       /** \returns the content type defined in the header field
@@ -121,14 +119,14 @@ namespace Sloppy
       /** \returns `true` if the header body contains a given parameter (e.g., `charset`)
        */
       bool hasParam(
-          const string& pName   ///> the parameter's name
+          const std::string& pName   ///> the parameter's name
           ) const { return body.hasParameter(pName); }
 
       /** \returns the value of a given parameter or an empty string
        * if the parameter does not exist
        */
       estring getParam(
-          const string& pName   ///> the parameter's name
+          const std::string& pName   ///> the parameter's name
           ) const { return body.getParameter(pName); }
 
       /** \returns `true` if this is a multipart message; `false` otherwise
@@ -155,7 +153,7 @@ namespace Sloppy
       /** \brief Ctor, stores the message part's content
        */
       MessagePart(
-          const string& _content   ///< the message part's content
+          const std::string& _content   ///< the message part's content
           )
         :content{_content} {}
 
@@ -163,10 +161,10 @@ namespace Sloppy
 
       /** \returns the message part's content
        */
-      string getContent() const { return content; }
+      std::string getContent() const { return content; }
 
     protected:
-      string content;   ///< the part's content
+      std::string content;   ///< the part's content
       //vector<MessagePart> subParts;
     };
 
@@ -195,7 +193,7 @@ namespace Sloppy
 
       /** \returns the content of a given part or an empty string if the part number was invalid
        */
-      string getPart(size_t i   ///< the zero-based index of the part to retrieve
+      std::string getPart(size_t i   ///< the zero-based index of the part to retrieve
           ) const;
 
       /** \returns the ContentType of this MIME message
@@ -213,7 +211,7 @@ namespace Sloppy
 
     private:
       ContentTypeHeader ctHeader;   ///< a representation of the Content-Type header of the message
-      vector<MessagePart> parts;    ///< a list of all parts found in the message
+      std::vector<MessagePart> parts;    ///< a list of all parts found in the message
     };
 
     //----------------------------------------------------------------------------

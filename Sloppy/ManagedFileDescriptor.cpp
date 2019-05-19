@@ -26,6 +26,8 @@
 #include "ManagedFileDescriptor.h"
 #include "Timer.h"
 
+using namespace std;
+
 namespace Sloppy
 {
   constexpr int ManagedFileDescriptor::DefaultReadWait_ms;

@@ -23,8 +23,6 @@
 #include <vector>
 #include <unordered_map>
 
-using namespace std;
-
 namespace Sloppy
 {
   namespace HTML
@@ -52,7 +50,7 @@ namespace Sloppy
       /** Constructs a new element from a given name
        */
       StyledElement(
-          const string& _elemName,    ///< the element name without brackets, e.g., `div`
+          const std::string& _elemName,    ///< the element name without brackets, e.g., `div`
           bool _omitClosingTag=false  ///< if set to `true`, no closing tag will be generated (e.g., for `<br>`)
           );
 
@@ -66,8 +64,8 @@ namespace Sloppy
        * style variable more than once.
        */
       void addStyle(
-          const string& sName,   ///< the style variable to set
-          const string& sValue   ///< the value to assign to this variable
+          const std::string& sName,   ///< the style variable to set
+          const std::string& sValue   ///< the value to assign to this variable
           );
 
       /** Add a CSS-class to this element.
@@ -76,7 +74,7 @@ namespace Sloppy
        * this element more than once.
        */
       void addClass(
-          const string& cName   ///< the name of the CSS-class to add
+          const std::string& cName   ///< the name of the CSS-class to add
           );
 
       /** Adds a `attr="value"` pair to the element.
@@ -86,8 +84,8 @@ namespace Sloppy
        * previous assignments.
        */
       void addAttr(
-          const string& aName,   ///< the attribute's name
-          const string& aValue   ///< the attribute's value without surrounding quotes
+          const std::string& aName,   ///< the attribute's name
+          const std::string& aValue   ///< the attribute's value without surrounding quotes
           );
 
       /** Adds a child to the element
@@ -105,7 +103,7 @@ namespace Sloppy
       /** \returns a string that contains the HTML code for the element
        * and all its child elements.
        */
-      string to_html();
+      std::string to_html();
 
       /** \brief A template function that heap-constructs a new HTML element of
        * a given type and passes the given parameters to its constructor.
@@ -127,7 +125,7 @@ namespace Sloppy
           Args&&... args   ///< the arguments to pass to the element's constructor
           )
       {
-        ElemType* newElem = new ElemType(forward<Args>(args)...);
+        ElemType* newElem = new ElemType(std::forward<Args>(args)...);
         if (newElem == nullptr) return nullptr;
 
         content.push_back(newElem);
@@ -141,7 +139,7 @@ namespace Sloppy
        * \returns `nullptr` if the element creation failed; a pointer to the new element otherwise
        */
       StyledElement* createContentChild(
-          const string& _elemName,    ///< the element name without brackets, e.g., `div`
+          const std::string& _elemName,    ///< the element name without brackets, e.g., `div`
           bool _omitClosingTag=false  ///< if set to `true`, no closing tag will be generated (e.g., for `<br>`)
           );
 
@@ -151,7 +149,7 @@ namespace Sloppy
        * child elements.
        */
       void addPlainText(
-          const string& txt   ///< the plain text to add
+          const std::string& txt   ///< the plain text to add
           );
 
       /** Convenience function for setting the `margin-XXX' styles of the element
@@ -177,12 +175,12 @@ namespace Sloppy
       void deleteAllContent();
 
     private:
-      string elemName;   ///< the element's name
-      string assignedClasses;   ///< a space separated list of assigned CSS-classes
-      string styles;   ///< a semicolon-separated list of assigned styles
-      vector<StyledElement*> content;   ///< list of pointers of child elements (OWNING pointers!)
-      unordered_map<string, string> attr;   ///< a map of attribute-value pairs
-      vector<string> plainTextSections;   ///< a list of all plain text content sections
+      std::string elemName;   ///< the element's name
+      std::string assignedClasses;   ///< a space separated list of assigned CSS-classes
+      std::string styles;   ///< a semicolon-separated list of assigned styles
+      std::vector<StyledElement*> content;   ///< list of pointers of child elements (OWNING pointers!)
+      std::unordered_map<std::string, std::string> attr;   ///< a map of attribute-value pairs
+      std::vector<std::string> plainTextSections;   ///< a list of all plain text content sections
       bool omitClosingTag;   ///< indicates whether we should omit the closing </tag> or not
     };
   }

@@ -54,9 +54,10 @@ namespace Sloppy
    *
    * \returns `true` if value satisfies the requested constraint.
    */
-  bool checkConstraint(const optional<estring>& val,    ///< the value that is to be checked
+  bool checkConstraint(
+      const std::optional<estring>& val,    ///< the value that is to be checked
       ValueConstraint c,     ///< the constraint to check
-      string* errMsg = nullptr  ///< an optional pointer to a string for returning a human-readable error message
+      std::string* errMsg = nullptr  ///< an optional pointer to a string for returning a human-readable error message
       );
 
   //----------------------------------------------------------------------------
@@ -71,7 +72,7 @@ namespace Sloppy
    */
   bool checkConstraint(const estring& val,    ///< the value that is to be checked
       ValueConstraint c,     ///< the constraint to check
-      string* errMsg = nullptr  ///< an optional pointer to a string for returning a human-readable error message
+      std::string* errMsg = nullptr  ///< an optional pointer to a string for returning a human-readable error message
       );
 
   //----------------------------------------------------------------------------
@@ -83,10 +84,10 @@ namespace Sloppy
    * \returns `true` if the value contains an integer and the value is within the given min/max range
    */
   bool checkConstraint_IntRange(
-      const optional<estring>& val,    ///< the value that is to be checked
-      const optional<int>& minVal,     ///< if provided, the value will be checked against this min value
-      const optional<int>& maxVal,     ///< if provided, the value will be checked against this max value
-      string* errMsg = nullptr  ///< an optional pointer to a string for returning a human-readable error message
+      const std::optional<estring>& val,    ///< the value that is to be checked
+      const std::optional<int>& minVal,     ///< if provided, the value will be checked against this min value
+      const std::optional<int>& maxVal,     ///< if provided, the value will be checked against this max value
+      std::string* errMsg = nullptr  ///< an optional pointer to a string for returning a human-readable error message
       );
 
   //----------------------------------------------------------------------------
@@ -99,9 +100,9 @@ namespace Sloppy
    */
   bool checkConstraint_IntRange(
       const estring& val,    ///< the value that is to be checked
-      const optional<int>& minVal,     ///< if provided, the value will be checked against this min value
-      const optional<int>& maxVal,     ///< if provided, the value will be checked against this max value
-      string* errMsg = nullptr  ///< an optional pointer to a string for returning a human-readable error message
+      const std::optional<int>& minVal,     ///< if provided, the value will be checked against this min value
+      const std::optional<int>& maxVal,     ///< if provided, the value will be checked against this max value
+      std::string* errMsg = nullptr  ///< an optional pointer to a string for returning a human-readable error message
       );
 
   //----------------------------------------------------------------------------
@@ -116,10 +117,10 @@ namespace Sloppy
    * \returns `true` if the string has a length is within the given min/max range
    */
   bool checkConstraint_StrLen(
-      const optional<estring>& val,    ///< the value that is to be checked
-      const optional<size_t>& minLen,     ///< if provided, the string will be checked against this min length
-      const optional<size_t>& maxLen,     ///< if provided, the string will be checked against this max length
-      string* errMsg = nullptr  ///< an optional pointer to a string for returning a human-readable error message
+      const std::optional<estring>& val,    ///< the value that is to be checked
+      const std::optional<size_t>& minLen,     ///< if provided, the string will be checked against this min length
+      const std::optional<size_t>& maxLen,     ///< if provided, the string will be checked against this max length
+      std::string* errMsg = nullptr  ///< an optional pointer to a string for returning a human-readable error message
       );
 
   //----------------------------------------------------------------------------
@@ -135,9 +136,9 @@ namespace Sloppy
    */
   bool checkConstraint_StrLen(
       const estring& val,    ///< the value that is to be checked
-      const optional<size_t>& minLen,     ///< if provided, the string will be checked against this min length
-      const optional<size_t>& maxLen,     ///< if provided, the string will be checked against this max length
-      string* errMsg = nullptr  ///< an optional pointer to a string for returning a human-readable error message
+      const std::optional<size_t>& minLen,     ///< if provided, the string will be checked against this min length
+      const std::optional<size_t>& maxLen,     ///< if provided, the string will be checked against this max length
+      std::string* errMsg = nullptr  ///< an optional pointer to a string for returning a human-readable error message
       );
 }
 #endif

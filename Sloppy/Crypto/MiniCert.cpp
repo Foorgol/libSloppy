@@ -18,6 +18,8 @@
 
 #include "MiniCert.h"
 
+using namespace std;
+
 namespace Sloppy
 {
   namespace MiniCert
@@ -245,7 +247,7 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    pair<MiniCertError, CertSignReqIn> parseCertSignRequest(string csr)
+    pair<MiniCertError, CertSignReqIn> parseCertSignRequest(const string& csr)
     {
       Sloppy::Crypto::SodiumLib* sodium = Sloppy::Crypto::SodiumLib::getInstance();
 

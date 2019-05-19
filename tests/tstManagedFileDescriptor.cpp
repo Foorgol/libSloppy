@@ -24,6 +24,7 @@
 #include "../Sloppy/ManagedFileDescriptor.h"
 
 using namespace Sloppy;
+using namespace std;
 
 TEST(ManagedFileDescr, BasicReadWrite)
 {

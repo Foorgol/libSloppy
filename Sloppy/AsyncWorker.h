@@ -47,8 +47,6 @@
 #include "ThreadSafeQueue.h"
 #include "ThreadStats.h"
 
-using namespace std;
-
 namespace Sloppy
 {
   /** \brief Template class for a "data consumer" or "worker" that takes input
@@ -89,7 +87,7 @@ namespace Sloppy
       static_assert (std::is_copy_assignable<OutputDataType>::value,
                      "The output data type for the AsyncWorkerWithOutput has to be copy assignable!");
 
-      workerThread = thread([&]{mainLoop();});
+      workerThread = std::thread([&]{mainLoop();});
     }
 
     /** \brief Dtor; stops the worker loop at the next occastion and `join`s
@@ -157,7 +155,7 @@ namespace Sloppy
      */
     AsyncWorkerStats stats()
     {
-      lock_guard<mutex> lg{statsMutex};
+      std::lock_guard<std::mutex> lg{statsMutex};
 
       return statData;
     }
@@ -180,7 +178,7 @@ namespace Sloppy
 
         if (!isRunning)
         {
-          this_thread::sleep_for(chrono::milliseconds{preemptionTime_ms});
+          std::this_thread::sleep_for(std::chrono::milliseconds{preemptionTime_ms});
           continue;
         }
 
@@ -194,20 +192,20 @@ namespace Sloppy
           int execTime = t.getTime__ms();
           if (outPtr != nullptr) outPtr->put(outData);
 
-          lock_guard<mutex> lgStats{statsMutex};
+          std::lock_guard<std::mutex> lgStats{statsMutex};
           statData.update(execTime);
         }
       }
     }
 
     int preemptionTime_ms;
-    thread workerThread;
+    std::thread workerThread;
     ThreadSafeQueue<InputDataType>* inPtr{nullptr};
     ThreadSafeQueue<OutputDataType>* outPtr{nullptr};
-    atomic_bool isRunning{true};
-    atomic_bool joinRequested{false};
-    atomic_bool suspendRequested{false};
-    mutex statsMutex;
+    std::atomic_bool isRunning{true};
+    std::atomic_bool joinRequested{false};
+    std::atomic_bool suspendRequested{false};
+    std::mutex statsMutex;
     AsyncWorkerStats statData;
   };
 }

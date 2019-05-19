@@ -25,8 +25,6 @@
 
 #include "StyledElement.h"
 
-using namespace std;
-
 namespace Sloppy
 {
   namespace HTML
@@ -42,8 +40,8 @@ namespace Sloppy
     public:
       /** Ctor
        */
-      ElementWithTextAndHorAlignment(const string& elName,   ///< the name of the element to construct
-          const string& _content,   ///< the content within the `<xxx>' tags
+      ElementWithTextAndHorAlignment(const std::string& elName,   ///< the name of the element to construct
+          const std::string& _content,   ///< the content within the `<xxx>' tags
           Alignment horAlignment = Alignment::Default   ///< the horizontal alignment of the content text
           );
     };
@@ -56,7 +54,7 @@ namespace Sloppy
       /** Ctor for a `&lt;span&gt;' element with plain text content
        */
       explicit Span(
-          const string& _content,   ///< the content within the `<span>` tags
+          const std::string& _content,   ///< the content within the `<span>` tags
           Alignment horAlignment = Alignment::Default   ///< the horizontal alignment of the content text
           )
         : ElementWithTextAndHorAlignment("span", _content, horAlignment) {}
@@ -74,7 +72,7 @@ namespace Sloppy
       /** Ctor for a `&lt;p&gt;' element with plain text content
        */
       explicit Para(
-          const string& _content,   ///< the content within the `<p>` tags
+          const std::string& _content,   ///< the content within the `<p>` tags
           Alignment horAlignment = Alignment::Default   ///< the horizontal alignment of the content text
           )
         :ElementWithTextAndHorAlignment("p", _content, horAlignment) {}
@@ -91,10 +89,10 @@ namespace Sloppy
     public:
       explicit Head(
           int lvl,   ///< the headline level, starting at 1. No range checks applied!
-          const string& _content,   ///< the header itself
+          const std::string& _content,   ///< the header itself
           Alignment horAlignment = Alignment::Default   ///< the horizontal alignment of the header
           )
-        :ElementWithTextAndHorAlignment("h" + to_string(lvl), _content, horAlignment) {}
+        :ElementWithTextAndHorAlignment("h" + std::to_string(lvl), _content, horAlignment) {}
 
       virtual ~Head(){}
     };
@@ -107,8 +105,8 @@ namespace Sloppy
     {
     public:
       explicit Anchor(
-          const string& url,   ///< the value for the `href` attribute
-          const string& linkText=""   ///< the inner text
+          const std::string& url,   ///< the value for the `href` attribute
+          const std::string& linkText=""   ///< the inner text
           );
 
       virtual ~Anchor(){}
@@ -132,10 +130,10 @@ namespace Sloppy
       /** Ctor
        */
       Form(
-          const string& id,   ///< the value to assign to the form's `id` attribute
-          const string& targetUrl,   ///< the submission URL for the form data (==> value of the `action` attribute)
+          const std::string& id,   ///< the value to assign to the form's `id` attribute
+          const std::string& targetUrl,   ///< the submission URL for the form data (==> value of the `action` attribute)
           FormMethod method = FormMethod::Post,    ///< whether to use a GET (url-encoded) or POST (multipart) request for submission
-          const string& encType = "multipart/form-data"   ///< the value of the `enctype` attribute
+          const std::string& encType = "multipart/form-data"   ///< the value of the `enctype` attribute
           );
 
       virtual ~Form(){}
@@ -158,11 +156,11 @@ namespace Sloppy
     class Input : public StyledElement
     {
     public:
-      Input(const string& id,   ///< the value to assign to the input's `id` attribute
+      Input(const std::string& id,   ///< the value to assign to the input's `id` attribute
           InputType it,   ///< the type of element to create
-          const string& value="",   ///< the value to assign to the input's `value` attribute
-          const string& _content="",   ///< the content between the opening and closing tags
-          const string& name=""   ///< the value for the `name` attribute; defaults to the `id` if empty
+          const std::string& value="",   ///< the value to assign to the input's `value` attribute
+          const std::string& _content="",   ///< the content between the opening and closing tags
+          const std::string& name=""   ///< the value for the `name` attribute; defaults to the `id` if empty
           );
 
       virtual ~Input(){}

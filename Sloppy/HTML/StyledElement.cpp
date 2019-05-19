@@ -18,6 +18,8 @@
 
 #include "StyledElement.h"
 
+using namespace std;
+
 namespace Sloppy
 {
   namespace HTML

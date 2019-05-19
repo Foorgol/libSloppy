@@ -31,6 +31,7 @@
 
 namespace bfs = boost::filesystem;
 using json = nlohmann::json;
+using namespace std;
 
 namespace std
 {

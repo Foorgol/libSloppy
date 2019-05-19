@@ -25,8 +25,6 @@
 
 #include "StyledElement.h"
 
-using namespace std;
-
 namespace Sloppy
 {
   namespace HTML
@@ -47,7 +45,7 @@ namespace Sloppy
        * \throws std::invalid_argument if the list of headers is empty
        */
       explicit Table(
-          const vector<string>& headers   ///< list of strings containing the column headers
+          const std::vector<std::string>& headers   ///< list of strings containing the column headers
           );
 
       virtual ~Table(){}
@@ -85,7 +83,7 @@ namespace Sloppy
       bool setCell(
           int r,   ///< the zero-based index of the cell's row
           int c,   ///< the zero-based index of the cell's column
-          const string& plainText,   ///< the plain text to assign to the cell
+          const std::string& plainText,   ///< the plain text to assign to the cell
           bool createRowIfNotExisting=false   ///< if set to `true`, the necessary row(s) are created automatically
           );
 
@@ -115,14 +113,14 @@ namespace Sloppy
 
         cell->deleteAllContent();
 
-        return cell->createCustomChild<ElemType>(forward<Args>(args)...);
+        return cell->createCustomChild<ElemType>(std::forward<Args>(args)...);
       }
 
     private:
       const size_t colCount;   ///< the number of columns in the table
       StyledElement* body;     ///< the `&lt;tbody&gt;`-element of the table
-      vector<StyledElement*> headerElems;   ///< the `&lt;th&gt;`-elements of the table
-      vector<vector<StyledElement*>> cells;   ///< a row,column-matrix of the `&lt;td&gt;`-elements with the content data
+      std::vector<StyledElement*> headerElems;   ///< the `&lt;th&gt;`-elements of the table
+      std::vector<std::vector<StyledElement*>> cells;   ///< a row,column-matrix of the `&lt;td&gt;`-elements with the content data
     };
 
   }

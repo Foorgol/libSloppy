@@ -22,6 +22,8 @@
 
 #include "Logger.h"
 
+using namespace std;
+
 namespace Sloppy
 {
   namespace Logger

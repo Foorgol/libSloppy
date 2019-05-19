@@ -27,8 +27,6 @@
 
 #include "Memory.h"
 
-using namespace std;
-
 namespace Sloppy
 {
   //
@@ -85,7 +83,7 @@ namespace Sloppy
     size_t getNumBytesRead() const { return len; }
 
   private:
-    optional<MemArray> data;
+    std::optional<MemArray> data;
     size_t len;
   };
 
@@ -106,7 +104,7 @@ namespace Sloppy
      */
     IOError(
         int nError,   ///< the error number that shall be stored
-        const string& errStr   ///< a description string for the error number
+        const std::string& errStr   ///< a description string for the error number
         )
       :e{nError}, eStr{errStr}{}
 
@@ -116,11 +114,11 @@ namespace Sloppy
 
     /** \returns the stored error description string
      */
-    string getErrString() const { return eStr; }
+    std::string getErrString() const { return eStr; }
 
   private:
     int e;
-    string eStr;
+    std::string eStr;
   };
 
   /** \brief Blocks / waits until a descriptor becomes ready for reading.
@@ -234,7 +232,7 @@ namespace Sloppy
      * or `false` otherwise (bytes written != bytes provided).
      */
     bool blockingWrite(
-        const string& data   ///< a string containing the data to write
+        const std::string& data   ///< a string containing the data to write
         );
 
     /** \brief Executes a blocking write operation on the descriptor using `write()'
@@ -330,8 +328,8 @@ namespace Sloppy
 
   protected:
     int fd{-1};
-    mutex fdMutex{};
-    atomic<State> st{State::Closed};
+    std::mutex fdMutex{};
+    std::atomic<State> st{State::Closed};
     MemArray readBuf{};
 
   };

@@ -18,6 +18,8 @@
 
 #include "Bootstrap.h"
 
+using namespace std;
+
 namespace Sloppy
 {
   namespace HTML

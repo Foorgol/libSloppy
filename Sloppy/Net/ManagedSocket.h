@@ -22,8 +22,6 @@
 #include "../ManagedFileDescriptor.h"
 #include "Net.h"
 
-using namespace std;
-
 namespace Sloppy
 {
   namespace Net
@@ -96,7 +94,7 @@ namespace Sloppy
        * \throws std::invalid_argument if the port number is outside the permitted range (1..65535)
        */
       void bind(
-          const string& bindName,   ///< the name to bind to (e.g., "localhost")
+          const std::string& bindName,   ///< the name to bind to (e.g., "localhost")
           int port   ///< the port to bind to
           );
 
@@ -113,7 +111,7 @@ namespace Sloppy
        * \returns a pair of <file descriptor of new connection, client address>
        * with the file descriptor being set to -1 if a timeout occurred.
        */
-      pair<int, sockaddr_in> acceptNext(
+      std::pair<int, sockaddr_in> acceptNext(
           size_t timeout_ms = 0   ///< the maximum time in milliseconds to wait for a new, incoming connection
           );
 
@@ -122,7 +120,7 @@ namespace Sloppy
        * \throws IOError if a I/O error occurred when calling `connect()' on the socket
        */
       void connect(
-          const string& srvName,   ///< the name or IP address of the server to connect to
+          const std::string& srvName,   ///< the name or IP address of the server to connect to
           int srvPort   ///< the port to connect to
           );
     };

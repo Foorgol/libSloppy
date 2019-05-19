@@ -23,6 +23,8 @@
 
 #include "Crypto.h"
 
+using namespace std;
+
 namespace Sloppy
 {
   namespace Crypto

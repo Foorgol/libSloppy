@@ -33,7 +33,7 @@ namespace bfs = boost::filesystem;
 namespace Sloppy
 {
 
-  bool checkConstraint(const optional<estring>& val, Sloppy::ValueConstraint c, string* errMsg)
+  bool checkConstraint(const std::optional<estring>& val, Sloppy::ValueConstraint c, std::string* errMsg)
   {
     // first basic check: does the value exist at all?
     if (!(val.has_value()))
@@ -55,14 +55,14 @@ namespace Sloppy
 
   //----------------------------------------------------------------------------
 
-  bool checkConstraint(const estring& val, ValueConstraint c, string* errMsg)
+  bool checkConstraint(const estring& val, ValueConstraint c, std::string* errMsg)
   {
     // regexs are expensive to create and thus we keep a few
     // of them in static local variables
-    static regex reAlnum{"[[:alnum:]]+"};
-    static regex reAlpha{"[[:alpha:]]+"};
-    static regex reDigit{"[[:digit:]]+"};
-    static regex reIsoDate{"(\\d{4})-(\\d{1,2})-(\\d{1,2})"};
+    static std::regex reAlnum{"[[:alnum:]]+"};
+    static std::regex reAlpha{"[[:alpha:]]+"};
+    static std::regex reDigit{"[[:digit:]]+"};
+    static std::regex reIsoDate{"(\\d{4})-(\\d{1,2})-(\\d{1,2})"};
 
     // is the value non-empty?
     if (val.empty())
@@ -146,7 +146,7 @@ namespace Sloppy
       tmp.toLower();
 
       bool isOkay{false};
-      for (const string& permitted : {"1", "true", "on", "yes"})
+      for (const std::string& permitted : {"1", "true", "on", "yes"})
       {
         if (tmp == permitted)
         {
@@ -156,7 +156,7 @@ namespace Sloppy
       }
       if (!isOkay)
       {
-        for (const string& permitted : {"0", "false", "off", "no"})
+        for (const std::string& permitted : {"0", "false", "off", "no"})
         {
           if (tmp == permitted)
           {
@@ -218,7 +218,7 @@ namespace Sloppy
     // check ISO dates
     if (c == ValueConstraint::IsoDate)
     {
-      smatch sm;
+      std::smatch sm;
       bool isOkay = regex_match(val, sm, reIsoDate);
       if (!isOkay && (errMsg != nullptr))
       {
@@ -251,7 +251,7 @@ namespace Sloppy
 
   //----------------------------------------------------------------------------
 
-  bool checkConstraint_IntRange(const optional<estring>& val, const optional<int>& minVal, const optional<int> maxVal, string* errMsg)
+  bool checkConstraint_IntRange(const std::optional<estring>& val, const std::optional<int>& minVal, const std::optional<int> maxVal, std::string* errMsg)
   {
     if (!val.has_value())
     {
@@ -268,7 +268,7 @@ namespace Sloppy
 
   //----------------------------------------------------------------------------
 
-  bool checkConstraint_IntRange(const estring& val, const optional<int>& minVal, const optional<int>& maxVal, string* errMsg)
+  bool checkConstraint_IntRange(const estring& val, const std::optional<int>& minVal, const std::optional<int>& maxVal, std::string* errMsg)
   {
     bool hasMin = minVal.has_value();
     bool hasMax = maxVal.has_value();
@@ -318,7 +318,7 @@ namespace Sloppy
 
   //----------------------------------------------------------------------------
 
-  bool checkConstraint_StrLen(const optional<estring>& val, const optional<size_t>& minLen, const optional<size_t>& maxLen, string* errMsg)
+  bool checkConstraint_StrLen(const std::optional<estring>& val, const std::optional<size_t>& minLen, const std::optional<size_t>& maxLen, std::string* errMsg)
   {
     if (!val.has_value())
     {
@@ -335,7 +335,7 @@ namespace Sloppy
 
   //----------------------------------------------------------------------------
 
-  bool checkConstraint_StrLen(const estring& val, const optional<size_t>& minLen, const optional<size_t>& maxLen, string* errMsg)
+  bool checkConstraint_StrLen(const estring& val, const std::optional<size_t>& minLen, const std::optional<size_t>& maxLen, std::string* errMsg)
   {
     bool hasMin = minLen.has_value();
     bool hasMax = maxLen.has_value();

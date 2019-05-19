@@ -28,8 +28,6 @@
 #include "Timer.h"
 #include "ThreadStats.h"
 
-using namespace std;
-
 namespace Sloppy
 {
 
@@ -81,7 +79,7 @@ namespace Sloppy
      */
     CyclicWorkerThreadState state()
     {
-      lock_guard<mutex> lk{stateMutex};
+      std::lock_guard<std::mutex> lk{stateMutex};
 
       CyclicWorkerThreadState tmp = curState;
       return tmp;
@@ -230,17 +228,17 @@ namespace Sloppy
     //
     // Returns `true` if the worker should be forcefully executing afterwards,
     // regardless of any timer values
-    void doStateMachine(unique_lock<mutex>& lk);
+    void doStateMachine(std::unique_lock<std::mutex>& lk);
 
-    mutex stateMutex;
-    condition_variable cvState;
+    std::mutex stateMutex;
+    std::condition_variable cvState;
 
     CyclicWorkerThreadState curState{CyclicWorkerThreadState::Initialized};   ///< our current state
     CyclicWorkerThreadState reqState{CyclicWorkerThreadState::Initialized};   ///< the next state requested by the owner
-    thread workerThread;
+    std::thread workerThread;
     int workerCycle_ms;
 
-    atomic<bool> isTransitionPending{false};  ///< not strictly necessary, but makes sync easier
+    std::atomic<bool> isTransitionPending{false};  ///< not strictly necessary, but makes sync easier
     bool forceQuitThreadFromDtor{false}; // may only be set by the dtor!
 
     CyclicThreadStats stats;

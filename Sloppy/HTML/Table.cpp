@@ -18,6 +18,8 @@
 
 #include "Table.h"
 
+using namespace std;
+
 namespace Sloppy
 {
   namespace HTML

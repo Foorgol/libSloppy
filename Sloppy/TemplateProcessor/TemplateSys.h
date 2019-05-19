@@ -29,9 +29,6 @@
 #include "../json_fwd.hpp"
 #include "../ConfigFileParser/ConfigFileParser.h"
 
-using namespace std;
-using json = nlohmann::json;
-
 namespace Sloppy
 {
   namespace TemplateSystem
@@ -71,9 +68,9 @@ namespace Sloppy
     struct SyntaxTreeItem
     {
       SyntaxTreeItemType t;   ///< the item type (static text, variable, ...)
-      string varName;         ///< in case of variable items: the variable's name
-      string listName;        ///< in case of 'for'-loops: the name of the list to loop over
-      string staticText;      ///< in case of static text: the text itself
+      std::string varName;         ///< in case of variable items: the variable's name
+      std::string listName;        ///< in case of 'for'-loops: the name of the list to loop over
+      std::string staticText;      ///< in case of static text: the text itself
       bool invertCondition;   ///< in case if 'if'-conditions: indicates whether the condition shall be inverted (aka "not")
 
       size_t idxNextSibling;  ///< index of the next sibling at the same hierarchy level as this item
@@ -83,7 +80,7 @@ namespace Sloppy
       size_t idxFirstChar;    ///< index of the first character in the template source text that is represented by this tree item
       size_t idxLastChar;     ///< index of the last character in the template source text that is represented by this tree item
     };
-    using SyntaxTreeItemList = vector<SyntaxTreeItem>;
+    using SyntaxTreeItemList = std::vector<SyntaxTreeItem>;
 
     /** \brief A 'struct' for collecting/reporting syntax errors in the template text
      */
@@ -92,13 +89,13 @@ namespace Sloppy
       size_t line;   ///< number of the text line that contains the error
       size_t idxFirstChar;   ///< index of the first character of the "offending" section
       size_t idxLastChar;   ///< index of the last character of the "offending" section
-      string msg;   ///< a message describing the error
+      std::string msg;   ///< a message describing the error
 
       /** \brief Ctor for a new syntax error with an `sregex_iterator` defining the offending text range
        */
       SyntaxTreeError(
-          const sregex_iterator::value_type& tokenMatch,   ///< the regex match that triggerd the syntax error
-          const string& _msg   ///< a message describing the syntax error
+          const std::sregex_iterator::value_type& tokenMatch,   ///< the regex match that triggerd the syntax error
+          const std::string& _msg   ///< a message describing the syntax error
           )
         :SyntaxTreeError{_msg}
       {
@@ -113,7 +110,7 @@ namespace Sloppy
       /** \brief Ctor for a syntax error that is only defined by a message and not by a text range
        */
       explicit SyntaxTreeError(
-          const string& _msg   ///< the error message
+          const std::string& _msg   ///< the error message
           )
         :idxFirstChar{0}, idxLastChar{0}, msg{_msg} {}
 
@@ -123,7 +120,7 @@ namespace Sloppy
 
       /** \brief Updates the text range data (first / last character) from a 'sregex_iterator'
        */
-      void updatePosition(const sregex_iterator::value_type& tokenMatch)
+      void updatePosition(const std::sregex_iterator::value_type& tokenMatch)
       {
         idxFirstChar = tokenMatch.position();
         idxLastChar = idxFirstChar + tokenMatch.size() - 1;
@@ -131,7 +128,7 @@ namespace Sloppy
 
       /** \returns a human-readable string that describes the syntax error and that can be printed e.g., to `stderr`
        */
-      string str()
+      std::string str()
       {
         estring s = "Template parsing error at position %1: ";
         s.arg(idxFirstChar);
@@ -177,21 +174,21 @@ namespace Sloppy
       // store a few regex objects in the class although we need them only
       // in the recursive syntax parser. This avoids the expensive re-instantiation
       // of the regexs each time we enter the recursion loop
-      regex reToken;
-      regex reFor;
-      regex reIf;
-      regex reVar;
-      regex reInclude;
+      std::regex reToken;
+      std::regex reFor;
+      std::regex reIf;
+      std::regex reVar;
+      std::regex reInclude;
 
-      tuple<TokenType, bool> checkToken(const string& token) const;
+      std::tuple<TokenType, bool> checkToken(const std::string& token) const;
 
-      tuple<TokenType, SyntaxTreeError> doSyntaxCheck(const string& token, SyntaxSectionType secType) const;
-      int isValid_endif(const string& token) const;
-      int isValid_if(const string& token) const;
-      int isValid_endfor(const string& token) const;
-      int isValid_for(const string& token) const;
-      int isValid_include(const string& token) const;
-      bool isValid_var(const string& token) const;
+      std::tuple<TokenType, SyntaxTreeError> doSyntaxCheck(const std::string& token, SyntaxSectionType secType) const;
+      int isValid_endif(const std::string& token) const;
+      int isValid_if(const std::string& token) const;
+      int isValid_endfor(const std::string& token) const;
+      int isValid_for(const std::string& token) const;
+      int isValid_include(const std::string& token) const;
+      bool isValid_var(const std::string& token) const;
     };
 
     //----------------------------------------------------------------------------
@@ -263,7 +260,7 @@ namespace Sloppy
        *
        */
       explicit Template(
-          istream& inData   ///< the stream that delivers the template content
+          std::istream& inData   ///< the stream that delivers the template content
           );
 
       /** \brief Ctor from string content.
@@ -274,7 +271,7 @@ namespace Sloppy
        *
        */
       explicit Template(
-          const string& inData   ///< the string containing the template content
+          const std::string& inData   ///< the string containing the template content
           );
 
       /** \brief Static function that tries to read the template
@@ -282,7 +279,7 @@ namespace Sloppy
        *
        * \returns `nullptr` if the file could not be read.
        */
-      static unique_ptr<Template> fromFile(const string& fName);
+      static std::unique_ptr<Template> fromFile(const std::string& fName);
 
       /** \brief Parses the template content; precondition for
        * actually using the template.
@@ -316,7 +313,7 @@ namespace Sloppy
       const SyntaxTreeItemList& getTreeAsRef() const { return st.getTreeAsRef(); }
 
     private:
-      const string rawData;   ///< the raw template content as provided to the ctor
+      const std::string rawData;   ///< the raw template content as provided to the ctor
       SyntaxTree st;   ///< the syntax tree representing the template content
       bool syntaxOkay;   ///< a tag that indicates whether the template was parsed successfully or not (yet)
     };
@@ -339,7 +336,7 @@ namespace Sloppy
        * if didn't contain any valid template file.
        */
       TemplateStore(
-          const string& rootDir,      ///< the absolute or relative path to the directory that contains the templates
+          const std::string& rootDir,      ///< the absolute or relative path to the directory that contains the templates
           const StringList& extList   ///< a whitelist of file extensions (case-sensitive, no leading dot) that indicate valid template files in the root dir
           );
 
@@ -348,7 +345,7 @@ namespace Sloppy
        * If empty, the default template in the root dir will be used.
        */
       void setLang(
-          const string& lang = ""   ///< the new default language for template look-ups
+          const std::string& lang = ""   ///< the new default language for template look-ups
           ) { langCode = lang; }
 
       /** \brief Reads a list of (translation) strings from an ini file
@@ -365,7 +362,7 @@ namespace Sloppy
        *
        * \returns `true` if the ini file could be parsed, `false` otherwise
        */
-      bool setStringlist(const string& slPath);
+      bool setStringlist(const std::string& slPath);
 
       /** \brief Looks up a template with a given name, applies substitutions from a dictionary to it and returns the result.
        *
@@ -381,9 +378,9 @@ namespace Sloppy
        * \returns the content of the requested template with all
        * substitutions recursively applied (other referenced/included templates etc.)
        */
-      string get(
-          const string& tName,   ///< the name of the template to retrieve (e.g., `subDir/template.txt`)
-          const json& dic   ///< a JSON dictionary with substitution strings
+      std::string get(
+          const std::string& tName,   ///< the name of the template to retrieve (e.g., `subDir/template.txt`)
+          const nlohmann::json& dic   ///< a JSON dictionary with substitution strings
           );
 
       /** \brief Looks up a string in the list of string translations
@@ -398,9 +395,9 @@ namespace Sloppy
        * \returns the translation of the requested string or an empty `optional<string>`
        * if no string list was loaded or if the requested string does not exist.
        */
-      optional<string> getString(
-          const string& sName,   ///< the template to look up
-          const string& langOverride=""   ///< overrides the currently selected language with a different language
+      std::optional<std::string> getString(
+          const std::string& sName,   ///< the template to look up
+          const std::string& langOverride=""   ///< overrides the currently selected language with a different language
           ) const;
 
     protected:
@@ -420,8 +417,8 @@ namespace Sloppy
        * \returns the best match for a requested template with a preference on the localized template;
        * empty string if no match could be found.
        */
-      string getLocalizedTemplateName(
-          const string& docName   ///< the name of the template to retrieve
+      std::string getLocalizedTemplateName(
+          const std::string& docName   ///< the name of the template to retrieve
           ) const;
 
       /** \brief Recursively visits all elements of a template and apply all substitutions
@@ -438,9 +435,9 @@ namespace Sloppy
        * \returns the content of the requested template with all
        * substitutions recursively applied (other referenced/included templates etc.)
        */
-      string getTemplate_Recursive(
-          const string& tName,   ///< the name of the template to retrieve
-          const json& dic,   ///< a dictionary with substitutions to be applied to the template
+      std::string getTemplate_Recursive(
+          const std::string& tName,   ///< the name of the template to retrieve
+          const nlohmann::json& dic,   ///< a dictionary with substitutions to be applied to the template
           StringList& visitedTemplates   ///< a list to which all visited sub-templates are append; used for the detection of circular dependencies
           ) const;
 
@@ -451,11 +448,11 @@ namespace Sloppy
        *
        * \returns a string that represents the content of the subtree with all substitutions applied.
        */
-      string getSyntaxSubtree(
+      std::string getSyntaxSubtree(
           const SyntaxTreeItemList& tree,   ///< a reference to the tree we're working on
           size_t idxFirstItem,    ///< the index of first item in the tree that shall be processed
-          const json& dic,   ///< the substitutions to apply
-          unordered_map<string, const json&>& localScopeVars,   ///< in case of nested statements (e.g., `if` inside a `for`) this map contains the local variables and their value
+          const nlohmann::json& dic,   ///< the substitutions to apply
+          std::unordered_map<std::string, const nlohmann::json&>& localScopeVars,   ///< in case of nested statements (e.g., `if` inside a `for`) this map contains the local variables and their value
           StringList& visitedTemplates   ///< a list to which all visited sub-templates are append; used for the detection of circular dependencies
           ) const;
 
@@ -468,16 +465,16 @@ namespace Sloppy
        *
        * \returns a Json::Value with the resolved symbol
        */
-      const json& resolveVariable(
-          const string& varName,   ///< the name of the variable to resolve
-          const json& dic,  ///< the dictionary for looking up variable values
-          unordered_map<string, const json&>& localScopeVars   ///< a map of local variables
+      const nlohmann::json& resolveVariable(
+          const std::string& varName,   ///< the name of the variable to resolve
+          const nlohmann::json& dic,  ///< the dictionary for looking up variable values
+          std::unordered_map<std::string, const nlohmann::json&>& localScopeVars   ///< a map of local variables
           ) const;
 
     private:
-      unordered_map<string, Template> docs;   ///< a mapping of relative file names to Template instances
-      string langCode;   ///< the current language code
-      unique_ptr<Parser> strList;   ///< the currently load string list
+      std::unordered_map<std::string, Template> docs;   ///< a mapping of relative file names to Template instances
+      std::string langCode;   ///< the current language code
+      std::unique_ptr<Parser> strList;   ///< the currently load string list
 
     };
   }

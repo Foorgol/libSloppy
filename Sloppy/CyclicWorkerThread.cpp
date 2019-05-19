@@ -18,6 +18,8 @@
 
 #include "CyclicWorkerThread.h"
 
+using namespace std;
+
 namespace Sloppy
 {
 

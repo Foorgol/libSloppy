@@ -27,8 +27,6 @@
 #include "Sodium.h"
 #include "../BasicException.h"
 
-using namespace std;
-
 namespace Sloppy
 {
   namespace MiniCert
@@ -71,7 +69,7 @@ namespace Sloppy
     class BadVersionException : public Sloppy::BasicException
     {
     public:
-      BadVersionException(const string& sender, const string& context = string{}, const string& details = string{})
+      BadVersionException(const std::string& sender, const std::string& context = std::string{}, const std::string& details = std::string{})
         :Sloppy::BasicException("Bad MiniCert Protocol Version", sender, context, details) {}
     };
 
@@ -79,7 +77,7 @@ namespace Sloppy
     class BadDataFormatException : public Sloppy::BasicException
     {
     public:
-      BadDataFormatException(const string& sender, const string& context = string{}, const string& details = string{})
+      BadDataFormatException(const std::string& sender, const std::string& context = std::string{}, const std::string& details = std::string{})
         :Sloppy::BasicException("Bad Data Format", sender, context, details) {}
     };
 
@@ -87,7 +85,7 @@ namespace Sloppy
     class BadSignature : public Sloppy::BasicException
     {
     public:
-      BadSignature(const string& sender, const string& context = string{}, const string& details = string{})
+      BadSignature(const std::string& sender, const std::string& context = std::string{}, const std::string& details = std::string{})
         :Sloppy::BasicException("Bad Signature (e.g., failed signature check for payload)", sender, context, details) {}
     };
 
@@ -95,7 +93,7 @@ namespace Sloppy
     class BadKey : public Sloppy::BasicException
     {
     public:
-      BadKey(const string& sender, const string& context = string{}, const string& details = string{})
+      BadKey(const std::string& sender, const std::string& context = std::string{}, const std::string& details = std::string{})
         :Sloppy::BasicException("Bad Key (e.g., too long, too short, decoding from Base64 failed, ...)", sender, context, details) {}
     };
 
@@ -214,7 +212,7 @@ namespace Sloppy
      */
     struct CertSignReqOut
     {
-      string cn;  ///< the subject's "Common Name" (CN)
+      std::string cn;  ///< the subject's "Common Name" (CN)
       Sloppy::Crypto::SodiumLib::AsymCrypto_PublicKey cryptoPubKey;   ///< the public key used for encryption
       nlohmann::json addSubjectInfo;   ///< any other data that should become part of the subject description
 
@@ -227,7 +225,7 @@ namespace Sloppy
      */
     struct CertSignReqIn
     {
-      string cn;  ///< the subject's "Common Name" (CN)
+      std::string cn;  ///< the subject's "Common Name" (CN)
       Sloppy::Crypto::SodiumLib::AsymCrypto_PublicKey cryptoPubKey;   ///< the public key used for encryption
       Sloppy::Crypto::SodiumLib::AsymSign_PublicKey signPubKey;   ///< the public key used for signing cleartext
       Sloppy::DateTime::UTCTimestamp signatureTimestamp;   ///< the time in UTC when the request was signed by the client
@@ -253,7 +251,7 @@ namespace Sloppy
      *
      * \returns a pair of <error code, string with CSR>; the string is empty in case of errors
      */
-    pair<MiniCertError, string> createCertSigningRequest(
+    std::pair<MiniCertError, std::string> createCertSigningRequest(
         const CertSignReqOut& csr,   ///< the raw, binary data for the request
         const Crypto::SodiumLib::AsymSign_SecretKey& sk   ///< the subject's secret signing key
         );
@@ -268,8 +266,8 @@ namespace Sloppy
      * \returns a pair of <error code, CertSignReqIn>; the CertSignReqIn object contains invalid
      * default data in case of errors
      */
-    pair<MiniCertError, CertSignReqIn> parseCertSignRequest(
-        string csr   ///< the BASE64-encoded CSR including subject's signature
+    std::pair<MiniCertError, CertSignReqIn> parseCertSignRequest(
+        const std::string& csr   ///< the BASE64-encoded CSR including subject's signature
         );
 
     /** \brief Signs a CSR and returns a BASE64 encoded certificate
@@ -292,9 +290,9 @@ namespace Sloppy
      *  ** ca: the common name of the CA that signed the request
      *  ** sts: the time in UTC when the request was signed (sts = signature time stamp)
      */
-    pair<MiniCertError, string> signCertSignRequest(
+    std::pair<MiniCertError, std::string> signCertSignRequest(
         const CertSignReqIn& csr,  ///< the CSR to sign
-        const string& caName,   ///< the CN of the CA used for signing
+        const std::string& caName,   ///< the CN of the CA used for signing
         const Crypto::SodiumLib::AsymSign_SecretKey& caKey,   ///< the CA's secret key
         const Sloppy::DateTime::UTCTimestamp& validFrom,   ///< the validity start for the resulting cert
         const Sloppy::DateTime::UTCTimestamp& validUntil ///< the validity end for the resulting cert
@@ -309,7 +307,7 @@ namespace Sloppy
     public:
       struct Subject
       {
-        string cn;  ///< the subject's "Common Name" (CN)
+        std::string cn;  ///< the subject's "Common Name" (CN)
         Sloppy::Crypto::SodiumLib::AsymCrypto_PublicKey cryptoPubKey;   ///< the public key used for encryption
         Sloppy::Crypto::SodiumLib::AsymSign_PublicKey signPubKey;   ///< the public key used for signing cleartext
         nlohmann::json addSubjectInfo;   ///< any other data that is part of the subject description
@@ -317,7 +315,7 @@ namespace Sloppy
 
       struct Meta
       {
-        string caName;   ///< the CA's common name
+        std::string caName;   ///< the CA's common name
         Sloppy::Crypto::SodiumLib::AsymSign_PublicKey caPubKey;   ///< the public key used for signing the cert
         Sloppy::DateTime::UTCTimestamp validFrom;   ///< the validity start for the resulting cert
         Sloppy::DateTime::UTCTimestamp validUntil; ///< the validity end for the resulting cert
@@ -332,16 +330,16 @@ namespace Sloppy
        *
        */
       explicit MiniCert(
-          const string& certB64   ///< Base64 encoded certificate data as returned by `signCertSignRequest`
+          const std::string& certB64   ///< Base64 encoded certificate data as returned by `signCertSignRequest`
           );
 
       /** \returns the subject's common name
        */
-      string cn() const { return subject.cn; }
+      std::string cn() const { return subject.cn; }
 
       /** \returns a reference to subject's common name
        */
-      const string& cnRef() const { return subject.cn; }
+      const std::string& cnRef() const { return subject.cn; }
 
       /** \returns a copy of the subject's public crypto key
        */
@@ -371,11 +369,11 @@ namespace Sloppy
 
       /** \returns the name of the signing CA
        */
-      string caName() const { return meta.caName; }
+      std::string caName() const { return meta.caName; }
 
       /** \returns the name of the signing CA as a reference
        */
-      const string& caNameRef() const { return meta.caName; }
+      const std::string& caNameRef() const { return meta.caName; }
 
     private:
       Crypto::SodiumLib* sodium;

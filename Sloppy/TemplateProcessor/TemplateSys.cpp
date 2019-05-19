@@ -28,6 +28,8 @@
 #include "../json.hpp"
 #include "../Utils.h"
 
+using namespace std;
+using json = nlohmann::json;
 namespace bfs = boost::filesystem;
 
 namespace Sloppy

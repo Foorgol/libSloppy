@@ -22,6 +22,8 @@
 
 #include "../Sloppy/MailAndMIME/MIME_Message.h"
 
+using namespace std;
+
 TEST(MIME_Message, StructuredHeaderBody)
 {
   string h = "some value; name1=a;name2=q87645---";

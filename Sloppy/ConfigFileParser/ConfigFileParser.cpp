@@ -26,6 +26,8 @@
 #include "../String.h"
 #include "../DateTime/DateAndTime.h"
 
+using namespace std;
+
 namespace Sloppy
 {
   Parser::Parser(istream& inStream)

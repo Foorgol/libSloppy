@@ -25,6 +25,8 @@
 #include "BasicTestClass.h"
 
 using namespace Sloppy::TemplateSystem;
+using namespace std;
+using json = nlohmann::json;
 
 class SyntaxTreeFixture : public BasicTestFixture
 {

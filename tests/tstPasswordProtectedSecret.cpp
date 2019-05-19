@@ -23,6 +23,7 @@
 #include "../Sloppy/Crypto/Sodium.h"
 
 using namespace Sloppy::Crypto;
+using namespace std;
 
 TEST(PasswordProtectedSecr, ctor)
 {

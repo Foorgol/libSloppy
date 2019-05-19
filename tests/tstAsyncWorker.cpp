@@ -25,6 +25,8 @@
 #include "../Sloppy/AsyncWorker.h"
 #include "../Sloppy/Timer.h"
 
+using namespace std;
+
 static constexpr int PreemptionTime_ms = 100;
 static constexpr int WorkerDuration_ms = 10;
 

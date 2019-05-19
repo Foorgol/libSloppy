@@ -22,13 +22,9 @@
 #include <sstream>
 #include <fstream>
 
-#include <boost/filesystem.hpp>
-
 #include "ConfigFileParser.h"
 #include "../String.h"
 #include "../DateTime/DateAndTime.h"
-
-namespace bfs = boost::filesystem;
 
 namespace Sloppy
 {

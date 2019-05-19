@@ -17,8 +17,7 @@
  */
 
 #include <algorithm>
-
-#include <boost/algorithm/string.hpp>
+#include <functional>
 
 #include "Header.h"
 

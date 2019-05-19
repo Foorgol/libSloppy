@@ -21,6 +21,8 @@
 
 #include "Net.h"
 
+using namespace std;
+
 namespace Sloppy
 {
   namespace Net

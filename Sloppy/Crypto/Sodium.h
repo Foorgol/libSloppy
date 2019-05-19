@@ -26,10 +26,7 @@
 
 #include <sodium.h>
 
-//#include "../libSloppy.h"
 #include "../Memory.h"
-
-using namespace std;
 
 namespace Sloppy
 {
@@ -42,23 +39,23 @@ namespace Sloppy
     class SodiumBasicException
     {
     public:
-      SodiumBasicException(const string& _msg = string{}, const string& context = string{})
+      SodiumBasicException(const std::string& _msg = std::string{}, const std::string& context = std::string{})
         :msg{_msg}
       {
         if (!(context.empty())) msg += " ; context: " + context;
       }
 
-      string what() { return msg; }
-      void say() { cerr << "Sodium Wrapper Exception: " << msg << endl; }
+      std::string what() { return msg; }
+      void say() { std::cerr << "Sodium Wrapper Exception: " << msg << std::endl; }
 
     protected:
-      string msg;
+      std::string msg;
     };
 
     class SodiumOutOfMemoryException : public SodiumBasicException
     {
     public:
-      SodiumOutOfMemoryException(const string& context = string{})
+      SodiumOutOfMemoryException(const std::string& context = std::string{})
         :SodiumBasicException{"out of memory", context} {}
     };
 
@@ -72,84 +69,84 @@ namespace Sloppy
     class SodiumMemoryManagementException : public SodiumBasicException
     {
     public:
-      SodiumMemoryManagementException(const string& context = string{})
+      SodiumMemoryManagementException(const std::string& context = std::string{})
         :SodiumBasicException{"could not change the state of protected and/or locked memory", context} {}
     };
 
     class SodiumMemoryGuardException : public SodiumBasicException
     {
     public:
-      SodiumMemoryGuardException(const string& context = string{})
+      SodiumMemoryGuardException(const std::string& context = std::string{})
         :SodiumBasicException{"attempt to access guarded, inaccessible secure memory", context} {}
     };
 
     class SodiumKeyLocked : public SodiumBasicException
     {
     public:
-      SodiumKeyLocked(const string& context = string{})
+      SodiumKeyLocked(const std::string& context = std::string{})
         :SodiumBasicException{"a secret key could not be accessed because it was locked / guarded", context} {}
     };
 
     class SodiumInvalidKeysize : public SodiumBasicException
     {
     public:
-      SodiumInvalidKeysize(const string& context = string{})
+      SodiumInvalidKeysize(const std::string& context = std::string{})
         :SodiumBasicException{"a key does not have the required length", context} {}
     };
 
     class SodiumInvalidKey : public SodiumBasicException
     {
     public:
-      SodiumInvalidKey(const string& context = string{})
+      SodiumInvalidKey(const std::string& context = std::string{})
         :SodiumBasicException{"the provided key was empty or invalid", context} {}
     };
 
     class SodiumInvalidNonce : public SodiumBasicException
     {
     public:
-      SodiumInvalidNonce(const string& context = string{})
+      SodiumInvalidNonce(const std::string& context = std::string{})
         :SodiumBasicException{"the provided nonce was empty or invalid", context} {}
     };
 
     class SodiumInvalidCipher : public SodiumBasicException
     {
     public:
-      SodiumInvalidCipher(const string& context = string{})
+      SodiumInvalidCipher(const std::string& context = std::string{})
         :SodiumBasicException{"the provided cipher was empty or of invalid size", context} {}
     };
 
     class SodiumInvalidMessage : public SodiumBasicException
     {
     public:
-      SodiumInvalidMessage(const string& context = string{})
+      SodiumInvalidMessage(const std::string& context = std::string{})
         :SodiumBasicException{"the provided plain text message was empty", context} {}
     };
 
     class SodiumInvalidMac : public SodiumBasicException
     {
     public:
-      SodiumInvalidMac(const string& context = string{})
+      SodiumInvalidMac(const std::string& context = std::string{})
         :SodiumBasicException{"the provided authentication tag (MAC) was empty or of invalid size", context} {}
     };
 
     class SodiumInvalidBuffer : public SodiumBasicException
     {
     public:
-      SodiumInvalidBuffer(const string& context = string{})
+      SodiumInvalidBuffer(const std::string& context = std::string{})
         :SodiumBasicException{"a buffer did not have the required size", context} {}
     };
 
     class SodiumConversionError : public SodiumBasicException
     {
     public:
-      SodiumConversionError(const string& context = string{})
+      SodiumConversionError(const std::string& context = std::string{})
         :SodiumBasicException{"the conversion between data formats failed", context} {}
     };
 
     class SodiumAES256GCMUnavail : public SodiumBasicException
     {
     public:
-      SodiumAES256GCMUnavail(const string& context = string{})
+      SodiumAES256GCMUnavail(const std::string& context = std::string{})
         :SodiumBasicException{"AES256-GCM is not supported on this machine", context} {}
     };
 
@@ -206,7 +203,7 @@ namespace Sloppy
        *
        * \throws SodiumOutOfMemoryException if the secure memory could not be allocated or locked
        */
-      SodiumSecureMemory(const string& src, SodiumSecureMemType t);
+      SodiumSecureMemory(const std::string& src, SodiumSecureMemType t);
 
       /** \brief Ctor that allocates memory of a certain protection class or initializes it
        * with the contents of a given memory block.
@@ -519,7 +516,7 @@ namespace Sloppy
        * \returns `false` if the string length does not match the key size or if the key is not write-accessible.
        */
       bool fillFromString(
-            const string& data   ///< the string containing the data to copy
+            const std::string& data   ///< the string containing the data to copy
             )
       {
         if (data.size() != keySize) return false;
@@ -545,11 +542,11 @@ namespace Sloppy
 
       /** \returns Returns the key as a BASE64 encoded string
        */
-      string toBase64() const
+      std::string toBase64() const
       {
         if (empty()) return "";
         MemArray b64 = lib->bin2Base64(toMemView());
-        return string{b64.to_charPtr(), b64.size()};
+        return std::string{b64.to_charPtr(), b64.size()};
       }
 
       /** \brief Copies content from a Base64 encoded string into the key, overwriting all existing key data.
@@ -558,12 +555,12 @@ namespace Sloppy
         * match the key size or if the key is not write-accessible.
        */
       bool fillFromBase64(
-            const string& b64   ///< a Base64 encoded string with key content
+            const std::string& b64   ///< a Base64 encoded string with key content
             )
       {
         if (b64.empty()) return false;
 
-        string raw;
+        std::string raw;
         try
         {
           raw = lib->base642Bin(b64);
@@ -861,8 +858,8 @@ namespace Sloppy
        *
        * \returns a string with a hex representation of the provided data (empty if the input was empty)
        */
-      string bin2hex(
-          const string& binData   ///< a string with the binary data for conversion
+      std::string bin2hex(
+          const std::string& binData   ///< a string with the binary data for conversion
           ) const;
 
       /** \brief Converts binary data into a string with a hexadecimal representation;
@@ -890,7 +887,7 @@ namespace Sloppy
        */
       MemArray hex2bin(
           const MemView& hex,   ///< a memory segment containing the hex data a for conversion
-          const string& ignore = string{}   ///< an optional string with characters that should be ignored in the input string (e.g., newlines)
+          const std::string& ignore = std::string{}   ///< an optional string with characters that should be ignored in the input string (e.g., newlines)
           ) const;
 
       /** \brief Converts a string with hexadecimal data into binary data;
@@ -904,9 +901,9 @@ namespace Sloppy
        *
        * \returns a string with the raw bytes represented by the hex input string
        */
-      string hex2bin(
-          const string& hex,   ///< a string containing the hex data a for conversion
-          const string& ignore = string{}   ///< an optional string with characters that should be ignored in the input string (e.g., newlines)
+      std::string hex2bin(
+          const std::string& hex,   ///< a string containing the hex data a for conversion
+          const std::string& ignore = std::string{}   ///< an optional string with characters that should be ignored in the input string (e.g., newlines)
           ) const;
 
       /** \brief Converts a string with binary data to a Base64-encoded string;
@@ -918,8 +915,8 @@ namespace Sloppy
        *
        * \returns a string containing the source data in the selected Base64 encoding
        */
-      string bin2Base64(
-          const string& bin,   ///< the binary data for conversion
+      std::string bin2Base64(
+          const std::string& bin,   ///< the binary data for conversion
           SodiumBase64Enconding enc = SodiumBase64Enconding::Original   ///< the encoding variant that shall be used
           ) const;
 
@@ -948,9 +945,9 @@ namespace Sloppy
        *
        * \returns a string with the binary data
        */
-      string base642Bin(
-          const string& b64,   ///< a string containing the Base64-encoded data
-          const string& ignore = string{},   ///< a string with optional characters that shall be ignored during conversion (e.g., newlines)
+      std::string base642Bin(
+          const std::string& b64,   ///< a string containing the Base64-encoded data
+          const std::string& ignore = std::string{},   ///< a string with optional characters that shall be ignored during conversion (e.g., newlines)
           SodiumBase64Enconding enc = SodiumBase64Enconding::Original   ///< the Base64 encoding variant
           ) const;
 
@@ -967,7 +964,7 @@ namespace Sloppy
        */
       MemArray base642Bin(
           const MemView& b64,   ///< a memory block containing the Base64-encoded data
-          const string& ignore = string{},   ///< a string with optional characters that shall be ignored during conversion (e.g., newlines)
+          const std::string& ignore = std::string{},   ///< a string with optional characters that shall be ignored during conversion (e.g., newlines)
           SodiumBase64Enconding enc = SodiumBase64Enconding::Original   ///< the Base64 encoding variant
           ) const;
 
@@ -1165,7 +1162,7 @@ namespace Sloppy
        *
        * \returns two heap-allocated buffers, the first one containing the encrypted data and the second one the authentication tag
        */
-      pair<MemArray, SecretBoxMac> secretbox_detached(
+      std::pair<MemArray, SecretBoxMac> secretbox_detached(
           const MemView& msg,   ///< the plain message for encryption
           const SecretBoxNonce& nonce,   ///< the nonce to be used for this specific message
           const SecretBoxKey& key        ///< the secret key; the caller has to ensure that the memory is enabled for reading
@@ -1204,8 +1201,8 @@ namespace Sloppy
        *
        * \returns a string with the encrypted data and an attached authentication tag
        */
-      string secretbox_easy(
-          const string& msg,   ///< a string with the plain text message for encryption
+      std::string secretbox_easy(
+          const std::string& msg,   ///< a string with the plain text message for encryption
           const SecretBoxNonce& nonce,   ///< the nonce to be used for this specific message
           const SecretBoxKey& key        ///< the secret key; the caller has to ensure that the memory is enabled for reading
           );
@@ -1222,8 +1219,8 @@ namespace Sloppy
        * \returns a string with the plain data
        * or an empty buffer if the decryption failed, e.g., due to an invalid MAC
        */
-      string secretbox_open_easy(
-          const string& cipher,   ///< a string with the encrypted message and the attached MAC
+      std::string secretbox_open_easy(
+          const std::string& cipher,   ///< a string with the encrypted message and the attached MAC
           const SecretBoxNonce& nonce,   ///< the nonce to be used for this specific message
           const SecretBoxKey& key        ///< the secret key; the caller has to ensure that the memory is enabled for reading
           );
@@ -1239,8 +1236,8 @@ namespace Sloppy
        *
        * \returns a string with the encrypted message and a heap-allocated buffer containing the authentication tag
        */
-      pair<string, SecretBoxMac> secretbox_detached(
-          const string& msg,   ///< the plain message for encryption
+      std::pair<std::string, SecretBoxMac> secretbox_detached(
+          const std::string& msg,   ///< the plain message for encryption
           const SecretBoxNonce& nonce,   ///< the nonce to be used for this specific message
           const SecretBoxKey& key        ///< the secret key; the caller has to ensure that the memory is enabled for reading
           );
@@ -1260,8 +1257,8 @@ namespace Sloppy
        * \returns a string with the plain data
        * or an empty string if the decryption failed, e.g., due to an invalid MAC
        */
-      string secretbox_open_detached(
-          const string& cipher,   ///< a string with the pure, encrypted message without MAC attachment
+      std::string secretbox_open_detached(
+          const std::string& cipher,   ///< a string with the pure, encrypted message without MAC attachment
           const SecretBoxMac& mac,   ///< the MAC for the message
           const SecretBoxNonce& nonce,   ///< the nonce to be used for this specific message
           const SecretBoxKey& key        ///< the secret key; the caller has to ensure that the memory is enabled for reading
@@ -1318,7 +1315,7 @@ namespace Sloppy
        * \returns a heap-allocated buffer containing the (public) authentication tag
        */
       AuthTagType auth(
-          const string& msg,   ///< the input message
+          const std::string& msg,   ///< the input message
           const AuthKeyType& key   ///< the (confidential) key for computing the authentication tag
           );
 
@@ -1336,7 +1333,7 @@ namespace Sloppy
        * \returns `true` if the combination of message and tag was valid (and thus the message authentic); `false` otherwise
        */
       bool auth_verify(
-          const string& msg,   ///< the input message
+          const std::string& msg,   ///< the input message
           const AuthTagType& tag,   ///< the previously computed authentication tag
           const AuthKeyType& key   ///< the (confidential) key for verifying the authentication tag
           );
@@ -1412,11 +1409,11 @@ namespace Sloppy
        * \throws SodiumInvalidKey if the provided key was empty
        *
        */
-      string aead_xchacha20poly1305_encrypt(
-          const string& msg,   ///< the plain message for encryption
+      std::string aead_xchacha20poly1305_encrypt(
+          const std::string& msg,   ///< the plain message for encryption
           const AEAD_XChaCha20Poly1305_NonceType& nonce,   ///< the nonce to be used for this specific message
           const AEAD_XChaCha20Poly1305_KeyType& key,   ///< the secret key; the caller has to ensure that the memory is enabled for reading
-          const string& ad = string{}   ///< optional, additional data to be included in the MAC computation
+          const std::string& ad = std::string{}   ///< optional, additional data to be included in the MAC computation
           );
 
       /** \brief Symmetric, authenticated decryption with (optional) additional data;
@@ -1437,11 +1434,11 @@ namespace Sloppy
        * \returns a secure memory buffer with the plain data
        * or an empty buffer if the decryption failed, e.g., due to an invalid MAC
        */
-      string aead_xchacha20poly1305_decrypt(
-          const string& cipher,   ///< buffer with encrypted data and attached MAC
+      std::string aead_xchacha20poly1305_decrypt(
+          const std::string& cipher,   ///< buffer with encrypted data and attached MAC
           const AEAD_XChaCha20Poly1305_NonceType& nonce,   ///< the nonce to be used for this specific message
           const AEAD_XChaCha20Poly1305_KeyType& key,   ///< the secret key; the caller has to ensure that the memory is enabled for reading
-          const string& ad = string{}   ///< optional, additional data to be included in the MAC computation
+          const std::string& ad = std::string{}   ///< optional, additional data to be included in the MAC computation
           );
 
       // authenticated encryption with additional data, AES-256 GCM, buffer based
@@ -1527,11 +1524,11 @@ namespace Sloppy
        * \throws SodiumInvalidKey if the provided key was empty
        *
        */
-      string aead_aes256gcm_encrypt(
-          const string& msg,   ///< the plain message for encryption
+      std::string aead_aes256gcm_encrypt(
+          const std::string& msg,   ///< the plain message for encryption
           const AEAD_AES256GCM_NonceType& nonce,   ///< the nonce to be used for this specific message
           const AEAD_AES256GCM_KeyType& key,   ///< the secret key; the caller has to ensure that the memory is enabled for reading
-          const string& ad = string{}   ///< optional, additional data to be included in the MAC computation
+          const std::string& ad = std::string{}   ///< optional, additional data to be included in the MAC computation
           );
 
       /** \brief Symmetric, authenticated decryption with (optional) additional data;
@@ -1554,11 +1551,11 @@ namespace Sloppy
        * \returns a secure memory buffer with the plain data
        * or an empty buffer if the decryption failed, e.g., due to an invalid MAC
        */
-      string aead_aes256gcm_decrypt(
-          const string& cipher,   ///< buffer with encrypted data and attached MAC
+      std::string aead_aes256gcm_decrypt(
+          const std::string& cipher,   ///< buffer with encrypted data and attached MAC
           const AEAD_AES256GCM_NonceType& nonce,   ///< the nonce to be used for this specific message
           const AEAD_AES256GCM_KeyType& key,   ///< the secret key; the caller has to ensure that the memory is enabled for reading
-          const string& ad = string{}   ///< optional, additional data to be included in the MAC computation
+          const std::string& ad = std::string{}   ///< optional, additional data to be included in the MAC computation
           );
 
       // public key cryptography: keys, nonces, auth tags
@@ -1647,7 +1644,7 @@ namespace Sloppy
        *
        * \returns a pair of two heap-allocated buffers with the encrypted data and the authentication tag
        */
-      pair<MemArray, AsymCrypto_Tag> box_detached(
+      std::pair<MemArray, AsymCrypto_Tag> box_detached(
           const MemView& msg,   ///< the plain input message
           const AsymCrypto_Nonce& nonce,   ///< the nonce to be used for this specific message
           const AsymCrypto_PublicKey& recipientKey,   ///< the recipient's public key
@@ -1685,8 +1682,8 @@ namespace Sloppy
        *
        * \returns a string with the encrypted data and an attached authentication tag
        */
-      string box_easy(
-          const string& msg,   ///< the plain input message
+      std::string box_easy(
+          const std::string& msg,   ///< the plain input message
           const AsymCrypto_Nonce& nonce,   ///< the nonce to be used for this specific message
           const AsymCrypto_PublicKey& recipientKey,   ///< the recipient's public key
           const AsymCrypto_SecretKey& senderKey   ///< the sender's private key (for the authentication signature)
@@ -1703,8 +1700,8 @@ namespace Sloppy
        *
        * \returns a string containing the decrypted data or an empty string if the decryption failed
        */
-      string box_open_easy(
-          const string& cipher,   ///< a string containing the cipher and the attached authentication tag
+      std::string box_open_easy(
+          const std::string& cipher,   ///< a string containing the cipher and the attached authentication tag
           const AsymCrypto_Nonce& nonce,   ///< the nonce to be used for this specific message
           const AsymCrypto_PublicKey& senderKey,   ///< the sender's public key for verifying the message integrity
           const AsymCrypto_SecretKey& recipientKey   ///< the recipient's secret key for decrypting the message
@@ -1721,8 +1718,8 @@ namespace Sloppy
        *
        * \returns a pair of a string with the encrypted data and a heap-allocated authentication tag
        */
-      pair<string, AsymCrypto_Tag> box_detached(
-          const string& msg,   ///< the plain input message
+      std::pair<std::string, AsymCrypto_Tag> box_detached(
+          const std::string& msg,   ///< the plain input message
           const AsymCrypto_Nonce& nonce,   ///< the nonce to be used for this specific message
           const AsymCrypto_PublicKey& recipientKey,   ///< the recipient's public key
           const AsymCrypto_SecretKey& senderKey   ///< the sender's private key (for the authentication signature)
@@ -1739,8 +1736,8 @@ namespace Sloppy
        *
        * \returns a string containing the decrypted data or an empty string if the decryption failed
        */
-      string box_open_detached(
-          const string& cipher,   ///< the encrypted cipher text
+      std::string box_open_detached(
+          const std::string& cipher,   ///< the encrypted cipher text
           const AsymCrypto_Tag& mac,   ///< a memory buffer containing the message authentication tag
           const AsymCrypto_Nonce& nonce,   ///< the nonce to be used for this specific message
           const AsymCrypto_PublicKey& senderKey,   ///< the sender's public key for verifying the message integrity
@@ -1862,8 +1859,8 @@ namespace Sloppy
        *
        * \returns a string containing the signature followed by a copy of the input message
        */
-      string sign(
-          const string& msg,   ///< the input message for the signature
+      std::string sign(
+          const std::string& msg,   ///< the input message for the signature
           const AsymSign_SecretKey& sk   ///< the secret key for signing the message
           );
 
@@ -1876,8 +1873,8 @@ namespace Sloppy
        *
        * \returns a string containing the message if the signature was successfully verified; an empty string otherwise
        */
-      string sign_open(
-          const string& signedMsg,   ///< a string containing the signature followed by the message itself
+      std::string sign_open(
+          const std::string& signedMsg,   ///< a string containing the signature followed by the message itself
           const AsymSign_PublicKey& pk   ///< the public key for checking the signature
           );
 
@@ -1891,7 +1888,7 @@ namespace Sloppy
        * \returns a string containing the signature
        */
       AsymSign_Signature sign_detached(
-          const string& msg,   ///< the input message for the signature
+          const std::string& msg,   ///< the input message for the signature
           const AsymSign_SecretKey& sk   ///< the secret key for signing the message
           );
 
@@ -1906,7 +1903,7 @@ namespace Sloppy
        *
        * \returns `true` if the message could be verified by the signature; `false` otherwise
        */
-      bool sign_verify_detached(const string& msg, const AsymSign_Signature& sig, const AsymSign_PublicKey& pk);
+      bool sign_verify_detached(const std::string& msg, const AsymSign_Signature& sig, const AsymSign_PublicKey& pk);
 
       // hashing
       using GenericHashKey = SodiumKey<SodiumKeyType::Secret, crypto_generichash_KEYBYTES>;
@@ -1976,8 +1973,8 @@ namespace Sloppy
        *
        * \returns a string containg the hash data
        */
-      string generichash(
-          const string& inData,    ///< the data that is to be hashed
+      std::string generichash(
+          const std::string& inData,    ///< the data that is to be hashed
           size_t hashLen = crypto_generichash_BYTES   ///< the size of the resulting hash in bytes
           );
 
@@ -2000,8 +1997,8 @@ namespace Sloppy
        *
        * \returns a string containg the hash data
        */
-      string generichash(
-          const string& inData,
+      std::string generichash(
+          const std::string& inData,
           const GenericHashKey& key,   ///< the key that shall be used for the hash computation
           size_t hashLen = crypto_generichash_BYTES   ///< the size of the resulting hash in bytes
           );
@@ -2076,7 +2073,7 @@ namespace Sloppy
        */
       void generichash_update(
           crypto_generichash_state *state,   ///< pointer to an externally owned hash state variable
-          const string& inData   ///< the data that shall be hashed
+          const std::string& inData   ///< the data that shall be hashed
           );
 
       /** \brief Finalizes a multi-chunk hashing operation and returns the hash;
@@ -2106,7 +2103,7 @@ namespace Sloppy
        *
        * \returns a heap-string containg the hash data
        */
-      string generichash_final_string(
+      std::string generichash_final_string(
           crypto_generichash_state *state,   ///< pointer to an externally owned hash state variable
           size_t hashLen = crypto_generichash_BYTES   ///< the size of the resulting hash in bytes
           );
@@ -2144,8 +2141,8 @@ namespace Sloppy
        *
        * \returns a string containg the hash data
        */
-      string shorthash(
-          const string& inData,   ///< the data that shall be hashed
+      std::string shorthash(
+          const std::string& inData,   ///< the data that shall be hashed
           const ShorthashKey& key    ///< a mandatory, fixed size key
           );
 
@@ -2199,7 +2196,7 @@ namespace Sloppy
        * \returns a pair of the hash itself and the actual, numeric parameters used for its computation;
        * in case of libsodium-internal errors, the resulting hash is empty!
        */
-      pair<SodiumSecureMemory, PwHashData> pwhash(
+      std::pair<SodiumSecureMemory, PwHashData> pwhash(
           const MemView& pw,   ///< a memory buffer containing the plain text password
           size_t hashLen,   ///< the number of bytes for the resulting hash
           PasswdHashStrength strength = PasswdHashStrength::Moderate,   ///< the required complexity (--> security) for the hashing
@@ -2245,7 +2242,7 @@ namespace Sloppy
        * \returns an ASCII-only string that contains the hash and its computation parameters;
        * if libsodium failed to compute the string, the string is empty.
        */
-      string pwhash_str(
+      std::string pwhash_str(
           const MemView& pw,   ///< a memory buffer containing the plain text password
           PasswdHashStrength strength = PasswdHashStrength::Moderate   ///< the required complexity (--> security) for the hashing
           );
@@ -2262,8 +2259,8 @@ namespace Sloppy
        * \returns an ASCII-only string that contains the hash and its computation parameters;
        * if libsodium failed to compute the string, the string is empty.
        */
-      string pwhash_str(
-          const string& pw,   ///< a string containing the plain text password
+      std::string pwhash_str(
+          const std::string& pw,   ///< a string containing the plain text password
           PasswdHashStrength strength = PasswdHashStrength::Moderate   ///< the required complexity (--> security) for the hashing
           );
 
@@ -2279,7 +2276,7 @@ namespace Sloppy
        */
       bool pwhash_str_verify(
           const MemView& pw,   ///< the plain text password that shall be verified
-          const string& hashResult   ///< the hash of the "true" password computed via `crypto_pwhash_str()`
+          const std::string& hashResult   ///< the hash of the "true" password computed via `crypto_pwhash_str()`
           );
 
       /** \brief Verifies a given clear text password against a previously computed password hash;
@@ -2293,8 +2290,8 @@ namespace Sloppy
        * because the password was wrong or because an error occurred.
        */
       bool pwhash_str_verify(
-          const string& pw,   ///< the plain text password that shall be verified
-          const string& hashResult   ///< the hash of the "true" password computed via `crypto_pwhash_str()`
+          const std::string& pw,   ///< the plain text password that shall be verified
+          const std::string& hashResult   ///< the hash of the "true" password computed via `crypto_pwhash_str()`
           );
 
       /** \brief Translates the enums in `PasswdHashStrength' into numerical
@@ -2302,7 +2299,7 @@ namespace Sloppy
        *
        * \returns a pair of `opslimit` and `memlimit` values for the given hash strength
        */
-      pair<unsigned long long, size_t> pwHashConfigToValues(PasswdHashStrength strength);
+      std::pair<unsigned long long, size_t> pwHashConfigToValues(PasswdHashStrength strength);
 
       // Diffie-Hellmann key exchange
       using DH_PublicKey = SodiumKey<SodiumKeyType::Public, crypto_scalarmult_BYTES>;
@@ -2319,7 +2316,7 @@ namespace Sloppy
        *
        * \returns a pair of secret and public key for DH key exchange
        */
-      pair<DH_SecretKey, DH_PublicKey> genDHKeyPair();
+      std::pair<DH_SecretKey, DH_PublicKey> genDHKeyPair();
 
       /** \brief Computes the shared secret for the Diffie-Hellmann key exchange;
        * original documentation [here](https://download.libsodium.org/doc/advanced/scalar_multiplication.html)
@@ -2362,7 +2359,7 @@ namespace Sloppy
        *
        * \returns a pair of secret and public key for client/server key exchange
        */
-      pair<KX_SecretKey, KX_PublicKey> genKeyExchangeKeyPair();
+      std::pair<KX_SecretKey, KX_PublicKey> genKeyExchangeKeyPair();
 
       /** \brief Generates a deterministic public / private key pair for the new crypto_kx_* key
        * exchange functions based on a given seed;
@@ -2372,7 +2369,7 @@ namespace Sloppy
        *
        * \returns a pair of secret and public key for client/server key exchange
        */
-      pair<KX_SecretKey, KX_PublicKey> genKeyExchangeKeyPair(
+      std::pair<KX_SecretKey, KX_PublicKey> genKeyExchangeKeyPair(
           const KX_KeySeed& seed   ///< seed to be used for key generation, ready/unlocked for reading
           );
 
@@ -2388,7 +2385,7 @@ namespace Sloppy
        *
        * \returns a pair of 'rx` and `tx` session keys
        */
-      pair<KX_SessionKey, KX_SessionKey> getClientSessionKeys(
+      std::pair<KX_SessionKey, KX_SessionKey> getClientSessionKeys(
           const KX_PublicKey& clientPubKey,   ///< the client's public key
           const KX_SecretKey& clientSecKey,   ///< the client's secret key, ready/unlocked for reading
           const KX_PublicKey& serverPubKey    ///< the server's public key
@@ -2406,7 +2403,7 @@ namespace Sloppy
        *
        * \returns a pair of 'rx` and `tx` session keys
        */
-      pair<KX_SessionKey, KX_SessionKey> getServerSessionKeys(
+      std::pair<KX_SessionKey, KX_SessionKey> getServerSessionKeys(
           const KX_PublicKey& serverPubKey,   ///< the server's public key
           const KX_SecretKey& serverSecKey,   ///< the server's secret key, ready/unlocked for reading
           const KX_PublicKey& clientPubKey   ///< the client's public key
@@ -2423,7 +2420,7 @@ namespace Sloppy
           void* _libHandle   ///< handle to the dynamically loaded libsodium as returned by `dlopen()`
           );
 
-      static unique_ptr<SodiumLib> inst;   ///< the singleton instance of the lib wrapper
+      static std::unique_ptr<SodiumLib> inst;   ///< the singleton instance of the lib wrapper
 
       void *libHandle;      ///< handle to the dynamically loaded libsodium as returned by `dlopen()`
 
@@ -2473,15 +2470,15 @@ namespace Sloppy
        *
        * \returns a string with the combined encrypted data and authentication tag
        */
-      string aead_encrypt(
+      std::string aead_encrypt(
           int (*funcPtr)(unsigned char *, unsigned long long *, const unsigned char *,
                          unsigned long long, const unsigned char *, unsigned long long,
                          const unsigned char *, const unsigned char *,const unsigned char *),   ///< a pointer to the actual encryption function
           size_t tagSize,   ///< the number of MAC bytes computed by the encryption function
-          const string& msg,   ///< the input message for encryption
+          const std::string& msg,   ///< the input message for encryption
           const MemView& nonce,   ///< the nonce to be used for this specific message
           const MemView& key,   ///< the secret key; the caller has to ensure that the memory is enabled for reading
-          const string& ad = string{}   ///< optional, additional data to be included in the MAC computation
+          const std::string& ad = std::string{}   ///< optional, additional data to be included in the MAC computation
           );
 
       /** \brief An internal, generic handler for AEAD encryption in combined mode
@@ -2586,15 +2583,15 @@ namespace Sloppy
        * \returns a heap-allocated buffer with the combined encrypted data
        * and authentication tag
        */
-      string aead_decrypt(
+      std::string aead_decrypt(
           int (*funcPtr)(unsigned char *, unsigned long long *, unsigned char *,
                          const unsigned char *, unsigned long long, const unsigned char *,
                          unsigned long long, const unsigned char *, const unsigned char *),
           size_t tagSize,   ///< the number of MAC bytes computed by the encryption function
-          const string& cipher,   ///< the combined cipher and authentication tag
+          const std::string& cipher,   ///< the combined cipher and authentication tag
           const MemView& nonce,   ///< the nonce used for this specific message
           const MemView& key,   ///< the secret key; the caller has to ensure that the memory is enabled for reading
-          const string& ad = string{}   ///< optional, additional data to be included in the MAC computation
+          const std::string& ad = std::string{}   ///< optional, additional data to be included in the MAC computation
           );
 
     };
@@ -2732,7 +2729,7 @@ namespace Sloppy
        *
        * \returns a pair of a heap-allocated buffer containing the encrypted data and an message authentication tag.
        */
-      pair<MemArray, SodiumLib::SecretBoxMac> encryptDetached(
+      std::pair<MemArray, SodiumLib::SecretBoxMac> encryptDetached(
           const MemView& msg   ///< the input data that shall be encrypted
           );
 
@@ -2742,8 +2739,8 @@ namespace Sloppy
        *
        * \returns a string containing the encrypted data and an message authentication tag.
        */
-      string encryptCombined(
-          const string& msg   ///< the input string that shall be encrypted
+      std::string encryptCombined(
+          const std::string& msg   ///< the input string that shall be encrypted
           );
 
       /** \brief Encrypts a string using the secret key the current nonce.
@@ -2752,8 +2749,8 @@ namespace Sloppy
        *
        * \returns a pair of a string containing the encrypted data and an message authentication tag.
        */
-      pair<string, SodiumLib::SecretBoxMac> encryptDetached(
-          const string& msg   ///< the input string that shall be encrypted
+      std::pair<std::string, SodiumLib::SecretBoxMac> encryptDetached(
+          const std::string& msg   ///< the input string that shall be encrypted
           );
 
       /** \brief Decrypts a memory buffer using the secret key the current nonce.
@@ -2790,8 +2787,8 @@ namespace Sloppy
        * \returns a string containing the decrypted data or an empty string
        * if the decryption failed (e.g., because the MAC verification failed).
        */
-      string decryptCombined(
-          const string& cipher   ///< the cipher text with the attached MAC
+      std::string decryptCombined(
+          const std::string& cipher   ///< the cipher text with the attached MAC
           );
 
       /** \brief Decrypts a string using the secret key the current nonce.
@@ -2803,8 +2800,8 @@ namespace Sloppy
        * \returns a string containing the decrypted data or an empty string
        * if the decryption failed (e.g., because the MAC verification failed).
        */
-      string decryptDetached(
-          const string& cipher,   ///< the pure cipher text
+      std::string decryptDetached(
+          const std::string& cipher,   ///< the pure cipher text
           const SodiumLib::SecretBoxMac& mac   ///< the MAC for verifying the cipher text
           );
 
@@ -2906,7 +2903,7 @@ namespace Sloppy
        * \throws SodiumInvalidMessage if the provided data is empty
        */
       void append(
-          const string& inData   ///< the data to append to the hash calculation
+          const std::string& inData   ///< the data to append to the hash calculation
           );
 
       /** \brief Terminates the hash calculation and returns the hash value.
@@ -2921,7 +2918,7 @@ namespace Sloppy
        * \returns a string containing the hash or an
        * empty string if `finalize()` or `finalize_string()` has been called before.
        */
-      string finalize_string();
+      std::string finalize_string();
 
     private:
       SodiumLib* lib;
@@ -2997,7 +2994,7 @@ namespace Sloppy
        */
       DiffieHellmannExchanger2(
           bool _isClient,   ///< set to `true` if we're on the client side or to `false` if we're on the server side
-          const string& seed_B64   ///< BASE64-encoded seed for the key generation
+          const std::string& seed_B64   ///< BASE64-encoded seed for the key generation
           );
 
       /** \returns the public key for sending it to the communication peer
@@ -3011,7 +3008,7 @@ namespace Sloppy
        * \returns a `<rx, tx>` pair of secret, symmetric session keys shared
        * between the peers
        */
-      pair<SodiumLib::KX_SessionKey, SodiumLib::KX_SessionKey> getSessionKeys(
+      std::pair<SodiumLib::KX_SessionKey, SodiumLib::KX_SessionKey> getSessionKeys(
           const SodiumLib::KX_PublicKey& othersPublicKey   ///< the public key of the communication partner
           );
 
@@ -3046,7 +3043,7 @@ namespace Sloppy
        * been stored in our own, internal data format as returned by `asString()`.
        */
       PasswordProtectedSecret(
-          const string& data,   ///< the encrypted data as returned by `asString()`
+          const std::string& data,   ///< the encrypted data as returned by `asString()`
           bool isBase64=false   ///< set to true if the data is Base64 encoded
           );
 
@@ -3072,7 +3069,7 @@ namespace Sloppy
        *
        * \returns `true` if the secret data has set / cleared successfully.
        */
-      bool setSecret(const string& sec);
+      bool setSecret(const std::string& sec);
 
       /** \brief Retrieves the currently stored secret if available.
        *
@@ -3083,7 +3080,7 @@ namespace Sloppy
        *
        * \returns the decrypted, stored secret or an empty buffer if there is currently no secret stored
        */
-      string getSecretAsString();
+      std::string getSecretAsString();
 
       /** \brief Retrieves the currently stored secret if available.
        *
@@ -3109,8 +3106,8 @@ namespace Sloppy
        * successfully been re-encrypted using the new password.
        */
       bool changePassword(
-          const string& oldPw,   ///< the old, existing password
-          const string& newPw,   ///< the new password
+          const std::string& oldPw,   ///< the old, existing password
+          const std::string& newPw,   ///< the new password
           SodiumLib::PasswdHashStrength pwStrength = SodiumLib::PasswdHashStrength::Moderate,   ///< the hashing strength for the new password
           SodiumLib::PasswdHashAlgo pwAlgo = SodiumLib::PasswdHashAlgo::Argon2id   ///< the hashing algorithm for the new password
           );
@@ -3131,7 +3128,7 @@ namespace Sloppy
        * password is empty or if the provided password was wrong; `true` if the
        * password has been set successfully.
        */
-      bool setPassword(const string& pw);
+      bool setPassword(const std::string& pw);
 
       /** \returns `true` if we currently store (encrypted) secret content
        */
@@ -3146,7 +3143,7 @@ namespace Sloppy
        * via `setPassword()`; `false` otherwise
        */
       bool isValidPassword(
-          const string& pw   ///< the plain, unencrypted password that shall be checked
+          const std::string& pw   ///< the plain, unencrypted password that shall be checked
           );
 
       /** \returns `true` if the user has previously set a valid password using 'setPassword()'
@@ -3160,7 +3157,7 @@ namespace Sloppy
        *
        * \returns a string that contains the password hashing parameters as well as the encrypted secret
        */
-      string asString(
+      std::string asString(
           bool useBase64 = false   ///< Base64-encode the resulting data
           ) const;
 
@@ -3172,7 +3169,7 @@ namespace Sloppy
       SodiumSecureMemory pwClear;
       SodiumLib::SecretBoxKey symKey;
 
-      void password2SymKey(const string& pw);
+      void password2SymKey(const std::string& pw);
     };
   }
 }

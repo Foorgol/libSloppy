@@ -18,6 +18,8 @@
 
 #include "Timer.h"
 
+using namespace std;
+
 namespace Sloppy
 {
 

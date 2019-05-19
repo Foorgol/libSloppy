@@ -24,6 +24,7 @@
 #include "../Sloppy/Memory.h"
 
 using namespace Sloppy::Crypto;
+using namespace std;
 
 TEST(Crypto, GenRandomString)
 {

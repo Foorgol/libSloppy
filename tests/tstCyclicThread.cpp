@@ -24,6 +24,8 @@
 
 #include "../Sloppy/CyclicWorkerThread.h"
 
+using namespace std;
+
 static constexpr int BaseCycle_ms = 10;
 static constexpr int HookDuration_ms = 10 * BaseCycle_ms;
 static constexpr int WorkerDuration_ms = 4 * BaseCycle_ms;

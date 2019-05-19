@@ -26,8 +26,6 @@
 
 #include "../Memory.h"
 
-using namespace std;
-
 namespace Sloppy
 {
   namespace Crypto
@@ -40,7 +38,7 @@ namespace Sloppy
      *
      * The documentation for `mt19937_64` is provided [here](http://en.cppreference.com/w/cpp/numeric/random/mersenne_twister_engine).
      */
-    extern mt19937_64 rng;
+    extern std::mt19937_64 rng;
 
     /** \brief Generates a random alphanumeric string
      *
@@ -48,24 +46,24 @@ namespace Sloppy
      *
      * \returns a random alphanumeric string of a user-specified length
      */
-    string getRandomAlphanumString(
+    std::string getRandomAlphanumString(
         size_t len  ///< the required number of characters in the string
         );
 
     /** \warning DO NOT USE because it relies on SHA256 for hashing. SHA256 is not suitable
      * for this purpose because it is not sufficiently computation- / memory-heavy!
      */
-    pair<string, string> hashPassword_DEPRECATED(const string& pw, int saltLen, int numCycles);
+    std::pair<std::string, std::string> hashPassword_DEPRECATED(const std::string& pw, int saltLen, int numCycles);
 
     /** \warning DO NOT USE because it relies on SHA256 for hashing. SHA256 is not suitable
      * for this purpose because it is not sufficiently computation- / memory-heavy!
      */
-    string hashPassword_DEPRECATED(const string& pw, const string& salt, int numCycles);
+    std::string hashPassword_DEPRECATED(const std::string& pw, const std::string& salt, int numCycles);
 
     /** \warning DO NOT USE because it relies on SHA256 for hashing. SHA256 is not suitable
      * for this purpose because it is not sufficiently computation- / memory-heavy!
      */
-    bool checkPassword_DEPRECATED(const string& clearPw, const string& hashedPw, const string& salt, int numCycles);
+    bool checkPassword_DEPRECATED(const std::string& clearPw, const std::string& hashedPw, const std::string& salt, int numCycles);
 
     /** \brief Encodes a given memory block to Base64.
      *
@@ -90,7 +88,7 @@ namespace Sloppy
      * \returns a string with the Base64-encoded source data. If the source string
      * was empty, the target string is empty as well.
      */
-    string toBase64(const string& rawData);
+    std::string toBase64(const std::string& rawData);
 
     /** \brief Decodes a memory block from Base64 to plain data.
      *
@@ -117,7 +115,7 @@ namespace Sloppy
      * \returns a string with the decoded source data. If the source string
      * was empty, the target string is empty as well.
      */
-    string fromBase64(const string& b64Data);
+    std::string fromBase64(const std::string& b64Data);
 
     /** \returns the number of bytes for storing a certain number of input bytes in Base64 encoding
      */
@@ -221,7 +219,7 @@ namespace Sloppy
       /** \brief Updates the SHA256 hashing with the next chunk of data
        */
       void nextChunk(
-          const string& input   ///< the data for hashing
+          const std::string& input   ///< the data for hashing
           );
 
       /** \brief Finalizes the hashing and returns the hash value
@@ -230,7 +228,7 @@ namespace Sloppy
        *
        * \returns a string with the SHA256 hash value in hex notation (64 chars)
        */
-      string done();
+      std::string done();
 
       /** \brief Calculates the SHA256 hash for a given string
        *
@@ -239,8 +237,8 @@ namespace Sloppy
        *
        * \returns a string with the SHA256 hash value in hex notation (64 chars)
        */
-      static string hash(
-          const string& input   ///< the input data for hashing
+      static std::string hash(
+          const std::string& input   ///< the input data for hashing
           );
 
       /** \brief Calculates the SHA256 hash for a given memory section
@@ -250,7 +248,7 @@ namespace Sloppy
        *
        * \returns a string with the SHA256 hash value in hex notation (64 chars)
        */
-      static string hash(
+      static std::string hash(
           const MemView& input   ///< the input data for hashing
           );
 

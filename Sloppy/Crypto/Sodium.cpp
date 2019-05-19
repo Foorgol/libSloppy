@@ -27,6 +27,8 @@
 #include "../Net/Net.h"
 #include "Crypto.h"
 
+using namespace std;
+
 namespace Sloppy
 {
   namespace Crypto

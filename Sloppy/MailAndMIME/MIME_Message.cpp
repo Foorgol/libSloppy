@@ -20,6 +20,8 @@
 
 #include "MIME_Message.h"
 
+using namespace std;
+
 namespace Sloppy
 {
   namespace RFC2045

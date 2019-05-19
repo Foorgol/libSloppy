@@ -25,8 +25,6 @@
 #include "Header.h"
 #include "../String.h"
 
-using namespace std;
-
 namespace Sloppy
 {
   namespace RFC822
@@ -48,12 +46,12 @@ namespace Sloppy
        * \throws EmptyMessage if the message data is empty
        * \throws MalformedMessage if the message could not be parsed
        */
-      explicit Message(const string& rawMessage   ///< a string containing the raw message data
+      explicit Message(const std::string& rawMessage   ///< a string containing the raw message data
           );
 
       /** \returns the raw body part of the message
        */
-      string getBodyData() const;
+      std::string getBodyData() const;
 
       /** \returns a pointer to an object representing the email header
        *
@@ -62,8 +60,8 @@ namespace Sloppy
       const Header* getHeaderPtr() const;
 
     private:
-      unique_ptr<Header> hdr;   ///< pointer to an object with the header data
-      string body;   ///< the message body
+      std::unique_ptr<Header> hdr;   ///< pointer to an object with the header data
+      std::string body;   ///< the message body
     };
 
   }

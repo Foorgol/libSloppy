@@ -24,12 +24,10 @@
 #include <tuple>
 #include <string_view>
 
-using namespace std;
-
 namespace Sloppy
 {
   /// a mapping between lowercase and uppercase UTF-8 characters
-  static const vector<pair<string, string>> umlautTranslationTable {
+  static const std::vector<std::pair<std::string, std::string>> umlautTranslationTable {
     {"ä", "Ä"},
     {"ö", "Ö"},
     {"ü", "Ü"},
@@ -62,26 +60,26 @@ namespace Sloppy
   {
   public:
     /// default ctor, creates an empty estring
-    estring() : string() {}
+    estring() : std::string() {}
 
     /// ctor from an C-style string (zero-terminated)
-    estring(const char* s) : string(s) {}
+    estring(const char* s) : std::string(s) {}
 
     /// ctor from an C-style string with given length
-    estring(const char* s, size_type n) : string(s, n) {}
+    estring(const char* s, size_type n) : std::string(s, n) {}
 
     /// copy constructor from an std::string
-    estring(const string& other) : string(other) {}
+    estring(const std::string& other) : std::string(other) {}
 
     /// copy constructor from an estring
     estring(const estring& other)
-      :string{other} {}
+      :std::string{other} {}
 
     /// copy assignment from an estring
     estring& operator =(const estring& other) = default;
 
     /// copy assignment from an std::string
-    estring& operator =(const string& other) { string::operator =(other); return *this; }
+    estring& operator =(const std::string& other) { std::string::operator =(other); return *this; }
 
     /// move constructor from an estring
     estring(estring&& other) = default;
@@ -90,10 +88,10 @@ namespace Sloppy
     estring& operator =(estring&& other) = default;
 
     /// move assignment of std-string
-    estring& operator =(string&& other) { string::operator =(std::move(other)); return *this; }
+    estring& operator =(std::string&& other) { std::string::operator =(std::move(other)); return *this; }
 
     /// move constructor from std-string
-    estring(string&& other) noexcept : string(std::move(other)) {}
+    estring(std::string&& other) noexcept : std::string(std::move(other)) {}
 
     //----------------------------------------------------------------------------
 
@@ -109,7 +107,7 @@ namespace Sloppy
      * \returns an empty estring if idxFirst was beyond the last character in the string
      */
     estring slice(size_type idxFirst,                ///< index of the first character
-                  size_type idxLast = string::npos   ///< index of the last character
+                  size_type idxLast = std::string::npos   ///< index of the last character
         ) const;
 
     //----------------------------------------------------------------------------
@@ -196,7 +194,7 @@ namespace Sloppy
      *
      * \returns `true` if the string start with the reference string; `false` otherwise
      */
-    bool startsWith(const string& ref    ///< the reference string used for the comparision
+    bool startsWith(const std::string& ref    ///< the reference string used for the comparision
                        ) const;
 
     //----------------------------------------------------------------------------
@@ -210,7 +208,7 @@ namespace Sloppy
      *
      * \returns `true` if the string ends with the reference string; `false` otherwise
      */
-    bool endsWith(const string& ref    ///< the reference string used for the comparision
+    bool endsWith(const std::string& ref    ///< the reference string used for the comparision
                        ) const;
 
     //----------------------------------------------------------------------------
@@ -281,7 +279,7 @@ namespace Sloppy
      *
      * \returns a copy of the string as std::string
      */
-    string toStdString() const;
+    std::string toStdString() const;
 
     //----------------------------------------------------------------------------
 
@@ -292,8 +290,8 @@ namespace Sloppy
      *
      *  The delimiter is of type string& so that we can use std:string as well as estring for this parameter.
      */
-    estring(const vector<estring>& parts,  ///< a vector containing the string parts
-            const string& delim            ///< the delimiter string used for the concatenation of the parts
+    estring(const std::vector<estring>& parts,  ///< a vector containing the string parts
+            const std::string& delim            ///< the delimiter string used for the concatenation of the parts
             );
 
     //----------------------------------------------------------------------------
@@ -307,7 +305,7 @@ namespace Sloppy
      *
      * \returns `true` if the string contains the reference string; `false` otherwise
      */
-    bool contains(const string& ref    ///< the reference string used for the search
+    bool contains(const std::string& ref    ///< the reference string used for the search
                        ) const;
 
     //----------------------------------------------------------------------------
@@ -320,8 +318,8 @@ namespace Sloppy
      * \returns `true` if an replacement occurred, `false` otherwise;
      * \returns `false` if the `key` was empty
      */
-    bool replaceFirst(const string& key,   ///< the string to search for
-                      const string& value  ///< the string to replace `key` with
+    bool replaceFirst(const std::string& key,   ///< the string to search for
+                      const std::string& value  ///< the string to replace `key` with
                       );
 
     //----------------------------------------------------------------------------
@@ -334,8 +332,8 @@ namespace Sloppy
      * \returns `true` if an replacement occurred, `false` otherwise;
      * \returns `false` if the `key` was empty
      */
-    bool replaceAll(const string& key,   ///< the string to search for
-                    const string& value  ///< the string to replace `key` with
+    bool replaceAll(const std::string& key,   ///< the string to search for
+                    const std::string& value  ///< the string to replace `key` with
                     );
 
     //----------------------------------------------------------------------------
@@ -354,7 +352,7 @@ namespace Sloppy
      */
     void replaceSection(size_type idxFirst,  ///< index of the first character to replace
                            size_type idxLast,   ///< index of the last character to replace
-                           const string& s      ///< the string to insert
+                           const std::string& s      ///< the string to insert
                            );
 
     //----------------------------------------------------------------------------
@@ -382,7 +380,7 @@ namespace Sloppy
      *
      *  \note Unlike QString, this method modifies the string directly and does *not* return a copy!
      */
-    void arg(const string& s   ///< the string to replace %1, %2, ... with
+    void arg(const std::string& s   ///< the string to replace %1, %2, ... with
              );
 
     //----------------------------------------------------------------------------
@@ -395,7 +393,7 @@ namespace Sloppy
     void arg(long i) { arg1<long>(i); }
     void arg(unsigned int i) { arg1<unsigned int>(i); }
     void arg(size_t i) { arg1<size_t>(i); }
-    void arg(uint8_t i) { arg(to_string(static_cast<unsigned>(i))); }
+    void arg(uint8_t i) { arg(std::to_string(static_cast<unsigned>(i))); }
 
     //----------------------------------------------------------------------------
 
@@ -415,7 +413,7 @@ namespace Sloppy
      *  \note Unlike QString, this method modifies the string directly and does *not* return a copy!
      */
     template <typename T>
-    void arg1(T& someNumber) { arg(to_string(someNumber)); }
+    void arg1(T& someNumber) { arg(std::to_string(someNumber)); }
 
     //----------------------------------------------------------------------------
 
@@ -426,11 +424,11 @@ namespace Sloppy
      *  \note Unlike QString, this method modifies the string directly and does *not* return a copy!
      */
     template<typename T>
-    void arg2(const T& v, const string& fmt)
+    void arg2(const T& v, const std::string& fmt)
     {
       char buf[100];
       snprintf(buf, 100, fmt.c_str(), v);
-      arg(string{buf});
+      arg(std::string{buf});
     }
 
     //----------------------------------------------------------------------------
@@ -461,7 +459,7 @@ namespace Sloppy
      *
      * \returns an array (possibly empty) with substrings
      */
-    vector<estring> split(const string& delim,    ///< the delimiter used for the splitting
+    std::vector<estring> split(const std::string& delim,    ///< the delimiter used for the splitting
                           bool keepEmptyParts,    ///< set to `true` to keep empty parts in the result list
                           bool trimParts          ///< set to `true` to remove surrounding whitespaces from the parts
                           ) const;
@@ -480,10 +478,10 @@ namespace Sloppy
      *
      * \returns a string_view for this string
      */
-    string_view toStringView() const { return string_view{c_str(), size()}; }
+    std::string_view toStringView() const { return std::string_view{c_str(), size()}; }
   };
 
-  using StringList = vector<estring>;
+  using StringList = std::vector<estring>;
 
 }
 

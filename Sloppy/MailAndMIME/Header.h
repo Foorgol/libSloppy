@@ -25,8 +25,6 @@
 #include "MailAndMIME.h"
 #include "../String.h"
 
-using namespace std;
-
 namespace Sloppy
 {
   namespace RFC822
@@ -46,8 +44,8 @@ namespace Sloppy
        * Assumes that the headers are already unfolded.
        */
       HeaderField(
-          const string& fName,   ///< the header's name
-          const string& fBody    ///< the header field's content
+          const std::string& fName,   ///< the header's name
+          const std::string& fBody    ///< the header field's content
           );
 
       /** \returns `true` if the header field's name matches a given string.
@@ -55,7 +53,7 @@ namespace Sloppy
        * The comparision is case-insensitive.
        */
       bool operator ==(
-          const string& fName   ///< the string to check the field's name against
+          const std::string& fName   ///< the string to check the field's name against
           ) const;
 
       /** \returns `true` if the header field's name NOT matches a given string.
@@ -63,7 +61,7 @@ namespace Sloppy
        * The comparision is case-insensitive.
        */
       bool operator !=(
-          const string& fName   ///< the string to check the field's name against
+          const std::string& fName   ///< the string to check the field's name against
           ) const;
 
       /** \returns the raw field content including comments etc.
@@ -125,8 +123,8 @@ namespace Sloppy
        *
        * \returns a list of all field bodies for a given header name
        */
-      vector<estring> getRawFieldBody(
-          const string& fieldName   ///< the name of the header field to retrieve
+      std::vector<estring> getRawFieldBody(
+          const std::string& fieldName   ///< the name of the header field to retrieve
           ) const;
 
       /** \returns `true` if the message header contains a field with a given name
@@ -134,7 +132,7 @@ namespace Sloppy
        * The header field's name is treated case-insensitive.
        */
       bool hasField(
-          const string& fieldName   ///< the name of the header field to search for
+          const std::string& fieldName   ///< the name of the header field to search for
           ) const;
 
       /** \returns the number of fields in the header.
@@ -155,7 +153,7 @@ namespace Sloppy
        *
        * \returns the raw body (incl. comments) of the requested header field or "" if the header field doesn't exist
        */
-      string getRawFieldBody_Simple(const string& fieldName) const;
+      std::string getRawFieldBody_Simple(const std::string& fieldName) const;
 
       /** \brief Searches for the first occurence of a header with a given name and returns it's content
        *
@@ -163,10 +161,10 @@ namespace Sloppy
        *
        * \returns the pure body without comments of the requested header field or "" if the header field doesn't exist
        */
-      string getFieldBody_Simple(const string& fieldName) const;
+      std::string getFieldBody_Simple(const std::string& fieldName) const;
 
     private:
-      vector<HeaderField> fields;   ///< a list of all header fields in this header
+      std::vector<HeaderField> fields;   ///< a list of all header fields in this header
     };
 
   }

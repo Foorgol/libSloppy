@@ -26,6 +26,7 @@
 
 using namespace Sloppy;
 using namespace Sloppy::Crypto;
+using namespace std;
 
 TEST(Sodium, SodiumInit)
 {

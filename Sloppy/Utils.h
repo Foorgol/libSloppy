@@ -34,8 +34,6 @@
 #include "ManagedFileDescriptor.h"
 #include "json.hpp"
 
-using namespace std;
-
 // a forward declaration
 namespace boost { namespace filesystem { class path; }}
 
@@ -47,7 +45,7 @@ namespace std
    *
    * \returns a `std::string` that contains a copy of the provided C string
    */
-  string to_string(const char* cString);
+  std::string to_string(const char* cString);
 
   /** \brief A helper function in namespace `std` provided by libSloppy for
    * usage in template functions because we can call
@@ -55,7 +53,7 @@ namespace std
    *
    * \returns the provided parameter
    */
-  const string& to_string(const string& s);
+  const std::string& to_string(const std::string& s);
 }
 
 namespace Sloppy
@@ -88,16 +86,16 @@ namespace Sloppy
    * \returns a string with a comma-separated list of values
    */
   template<typename T>
-  string commaSepStringFromValues(
-      vector<T> vals,   ///< the list of values that shall be converted
-      const string& delim = ","   ///< the delimiter between two items
+  std::string commaSepStringFromValues(
+      std::vector<T> vals,   ///< the list of values that shall be converted
+      const std::string& delim = ","   ///< the delimiter between two items
       )
   {
-    string result;
+    std::string result;
     for (const T& v : vals)
     {
       if (!result.empty()) result += delim;
-      result += to_string(v);
+      result += std::to_string(v);
     }
 
     return result;
@@ -110,9 +108,9 @@ namespace Sloppy
    * \returns a string with a comma-separated list of values
    */
   template<typename T>
-  string commaSepStringFromValues(
-      initializer_list<T> vals,   ///< the list of values that shall be converted
-      const string& delim = ","   ///< the delimiter between two items
+  std::string commaSepStringFromValues(
+      std::initializer_list<T> vals,   ///< the list of values that shall be converted
+      const std::string& delim = ","   ///< the delimiter between two items
       )
   {
     // repeat the code from the `vector` implementation above.
@@ -125,11 +123,11 @@ namespace Sloppy
     // which is probably a bad idea
 
 
-    string result;
+    std::string result;
     for (const T& v : vals)
     {
       if (!result.empty()) result += delim;
-      result += to_string(v);
+      result += std::to_string(v);
     }
 
     return result;
@@ -156,7 +154,7 @@ namespace Sloppy
    * \returns `true` if the provided string contains a valid email address (read: if it matches the regex)
    */
   bool isValidEmailAddress(
-          const string& email   ///< a string containing the (potential) email address
+          const std::string& email   ///< a string containing the (potential) email address
           );
 
 
@@ -169,7 +167,7 @@ namespace Sloppy
    */
   template<typename ElemType>
   bool isInVector(
-          const vector<ElemType>& vec,   ///< the vector to search in
+          const std::vector<ElemType>& vec,   ///< the vector to search in
           const ElemType& el   ///< the value to search for in the vector
           )
   {
@@ -185,7 +183,7 @@ namespace Sloppy
    */
   template<class T>
   size_t eraseAllOccurencesFromVector(
-          vector<T>& vec,   ///< the vector to erase the values from
+          std::vector<T>& vec,   ///< the vector to erase the values from
           const T& val   ///< the value to erase from the vector
           )
   {
@@ -206,7 +204,7 @@ namespace Sloppy
    * `true` if it is not empty AND not exceeding an upper length limit (if provided)
    */
   bool trimAndCheckString(
-          string& s,   ///< the string to be trimmed and checked
+          std::string& s,   ///< the string to be trimmed and checked
           size_t maxLen = 0   ///< an upper length limit to check; set to 0 to disable checking a max length
           );
 
@@ -215,7 +213,7 @@ namespace Sloppy
    * \returns a vector of strings containing the file names
    */
   StringList getAllFilesInDirTree(
-          const string& baseDir,   ///< the root of the recursive search, either as absolute path or relative to the current work dir
+          const std::string& baseDir,   ///< the root of the recursive search, either as absolute path or relative to the current work dir
           bool includeDirNameInList=false   ///< set to `true` to include directory names in the result list; if `false`, only files will be returned
           );
 
@@ -233,7 +231,7 @@ namespace Sloppy
    *
    * \returns the current work dir as a string
    */
-  string getCurrentWorkDir();
+  std::string getCurrentWorkDir();
 
   /** \brief Checks whether a string points to an existing regular file
    *
@@ -247,7 +245,7 @@ namespace Sloppy
    * if the target doesn't exist or is not a file.
    */
   bool isFile(
-          const string& fName   ///< string containing the file path to check (abs. or rel. path)
+          const std::string& fName   ///< string containing the file path to check (abs. or rel. path)
           );
 
   /** \brief Checks whether a string points to an existing directory
@@ -260,7 +258,7 @@ namespace Sloppy
    * if the target doesn't exist or is not a directory.
    */
   bool isDirectory(
-          const string& dirName   ///< string containing the directory path to check (abs. or rel. path)
+          const std::string& dirName   ///< string containing the directory path to check (abs. or rel. path)
           );
 #endif
 
@@ -278,7 +276,7 @@ namespace Sloppy
    *
    * \returns a string representation of the contained value as returned by the library call `to_string()`
    */
-  string json2String(
+  std::string json2String(
           const nlohmann::json& jv,   ///< the JSON value to convert
           int numDigits = 6   ///< an optional value that defines the number of digits for the conversion of floating point numbers
           );
@@ -291,7 +289,7 @@ namespace Sloppy
    */
   bool jsonObjectHasKey(
       const nlohmann::json& js,   ///< the JSON object instance to check
-      const string& key,   ///< the key to search for in the object
+      const std::string& key,   ///< the key to search for in the object
       nlohmann::json::value_t requiredValueType   ///< the required type of the value associated with the key
       );
 
@@ -302,7 +300,7 @@ namespace Sloppy
    */
   bool jsonObjectHasKey(
       const nlohmann::json& js,   ///< the JSON object instance to check
-      const string& key   ///< the key to search for in the object
+      const std::string& key   ///< the key to search for in the object
       );
 
   //----------------------------------------------------------------------------
@@ -370,7 +368,7 @@ namespace Sloppy
      * or `false` otherwise (bytes written != bytes provided).
      */
     bool blockingWrite(
-        const string& data   ///< a string containing the data to write
+        const std::string& data   ///< a string containing the data to write
         );
 
     /** \brief Executes a blocking write operation on the write pipe using `write()'
@@ -468,7 +466,7 @@ namespace Sloppy
    *
    * \returns a pair of two BiDirPipeEnd objects, one for each pipe endpoint.
    */
-  pair<BiDirPipeEnd, BiDirPipeEnd> createBirectionalPipe();
+  std::pair<BiDirPipeEnd, BiDirPipeEnd> createBirectionalPipe();
 
   /** \brief Creates a simple, one-directional pipe
    *
@@ -477,7 +475,7 @@ namespace Sloppy
    *
    * \returns a pair of <readFileDescr, writeFileDescr>
    */
-  pair<ManagedFileDescriptor, ManagedFileDescriptor> createSimplePipe();
+  std::pair<ManagedFileDescriptor, ManagedFileDescriptor> createSimplePipe();
 
 #endif
 

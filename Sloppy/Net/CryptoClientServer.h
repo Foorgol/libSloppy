@@ -26,10 +26,6 @@
 #include "../Crypto/Sodium.h"
 #include "../Crypto/Crypto.h"
 
-using namespace std;
-
-using namespace Sloppy::Crypto;
-
 namespace Sloppy
 {
   namespace Net

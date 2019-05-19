@@ -21,6 +21,8 @@
 #include "MailAndMIME.h"
 #include "Message.h"
 
+using namespace std;
+
 namespace Sloppy
 {
   namespace RFC822

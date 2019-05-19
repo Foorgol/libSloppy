@@ -33,18 +33,16 @@
 #include "../String.h"
 #include "../Memory.h"
 
-using namespace std;
-
 namespace Sloppy
 {
   namespace Net
   {
     class InvalidHostname{};
 
-    using ByteString = basic_string<uint8_t>;
+    using ByteString = std::basic_string<uint8_t>;
 
 #ifndef WIN32
-    sockaddr_in fillSockAddr(const string& hostName, int port);
+    sockaddr_in fillSockAddr(const std::string& hostName, int port);
 #endif
 
     //----------------------------------------------------------------------------
@@ -68,7 +66,7 @@ namespace Sloppy
       /** \brief Appends a string to the message
        */
       void addString(
-          const string& s      ///< the string to append to the message
+          const std::string& s      ///< the string to append to the message
           );
 
       /** \brief Appends a single byte to the message
@@ -129,7 +127,7 @@ namespace Sloppy
       /** \brief adds a list of other OutMessages to the message
        */
       void addMessageList(
-          const vector<OutMessage>& msgList
+          const std::vector<OutMessage>& msgList
           );
 
       /** \brief Allows for direct, low-level manipulation of the message data
@@ -204,7 +202,7 @@ namespace Sloppy
        * The caller has to ensure that the referenced string exists long enough.
        */
       explicit InMessage(
-          const string& s   ///< a string with the data that shall be dissected
+          const std::string& s   ///< a string with the data that shall be dissected
           )
         : InMessage(MemView{s}) {}
 
@@ -377,7 +375,7 @@ namespace Sloppy
        * The returned sub-messages OWN their data. This is because it is likely that
        * the submessages live longer than their frame message.
        */
-      vector<InMessage> getMessageList();
+      std::vector<InMessage> getMessageList();
 
       /** \brief Extracts a data block as a plain memory buffer.
        *
@@ -521,7 +519,7 @@ namespace Sloppy
        * \throws std::out_of_range if the source data is not sufficiently long for parsing the message type
        */
       TypedInMessage(
-          const string& s   ///< the string containing the source data
+          const std::string& s   ///< the string containing the source data
           )
         :InMessage{s}, msgType{static_cast<TypeEnum>(getUI32())} {}
 

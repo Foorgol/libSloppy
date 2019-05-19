@@ -47,8 +47,6 @@
 #include "ThreadSafeQueue.h"
 #include "ThreadStats.h"
 
-using namespace std;
-
 namespace Sloppy
 {
   /** \brief Template class for a "data consumer" or "worker" that takes input

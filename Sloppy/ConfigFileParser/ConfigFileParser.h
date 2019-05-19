@@ -32,7 +32,7 @@ namespace Sloppy
 {
   static constexpr const char* defaultSectionName = "__DEFAULT__";
 
-  using KeyValueMap = std::unordered_map<string, string>;
+  using KeyValueMap = std::unordered_map<std::string, std::string>;
 
   /** \brief A struct that takes section name, key name and constraint type for
    * a constraint check.
@@ -41,8 +41,8 @@ namespace Sloppy
    */
   struct ConstraintCheckData
   {
-    string secName;
-    string keyName;
+    std::string secName;
+    std::string keyName;
     ValueConstraint c;
   };
 
@@ -77,31 +77,31 @@ namespace Sloppy
      *
      * \throws std::invalid_argument if the input stream is empty or invalid
      */
-    explicit Parser(istream& inStream);
+    explicit Parser(std::istream& inStream);
 
     /** \brief Ctor reading the ini-data from a file
      *
      * \throws std::invalid_argument if the file doesn't exist or is empty
      */
-    explicit Parser(const string& fName);
+    explicit Parser(const std::string& fName);
 
     /** \returns true if the config file contains a given section
      */
     bool hasSection(
-        const string& secName   ///< the section name to look for
+        const std::string& secName   ///< the section name to look for
         ) const;
 
     /** \returns true if a given section contains a given key
      */
     bool hasKey(
-        const string& secName,   ///< the name of section to look for
-        const string& keyName    ///< the name of the key in that section
+        const std::string& secName,   ///< the name of section to look for
+        const std::string& keyName    ///< the name of the key in that section
         ) const;
 
     /** \returns true if the default section contains a given key
      */
     bool hasKey(
-        const string& keyName   ///< the name of the key to look for
+        const std::string& keyName   ///< the name of the key to look for
         ) const;
 
     /** \brief tries to retrieve the value of a given key from a given section.
@@ -110,9 +110,9 @@ namespace Sloppy
      *
      * \returns an optional<estring> that either contains the requested value or is empty
      */
-    optional<estring> getValue(
-        const string& secName,   ///< the name of the section containing the key
-        const string& keyName    ///< the name of key in that section
+    std::optional<estring> getValue(
+        const std::string& secName,   ///< the name of the section containing the key
+        const std::string& keyName    ///< the name of key in that section
         ) const;
 
     /** \brief tries to retrieve the value of a given key from the default section.
@@ -121,8 +121,8 @@ namespace Sloppy
      *
      * \returns an optional<estring> that either contains the requested value or is empty
      */
-    optional<estring> getValue(
-        const string& keyName   ///< the name of the key
+    std::optional<estring> getValue(
+        const std::string& keyName   ///< the name of the key
         ) const;
 
     /** \brief tries to retrieve the value of a given key from a given section as bool.
@@ -138,9 +138,9 @@ namespace Sloppy
      *
      * \returns an optional<bool> that contains the requested value; for invalid keys or values, the return value is empty.
      */
-    optional<bool> getValueAsBool(
-        const string& secName,   ///< the name of the section containing the key
-        const string& keyName    ///< the name of key in that section
+    std::optional<bool> getValueAsBool(
+        const std::string& secName,   ///< the name of the section containing the key
+        const std::string& keyName    ///< the name of key in that section
         ) const;
 
     /** \brief tries to retrieve the value of a given key from the default section as bool.
@@ -155,8 +155,8 @@ namespace Sloppy
      *
      * \returns an optional<bool> that contains the requested value; for invalid keys or values, the return value is empty.
      */
-    optional<bool> getValueAsBool(
-        const string& keyName   ///< the name of the key
+    std::optional<bool> getValueAsBool(
+        const std::string& keyName   ///< the name of the key
         ) const;
 
     /** \brief tries to retrieve the value of a given key from a given section as an integer.
@@ -166,7 +166,7 @@ namespace Sloppy
      *
      * \returns an optional<int> that contains the requested value; for invalid keys or values, the return value is empty.
      */
-    optional<int> getValueAsInt(const string& secName, const string& keyName) const;
+    std::optional<int> getValueAsInt(const std::string& secName, const std::string& keyName) const;
 
     /** \brief tries to retrieve the value of a given key from a the default section as an integer.
      *
@@ -175,7 +175,7 @@ namespace Sloppy
      *
      * \returns an optional<int> that contains the requested value; for invalid keys or values, the return value is empty.
      */
-    optional<int> getValueAsInt(const string& keyName) const;
+    std::optional<int> getValueAsInt(const std::string& keyName) const;
 
     /** \brief Checks whether a key/value-pair satisfies a given constraint.
      *
@@ -188,9 +188,9 @@ namespace Sloppy
      * \returns `true` if the key and its value satisfy the requested constraint.
      */
     bool checkConstraint(
-        const string& keyName,    ///< the name of the key
+        const std::string& keyName,    ///< the name of the key
         ValueConstraint c,     ///< the constraint to check
-        string* errMsg = nullptr  ///< an optional pointer to a string for returning a human-readable error message
+        std::string* errMsg = nullptr  ///< an optional pointer to a string for returning a human-readable error message
         ) const;
 
     /** \brief Checks whether a key/value-pair satisfies a given constraint.
@@ -204,10 +204,10 @@ namespace Sloppy
      * \returns `true` if the key and its value satisfy the requested constraint.
      */
     bool checkConstraint(
-        const string& secName,    ///< the name of the section containing the key
-        const string& keyName,    ///< the name of the key
+        const std::string& secName,    ///< the name of the section containing the key
+        const std::string& keyName,    ///< the name of the key
         ValueConstraint c,     ///< the constraint to check
-        string* errMsg = nullptr  ///< an optional pointer to a string for returning a human-readable error message
+        std::string* errMsg = nullptr  ///< an optional pointer to a string for returning a human-readable error message
         ) const;
 
     /** \brief Checks whether a key/value-pair satisfies a given constraint.
@@ -225,7 +225,7 @@ namespace Sloppy
      */
     bool checkConstraint(
         const ConstraintCheckData& ccd,   ///< section name, key name and constraint for checking
-        string* errMsg = nullptr  ///< an optional pointer to a string for returning a human-readable error message
+        std::string* errMsg = nullptr  ///< an optional pointer to a string for returning a human-readable error message
         ) const;
 
     /** \brief Bulk checks the config file agains a list of constraints
@@ -233,9 +233,9 @@ namespace Sloppy
      * \returns `true` if ALL of the provided constraints are met; `false` if ANY of the provided contraints failed.
      */
     bool bulkCheckConstraints(
-        vector<ConstraintCheckData> constraintList,   ///< the list of contraints to check
+        std::vector<ConstraintCheckData> constraintList,   ///< the list of contraints to check
         bool logErrorToConsole = true,   ///< if `true`, an error message for the frist unmet contraint is printed to `cerr`
-        string* errMsg = nullptr   ///< an optional pointer to a string for returning a human-readable error message for the first unmet constraint
+        std::string* errMsg = nullptr   ///< an optional pointer to a string for returning a human-readable error message for the first unmet constraint
         ) const;
 
     /** \brief Checks whether a key contains an integer in a given value range.
@@ -247,11 +247,11 @@ namespace Sloppy
      * \returns `true` if the key contains an integer and the value is within the given min/max range
      */
     bool checkConstraint_IntRange(
-        const string& secName,    ///< the name of the section containing the key
-        const string& keyName,    ///< the name of the key
-        optional<int> minVal,     ///< if provided, the value will be checked against this min value
-        optional<int> maxVal,     ///< if provided, the value will be checked against this max value
-        string* errMsg = nullptr  ///< an optional pointer to a string for returning a human-readable error message
+        const std::string& secName,    ///< the name of the section containing the key
+        const std::string& keyName,    ///< the name of the key
+        std::optional<int> minVal,     ///< if provided, the value will be checked against this min value
+        std::optional<int> maxVal,     ///< if provided, the value will be checked against this max value
+        std::string* errMsg = nullptr  ///< an optional pointer to a string for returning a human-readable error message
         ) const;
 
     /** \brief Checks whether a key contains an integer in a given value range.
@@ -263,10 +263,10 @@ namespace Sloppy
      * \returns `true` if the key contains an integer and the value is within the given min/max range
      */
     bool checkConstraint_IntRange(
-        const string& keyName,    ///< the name of the key
-        optional<int> minVal,     ///< if provided, the value will be checked against this min value
-        optional<int> maxVal,     ///< if provided, the value will be checked against this max value
-        string* errMsg = nullptr  ///< an optional pointer to a string for returning a human-readable error message
+        const std::string& keyName,    ///< the name of the key
+        std::optional<int> minVal,     ///< if provided, the value will be checked against this min value
+        std::optional<int> maxVal,     ///< if provided, the value will be checked against this max value
+        std::string* errMsg = nullptr  ///< an optional pointer to a string for returning a human-readable error message
         ) const;
 
 
@@ -282,11 +282,11 @@ namespace Sloppy
      * \returns `true` if the key contains a string and its length is within the given min/max range
      */
     bool checkConstraint_StrLen(
-        const string& secName,    ///< the name of the section containing the key
-        const string& keyName,    ///< the name of the key
-        optional<size_t> minLen,     ///< if provided, the string will be checked against this min length
-        optional<size_t> maxLen,     ///< if provided, the string will be checked against this max length
-        string* errMsg = nullptr  ///< an optional pointer to a string for returning a human-readable error message
+        const std::string& secName,    ///< the name of the section containing the key
+        const std::string& keyName,    ///< the name of the key
+        std::optional<size_t> minLen,     ///< if provided, the string will be checked against this min length
+        std::optional<size_t> maxLen,     ///< if provided, the string will be checked against this max length
+        std::string* errMsg = nullptr  ///< an optional pointer to a string for returning a human-readable error message
         ) const;
 
     /** \brief Checks whether a key contains an string with a length in a given range.
@@ -301,22 +301,22 @@ namespace Sloppy
      * \returns `true` if the key contains a string and its length is within the given min/max range
      */
     bool checkConstraint_StrLen(
-        const string& keyName,    ///< the name of the key
-        optional<size_t> minLen,     ///< if provided, the string will be checked against this min length
-        optional<size_t> maxLen,     ///< if provided, the string will be checked against this max length
-        string* errMsg = nullptr  ///< an optional pointer to a string for returning a human-readable error message
+        const std::string& keyName,    ///< the name of the key
+        std::optional<size_t> minLen,     ///< if provided, the string will be checked against this min length
+        std::optional<size_t> maxLen,     ///< if provided, the string will be checked against this max length
+        std::string* errMsg = nullptr  ///< an optional pointer to a string for returning a human-readable error message
         ) const;
 
     /** \returns a list of all sections including the default section
      */
-    vector<string> allSections() const;
+    std::vector<std::string> allSections() const;
 
   protected:
     /** \brief Does the actual parsing job and is called from the various ctors
      */
-    void fillFromStream(istream& inStream);
+    void fillFromStream(std::istream& inStream);
 
-    std::unordered_map<string, KeyValueMap> content{};   ///< a map of key-value pairs for each section; this is the actual content of the ini file
+    std::unordered_map<std::string, KeyValueMap> content{};   ///< a map of key-value pairs for each section; this is the actual content of the ini file
 
     /** \brief Creates a new, empty key/value-map for a given section in the overall `content` container or returns a reference the section map if the section already exists.
      *
@@ -327,7 +327,7 @@ namespace Sloppy
      * \returns A reference to the (possibly empty) key/value map for a given section
      */
     KeyValueMap& getOrCreateSection(
-        const string& secName   ///< the name of the section to get the key/value map for
+        const std::string& secName   ///< the name of the section to get the key/value map for
         );
 
     /** \brief Stores a value for a given key in a given section
@@ -339,9 +339,9 @@ namespace Sloppy
      * If no key/value map for the particular section exists, a new map is created.
      */
     void insertOrOverwriteValue(
-        const string& secName,    ///< the section name for the key/value pair
-        const string& keyName,    ///< the key name
-        const string& val         ///< the key's value
+        const std::string& secName,    ///< the section name for the key/value pair
+        const std::string& keyName,    ///< the key name
+        const std::string& val         ///< the key's value
         );
 
     /** \brief Stores a value for a given key in a given key/value map
@@ -352,8 +352,8 @@ namespace Sloppy
      */
     void insertOrOverwriteValue(
         KeyValueMap& sec,        ///< the key/value map for storing the value
-        const string& keyName,   ///< the key name
-        const string& val        ///< the key's value
+        const std::string& keyName,   ///< the key name
+        const std::string& val        ///< the key's value
         );
   };
 

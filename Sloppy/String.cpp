@@ -23,6 +23,8 @@
 
 #include "String.h"
 
+using namespace std;
+
 namespace Sloppy
 {
 

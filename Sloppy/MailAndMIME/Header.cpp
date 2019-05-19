@@ -21,6 +21,8 @@
 
 #include "Header.h"
 
+using namespace std;
+
 namespace Sloppy
 {
   namespace RFC822

@@ -23,6 +23,8 @@
 
 #include "../Sloppy/Timer.h"
 
+using namespace std;
+
 TEST(Timer, BasicUsage)
 {
   Sloppy::Timer t;

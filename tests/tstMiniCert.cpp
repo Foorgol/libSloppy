@@ -26,6 +26,7 @@
 
 using namespace Sloppy::Crypto;
 using namespace Sloppy::MiniCert;
+using namespace std;
 
 class MiniCertTestFixture : public ::testing::Test
 {

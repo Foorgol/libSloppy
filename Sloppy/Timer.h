@@ -40,8 +40,6 @@
 #include <string>
 #include <chrono>
 
-using namespace std;
-
 namespace Sloppy
 {
   /** \brief A basic timer for measuring durations and checking timeouts
@@ -54,7 +52,7 @@ namespace Sloppy
     /** \brief Ctor for a new timer that is started immediately and that
      * has no timeout set.
      */
-    Timer() : startTime{chrono::high_resolution_clock::now()}, isStopped{false}, hasTimeoutSet{false} {}
+    Timer() : startTime{std::chrono::high_resolution_clock::now()}, isStopped{false}, hasTimeoutSet{false} {}
 
     /** \brief Stops the timer.
      *
@@ -79,61 +77,61 @@ namespace Sloppy
     {
       if (isStopped)
       {
-        return chrono::duration_cast<Resolution>(stopTime - startTime);
+        return std::chrono::duration_cast<Resolution>(stopTime - startTime);
       }
 
-      chrono::high_resolution_clock::time_point now = chrono::high_resolution_clock::now();
-      return chrono::duration_cast<Resolution>(now - startTime);
+      std::chrono::high_resolution_clock::time_point now = std::chrono::high_resolution_clock::now();
+      return std::chrono::duration_cast<Resolution>(now - startTime);
     }
 
     /** \returns the elapsed time in nanoseconds
      */
-    long getTime__ns() const { return getTime<chrono::nanoseconds>().count(); }
+    long getTime__ns() const { return getTime<std::chrono::nanoseconds>().count(); }
 
     /** \returns the elapsed time in microseconds, truncated
      */
-    long getTime__us() const { return getTime<chrono::microseconds>().count(); }
+    long getTime__us() const { return getTime<std::chrono::microseconds>().count(); }
 
     /** \returns the elapsed time in milliseconds, truncated
      */
-    long getTime__ms() const { return getTime<chrono::milliseconds>().count(); }
+    long getTime__ms() const { return getTime<std::chrono::milliseconds>().count(); }
 
     /** \returns the elapsed time in seconds, truncated
      */
-    long getTime__secs() const { return getTime<chrono::seconds>().count(); }
+    long getTime__secs() const { return getTime<std::chrono::seconds>().count(); }
 
     /** \returns the elapsed time in seconds in `double` resolution incl. decimals
      */
-    double getTime__secsDouble() const { return getTime<chrono::duration<double>>().count(); }
+    double getTime__secsDouble() const { return getTime<std::chrono::duration<double>>().count(); }
 
     /** \returns the elapsed time in milliseconds in `double` resolution incl. decimals
      */
-    double getTime__msDouble() const { return getTime<chrono::duration<double, milli>>().count(); }
+    double getTime__msDouble() const { return getTime<std::chrono::duration<double, std::milli>>().count(); }
 
     /** \brief Sets or updates the timeout duration in a custom resolution
      */
     template<typename Resolution>
     void setTimeoutDuration(const Resolution& timeout)
     {
-      timeoutDuration = chrono::duration_cast<chrono::nanoseconds>(timeout);
+      timeoutDuration = std::chrono::duration_cast<std::chrono::nanoseconds>(timeout);
       hasTimeoutSet = true;
     }
 
     /** \brief Sets or updates the timeout duration in nanosecons
      */
-    void setTimeoutDuration__ns(long ns) { setTimeoutDuration<chrono::nanoseconds>(chrono::nanoseconds{ns}); }
+    void setTimeoutDuration__ns(long ns) { setTimeoutDuration<std::chrono::nanoseconds>(std::chrono::nanoseconds{ns}); }
 
     /** \brief Sets or updates the timeout duration in microseconds
      */
-    void setTimeoutDuration__us(long us) { setTimeoutDuration<chrono::microseconds>(chrono::microseconds{us}); }
+    void setTimeoutDuration__us(long us) { setTimeoutDuration<std::chrono::microseconds>(std::chrono::microseconds{us}); }
 
     /** \brief Sets or updates the timeout duration in milliseconds
      */
-    void setTimeoutDuration__ms(long ms) { setTimeoutDuration<chrono::milliseconds>(chrono::milliseconds{ms}); }
+    void setTimeoutDuration__ms(long ms) { setTimeoutDuration<std::chrono::milliseconds>(std::chrono::milliseconds{ms}); }
 
     /** \brief Sets or updates the timeout duration in seconds
      */
-    void setTimeoutDuration__secs(long s) { setTimeoutDuration<chrono::seconds>(chrono::seconds{s}); }
+    void setTimeoutDuration__secs(long s) { setTimeoutDuration<std::chrono::seconds>(std::chrono::seconds{s}); }
 
     /** \returns `true` if a timeout has been set and if at least the timeout duration
      * has passed since timer construction or the last restart.
@@ -148,34 +146,34 @@ namespace Sloppy
     {
       if (!hasTimeoutSet) return -1;
 
-      chrono::nanoseconds elapsed = getTime<chrono::nanoseconds>();
+      std::chrono::nanoseconds elapsed = getTime<std::chrono::nanoseconds>();
 
       if (elapsed >= timeoutDuration) return 0;
 
-      chrono::nanoseconds remain = timeoutDuration - elapsed;
+      std::chrono::nanoseconds remain = timeoutDuration - elapsed;
 
-      return (chrono::duration_cast<Resolution>(remain)).count();
+      return (std::chrono::duration_cast<Resolution>(remain)).count();
     }
 
     /** \returns the remaining time in nanoseconds until the timeout occurs;
      * `-1` if no timeout has been set and `0` if the timer has already elapsed
      */
-    long getRemainingTime__ns() const { return getRemainingTime<chrono::nanoseconds>(); }
+    long getRemainingTime__ns() const { return getRemainingTime<std::chrono::nanoseconds>(); }
 
     /** \returns the remaining time in microseconds until the timeout occurs;
      * `-1` if no timeout has been set and `0` if the timer has already elapsed
      */
-    long getRemainingTime__us() const { return getRemainingTime<chrono::microseconds>(); }
+    long getRemainingTime__us() const { return getRemainingTime<std::chrono::microseconds>(); }
 
     /** \returns the remaining time in milliseconds until the timeout occurs;
      * `-1` if no timeout has been set and `0` if the timer has already elapsed
      */
-    long getRemainingTime__ms() const { return getRemainingTime<chrono::milliseconds>(); }
+    long getRemainingTime__ms() const { return getRemainingTime<std::chrono::milliseconds>(); }
 
     /** \returns the remaining time in seconds until the timeout occurs;
      * `-1` if no timeout has been set and `0` if the timer has already elapsed
      */
-    long getRemainingTime__secs() const { return getRemainingTime<chrono::seconds>(); }
+    long getRemainingTime__secs() const { return getRemainingTime<std::chrono::seconds>(); }
 
     /** \returns the remaining time in nanoseconds until the timeout occurs;
      * `-1` if no timeout has been set and `0` if the timer has already elapsed
@@ -198,10 +196,10 @@ namespace Sloppy
     }
 
   private:
-    chrono::high_resolution_clock::time_point startTime;
-    chrono::high_resolution_clock::time_point stopTime;
+    std::chrono::high_resolution_clock::time_point startTime;
+    std::chrono::high_resolution_clock::time_point stopTime;
     bool isStopped;
-    chrono::nanoseconds timeoutDuration;
+    std::chrono::nanoseconds timeoutDuration;
     bool hasTimeoutSet;
   };
 }

@@ -25,6 +25,7 @@
 #include "../Sloppy/Memory.h"
 
 using namespace Sloppy::Net;
+using namespace std;
 
 TEST(NetFuncs, MsgBuilder)
 {

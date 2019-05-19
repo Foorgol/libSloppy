@@ -29,8 +29,6 @@
 
 #include <boost/date_time/local_time/local_time.hpp>
 
-using namespace std;
-
 
 //
 // Extend boost's gregorian date to deal with
@@ -46,10 +44,11 @@ namespace boost
      *
      * \returns a 3-tuple of ints containing <year, month, day>
      */
-    inline tuple<int, int, int> to_tuple(const date& d     ///< the boost::gregorian::date to convert
-                                         )
+    inline std::tuple<int, int, int> to_tuple(
+        const date& d     ///< the boost::gregorian::date to convert
+        )
     {
-      return make_tuple(d.year(), d.month(), d.day());
+      return std::make_tuple(d.year(), d.month(), d.day());
     }
 
     /** \brief Converts a gregorian date into a single integer
@@ -88,7 +87,7 @@ namespace Sloppy
 {
   namespace DateTime {
 
-    extern const string defaultTzData;
+    extern const std::string defaultTzData;
 
     /** \brief Converts a single integer into a 3-tuple of <year, month, day>
      *
@@ -101,7 +100,7 @@ namespace Sloppy
      *
      * \throws std::out_of_range if the parameter value is less than 100000101
      */
-    tuple<unsigned short, unsigned short, unsigned short> YearMonthDayFromInt(
+    std::tuple<unsigned short, unsigned short, unsigned short> YearMonthDayFromInt(
         int ymd  ///< the integer-date to convert
         );
 
@@ -119,8 +118,8 @@ namespace Sloppy
      *
      */
     boost::gregorian::date parseDateString(
-        const string& in,            ///< the string to parse
-        const string& fmtString="",  ///< the format of the string; if empty, "yyyy-mm-dd" will be used
+        const std::string& in,            ///< the string to parse
+        const std::string& fmtString="",  ///< the format of the string; if empty, "yyyy-mm-dd" will be used
         bool strictChecking=true     ///< enable or disable strict checking
         );
 
@@ -181,19 +180,19 @@ namespace Sloppy
        *
        * \returns a string in "yyyy-mm-dd" format, representing the date-part of the timestamp
        */
-      string getISODate() const;
+      std::string getISODate() const;
 
       /** \brief Gets the time-part of the timestamp as string in "hh:mm:ss" format
        *
        * \returns a string in "hh:mm:ss" format, representing the time-part of the timestamp
        */
-      string getTime() const;
+      std::string getTime() const;
 
       /** \brief Gets a string representation of the timestamp in "yyyy-mm-dd hh:mm:ss" format
        *
        * \returns a string in "yyyy-mm-dd hh:mm:ss" format representing timestamp
        */
-      string getTimestamp() const;
+      std::string getTimestamp() const;
 
       /** \brief Gets the day-of-week for the timestamp as an int
        *
@@ -216,7 +215,7 @@ namespace Sloppy
        *
        * \returns a string representation of the timestamp in a custom format
        */
-      string getFormattedString(const string& fmt) const;
+      std::string getFormattedString(const std::string& fmt) const;
 
       /** \brief Sets the time information of the timestamp to a new value.
        *
@@ -232,7 +231,7 @@ namespace Sloppy
        *
        * \returns a 3-tuple of <year, month, day> of the stored timestamp
        */
-      tuple<unsigned short, unsigned short, unsigned short> getYearMonthDay() const;
+      std::tuple<unsigned short, unsigned short, unsigned short> getYearMonthDay() const;
 
       /** \brief Checks whether a tuple of year, month and day forms a valid date
        *
@@ -376,7 +375,7 @@ namespace Sloppy
        * \returns `nullptr` if one or more paramters was invalid
        * \returns a new LocalTimestamp object wrapped in a `unique_otr` if all paramters were valid
        */
-      static unique_ptr<LocalTimestamp> fromISODate(const string& isoDate, boost::local_time::time_zone_ptr tzp, int hour=12, int min=0, int sec=0);
+      static std::unique_ptr<LocalTimestamp> fromISODate(const std::string& isoDate, boost::local_time::time_zone_ptr tzp, int hour=12, int min=0, int sec=0);
 
       /** \brief Retrieves an UTC representation (seconds since epoch) of the local timestamp
        *
@@ -440,8 +439,8 @@ namespace Sloppy
           ) const;
     };
 
-    typedef unique_ptr<LocalTimestamp> upLocalTimestamp;
-    typedef unique_ptr<UTCTimestamp> upUTCTimestamp;
+    typedef std::unique_ptr<LocalTimestamp> upLocalTimestamp;
+    typedef std::unique_ptr<UTCTimestamp> upUTCTimestamp;
 
     /** \brief A generic class for periods / ranges of any type.
      *
@@ -481,10 +480,10 @@ namespace Sloppy
           )
         :start{_start}, end{_end}
       {
-        static_assert(is_copy_constructible<T>(), "GenericPeriod works only with copy-constructible types!");
+        static_assert(std::is_copy_constructible<T>(), "GenericPeriod works only with copy-constructible types!");
         if (*end < start)
         {
-          throw invalid_argument("GenericPeriod ctor: 'end'' may not be before start!");
+          throw std::invalid_argument("GenericPeriod ctor: 'end'' may not be before start!");
         }
       }
 
@@ -579,7 +578,7 @@ namespace Sloppy
 
       /** \returns a copy of the current end value (which is an std::optional<T>)
        */
-      inline optional<T> getEnd() const
+      inline std::optional<T> getEnd() const
       {
         return end;
       }
@@ -604,7 +603,7 @@ namespace Sloppy
 
     protected:
       T start;   ///< the period's start value
-      optional<T> end;   ///< the period's end value, potentially empty
+      std::optional<T> end;   ///< the period's end value, potentially empty
     };
 
     /** \brief A class for a time period that is defined by two `UTCTimestamp` values

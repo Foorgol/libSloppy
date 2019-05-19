@@ -26,8 +26,6 @@
 #include "StyledElement.h"
 #include "BasicElements.h"
 
-using namespace std;
-
 namespace Sloppy
 {
   namespace HTML
@@ -45,9 +43,9 @@ namespace Sloppy
         /** \brief Ctor for the text button
          */
         TextButton(
-            const string& label,   ///< the button's label
-            const string& url,     ///< the URL to call on click
-            const string& additionalClass = "btn-default"   ///< any additional CSS classes to assign to the button
+            const std::string& label,   ///< the button's label
+            const std::string& url,     ///< the URL to call on click
+            const std::string& additionalClass = "btn-default"   ///< any additional CSS classes to assign to the button
             );
 
         virtual ~TextButton(){}
@@ -65,7 +63,7 @@ namespace Sloppy
       class Callout : public StyledElement
       {
       public:
-        Callout(CalloutType t, const string& headline, const string& txt="");
+        Callout(CalloutType t, const std::string& headline, const std::string& txt="");
         virtual ~Callout() {}
       };
 

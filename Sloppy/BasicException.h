@@ -22,8 +22,6 @@
 #include <string>
 #include <iostream>
 
-using namespace std;
-
 namespace Sloppy
 {
   /** \brief A generic networking exception used for error reporting
@@ -31,7 +29,7 @@ namespace Sloppy
   class BasicException
   {
   public:
-    BasicException(const string& exName, const string& sender, const string& context = string{}, const string& details = string{})
+    BasicException(const std::string& exName, const std::string& sender, const std::string& context = std::string{}, const std::string& details = std::string{})
     {
       msg = "Exception thrown! Here's what happened:\n";
       msg += "    Type: " + exName + "\n";
@@ -48,12 +46,12 @@ namespace Sloppy
       say();
     }
 
-    string what() { return msg; }
+    std::string what() { return msg; }
 
-    void say() const { cerr << msg << endl; }
+    void say() const { std::cerr << msg << std::endl; }
 
   protected:
-    string msg{};
+    std::string msg{};
   };
 }
 

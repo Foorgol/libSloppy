@@ -24,8 +24,6 @@
 #include <string.h>    // for memcpy
 #include <limits.h>
 
-using namespace std;
-
 namespace Sloppy
 {
   /** \brief A read-only class for arrays of any type
@@ -418,7 +416,7 @@ namespace Sloppy
 
     /** \brief Ctor from a standard string
      */
-    explicit MemView(const string& src)
+    explicit MemView(const std::string& src)
       :ArrayView(reinterpret_cast<const uint8_t*>(src.c_str()), src.size()) {}
 
     /** \brief Copy ctor
@@ -1048,7 +1046,7 @@ namespace Sloppy
      * or if the creation of the memory-map failed
      */
     MemFile(
-        const string& fname   ///< path / name of the file to map
+        const std::string& fname   ///< path / name of the file to map
         );
 
     /** \brief Dtor, releases the memory map and all other ressources
@@ -1139,7 +1137,7 @@ namespace Sloppy
      *
      * \note The string contents are copied into the result value
      */
-    string getString(size_t idxStart) const;
+    std::string getString(size_t idxStart) const;
 
     /** \returns a slice of the file as a string
      *
@@ -1149,7 +1147,7 @@ namespace Sloppy
      *
      * \note The string contents are copied into the result value
      */
-    string getString(size_t idxStart, int len) const;
+    std::string getString(size_t idxStart, int len) const;
 
   protected:
     inline void assertIndex(size_t idx, int len) const

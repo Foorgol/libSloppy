@@ -23,8 +23,6 @@
 
 #include <boost/date_time/local_time/local_time.hpp>
 
-using namespace std;
-
 namespace Sloppy
 {
   namespace Logger
@@ -58,7 +56,7 @@ namespace Sloppy
        * `Logger` instance.
        */
       explicit Logger (
-          const string& senderName   ///< the sender's name that shall show up in the log
+          const std::string& senderName   ///< the sender's name that shall show up in the log
           );
 
       /** \brief Prints a log line to stdout.
@@ -68,13 +66,13 @@ namespace Sloppy
        */
       void log(
           SeverityLevel lvl,   ///< the severity level of the message
-          const string& msg   ///< the message itself
+          const std::string& msg   ///< the message itself
           );
 
       /** \brief Prints a log line with the implicit level "Warning"
        */
       inline void warn (
-          const string& msg   ///< the log message
+          const std::string& msg   ///< the log message
           )
       {
         log(SeverityLevel::warning, msg);
@@ -83,7 +81,7 @@ namespace Sloppy
       /** \brief Prints a log line with the implicit level "Error"
        */
       void error (
-          const string& msg   ///< the log message
+          const std::string& msg   ///< the log message
           )
       {
         log(SeverityLevel::error, msg);
@@ -92,7 +90,7 @@ namespace Sloppy
       /** \brief Prints a log line with the implicit level "Critical"
        */
       void critical (
-          const string& msg   ///< the log message
+          const std::string& msg   ///< the log message
           )
       {
         log(SeverityLevel::critical, msg);
@@ -101,7 +99,7 @@ namespace Sloppy
       /** \brief Prints a log line with the implicit level "Trace"
        */
       void trace (
-          const string& msg   ///< the log message
+          const std::string& msg   ///< the log message
           )
       {
         log(SeverityLevel::trace, msg);
@@ -110,7 +108,7 @@ namespace Sloppy
       /** \brief Prints a log line with the current default level
        */
       void log(
-          const string& msg   ///< the log message
+          const std::string& msg   ///< the log message
           )
       {
         log(defaultLvl, msg);
@@ -147,11 +145,11 @@ namespace Sloppy
        *
        * \returns `true` if the timezone was found and set successfully; `false` otherwise
        */
-      bool setTimezone(const string& tzName);
+      bool setTimezone(const std::string& tzName);
 
     protected:
       bool useTimestamps{true};
-      string sender{};
+      std::string sender{};
       SeverityLevel defaultLvl = SeverityLevel::normal;
       SeverityLevel minLvl = SeverityLevel::normal;
       boost::local_time::time_zone_ptr tzp{nullptr};

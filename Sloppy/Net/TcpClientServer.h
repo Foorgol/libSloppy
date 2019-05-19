@@ -24,8 +24,6 @@
 
 #include "ManagedSocket.h"
 
-using namespace std;
-
 namespace Sloppy
 {
   namespace Net

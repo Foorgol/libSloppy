@@ -43,3 +43,27 @@ TEST(NamedType, BasicUsage)
 
 //----------------------------------------------------------------------------
 
+TEST(NamedType, Comparison)
+{
+  using StrongInt = Sloppy::NamedType<int, struct StrongIntegerTag>;
+
+  StrongInt si1{42};
+  StrongInt si2{666};
+  StrongInt si3{666};
+  ASSERT_TRUE(si1 < si2);
+  ASSERT_FALSE(si1 > si2);
+  ASSERT_TRUE(si1 <= si2);
+  ASSERT_FALSE(si1 >= si2);
+  ASSERT_FALSE(si1 == si2);
+  ASSERT_TRUE(si1 != si2);
+
+  ASSERT_FALSE(si3 < si2);
+  ASSERT_FALSE(si3 > si2);
+  ASSERT_TRUE(si3 <= si2);
+  ASSERT_TRUE(si3 >= si2);
+  ASSERT_TRUE(si3 == si2);
+  ASSERT_FALSE(si3 != si2);
+}
+
+//----------------------------------------------------------------------------
+

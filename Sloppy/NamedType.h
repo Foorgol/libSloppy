@@ -46,13 +46,21 @@ namespace Sloppy
       constexpr T& get() { return value_; }
       constexpr std::remove_reference_t<T> const& get() const {return value_; }
 
-      // comparison
+      // comparison with the basic type
       bool operator<(T const& other) const  { return value_ < other; }
       bool operator>(T const& other) const  { return other < value_; }
       bool operator<=(T const& other) const { return !(*this > other); }
       bool operator>=(T const& other) const { return !(*this < other); }
       bool operator==(T const& other) const { return !(*this < other || *this > other); }
       bool operator!=(T const& other) const { return !(*this == other); }
+
+      // comparison with other objects of the same NamedType
+      bool operator<(NamedType<T,Parameter> const& other) const  { return value_ < other.value_; }
+      bool operator>(NamedType<T,Parameter> const& other) const  { return other.value_ < value_; }
+      bool operator<=(NamedType<T,Parameter> const& other) const { return !(*this > other); }
+      bool operator>=(NamedType<T,Parameter> const& other) const { return !(*this < other); }
+      bool operator==(NamedType<T,Parameter> const& other) const { return !(*this < other || *this > other); }
+      bool operator!=(NamedType<T,Parameter> const& other) const { return !(*this == other); }
 
       // conversions
       using ref = NamedType<T&, Parameter>;

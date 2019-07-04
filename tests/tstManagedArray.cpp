@@ -201,3 +201,19 @@ TEST(ManagedArray, CopyOver)
   ASSERT_THROW(dst.copyOver(src2.view()), std::out_of_range);
 
 }
+
+//----------------------------------------------------------------------------
+
+TEST(ManagedArray, FakeIterators)
+{
+  IntArray arr{10};
+
+  for (int i=0; i < arr.size(); ++i) arr[i] = i;
+
+  // try using std::find on the array
+  auto it = std::find(arr.cbegin(), arr.cend(), 3);
+  ASSERT_EQ(3, *it);
+  ASSERT_EQ(3, std::distance(arr.cbegin(), it));
+  it = std::find(arr.cbegin(), arr.cend(), 42);
+  ASSERT_EQ(arr.cend(), it);
+}

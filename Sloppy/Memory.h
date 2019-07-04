@@ -34,6 +34,18 @@ namespace Sloppy
   class ArrayView
   {
   public:
+    using const_iterator = const T*;
+
+    const_iterator cbegin() const
+    {
+      return &ptr[0];
+    }
+
+    const_iterator cend() const
+    {
+      return &ptr[cnt];
+    }
+
     /** \brief Default ctor for an empty, invalid array
      */
     ArrayView() = default;  // uses member initializiation defaults
@@ -478,6 +490,29 @@ namespace Sloppy
   class ManagedArray
   {
   public:
+    using iterator = T*;
+    using const_iterator = const T*;
+
+    iterator begin() const
+    {
+      return &ptr[0];
+    }
+
+    iterator end() const
+    {
+      return &ptr[cnt];
+    }
+
+    const_iterator cbegin() const
+    {
+      return &ptr[0];
+    }
+
+    const_iterator cend() const
+    {
+      return &ptr[cnt];
+    }
+
     /** \brief Default ctor that creates an empty, invalid array
      */
     ManagedArray() = default;

@@ -25,7 +25,7 @@
 #include <optional>
 #include <unordered_map>
 
-#include <Sloppy/String.h>
+#include "String.h"
 
 namespace Sloppy
 {

@@ -42,7 +42,7 @@
 #include <mutex>
 #include <deque>
 #include <condition_variable>
-#include <Sloppy/Timer.h>
+#include "Timer.h"
 
 namespace Sloppy
 {

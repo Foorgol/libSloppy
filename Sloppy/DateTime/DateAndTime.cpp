@@ -22,8 +22,6 @@
 #include <memory>
 #include <iostream>
 
-#include <gsl/gsl>
-
 #include <boost/date_time/gregorian/gregorian.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/date_time/local_time/local_time.hpp>
@@ -51,9 +49,9 @@ namespace boost
         throw std::out_of_range("Invalid integer for initializing a boost::gregorian::date!");
       }
 
-      unsigned short y = gsl::narrow_cast<unsigned short>(ymd / 10000);
-      unsigned short m = gsl::narrow_cast<unsigned short>((ymd % 10000) / 100);
-      unsigned short d = gsl::narrow_cast<unsigned short>(ymd % 100);
+      unsigned short y = static_cast<unsigned short>(ymd / 10000);
+      unsigned short m = static_cast<unsigned short>((ymd % 10000) / 100);
+      unsigned short d = static_cast<unsigned short>(ymd % 100);
 
       return date{y, m, d};
     }
@@ -74,9 +72,9 @@ namespace Sloppy
         throw std::out_of_range("Invalid integer for conversion into year, month, day");
       }
 
-      unsigned short y = gsl::narrow_cast<unsigned short>(ymd / 10000);
-      unsigned short m = gsl::narrow_cast<unsigned short>((ymd % 10000) / 100);
-      unsigned short d = gsl::narrow_cast<unsigned short>(ymd % 100);
+      unsigned short y = static_cast<unsigned short>(ymd / 10000);
+      unsigned short m = static_cast<unsigned short>((ymd % 10000) / 100);
+      unsigned short d = static_cast<unsigned short>(ymd % 100);
 
       return make_tuple(y, m, d);
     }
@@ -98,9 +96,9 @@ namespace Sloppy
       try
       {
         d = boost::gregorian::date {
-          gsl::narrow_cast<unsigned short>(year),
-          gsl::narrow_cast<unsigned short>(month),
-          gsl::narrow_cast<unsigned short>(day)
+          static_cast<unsigned short>(year),
+          static_cast<unsigned short>(month),
+          static_cast<unsigned short>(day)
         };
       }
       catch (...)
@@ -218,9 +216,9 @@ namespace Sloppy
       try
       {
         boost::gregorian::date d{
-              gsl::narrow_cast<unsigned short>(year),
-              gsl::narrow_cast<unsigned short>(month),
-              gsl::narrow_cast<unsigned short>(day)
+              static_cast<unsigned short>(year),
+              static_cast<unsigned short>(month),
+              static_cast<unsigned short>(day)
         };
         return (!(d.is_special()));
       }
@@ -327,9 +325,9 @@ namespace Sloppy
       try
       {
         d = boost::gregorian::date {
-          gsl::narrow_cast<unsigned short>(year),
-          gsl::narrow_cast<unsigned short>(month),
-          gsl::narrow_cast<unsigned short>(day)
+          static_cast<unsigned short>(year),
+          static_cast<unsigned short>(month),
+          static_cast<unsigned short>(day)
         };
       }
       catch (...)

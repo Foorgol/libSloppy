@@ -177,7 +177,8 @@ namespace Sloppy
     // check the file constraint using Boost's file system implementation
     if (c == ValueConstraint::File)
     {
-      bfs::path p{val};
+      const std::string& s{val};
+      bfs::path p{s};
       bool isOkay = bfs::is_regular_file(p);
       if (!isOkay && (errMsg != nullptr))
       {
@@ -190,7 +191,8 @@ namespace Sloppy
     // check the directory constraint using Boost's file system implementation
     if (c == ValueConstraint::Directory)
     {
-      bfs::path p{val};
+      const std::string& s{val};
+      bfs::path p{s};
       bool isOkay = bfs::is_directory(p);
       if (!isOkay && (errMsg != nullptr))
       {

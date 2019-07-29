@@ -20,7 +20,7 @@
 #include <algorithm>
 #include <iostream>
 
-#include <Sloppy/ConfigFileParser/ConstraintChecker.h>
+#include "ConfigFileParser/ConstraintChecker.h"
 
 #include "CSV.h"
 

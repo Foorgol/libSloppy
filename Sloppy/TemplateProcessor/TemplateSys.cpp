@@ -563,7 +563,8 @@ namespace Sloppy
         auto it = allFiles.begin();
         while (it != allFiles.end())
         {
-          bfs::path p{*it};
+          const string& s = *it;
+          bfs::path p{s};
           string ext = p.extension().string();
           if ((!(ext.empty())) && (ext[0] == '.'))
           {

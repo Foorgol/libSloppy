@@ -50,6 +50,8 @@ set(LIB_SOURCES
     Sloppy/ThreadStats.h
     Sloppy/ThreadStats.cpp
     Sloppy/NamedType.h
+    Sloppy/CSV.h
+    Sloppy/CSV.cpp
 )
 
 #
@@ -171,6 +173,7 @@ set(LIB_SOURCES_TST
     tests/tstThreadSafeQueue.cpp
     tests/tstAsyncWorker.cpp
     tests/tstNamedType.cpp
+    tests/tstCSV.cpp
 )
 
 find_package(GTest)

@@ -577,9 +577,9 @@ namespace Sloppy
 
     /** \brief Erases a data row; wrapper for the `erase()` method of the underlying data vector.
      */
-    ContainerType::iterator erase(
-        ContainerType::iterator it   ///< iterator pointing on the to-be-deleted row
-        ) { return rows.erase(it); }
+    ContainerType::const_iterator erase(
+        ContainerType::const_iterator it   ///< iterator pointing on the to-be-deleted row
+        );
 
     /** \brief Erases a consecutive set of data rows; wrapper for the `erase()` method of the underlying data vector.
      */

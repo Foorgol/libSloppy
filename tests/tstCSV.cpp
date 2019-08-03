@@ -527,3 +527,29 @@ TEST(Utils, CSV_Tab_EraseColumn)
   ASSERT_FALSE(t.eraseColumn("xyz"));
   ASSERT_EQ(2, t.nCols());
 }
+
+//----------------------------------------------------------------------------
+
+TEST(Utils, CSV_Erase)
+{
+  using Rep = Sloppy::CSV_StringRepresentation;
+
+  Sloppy::CSV_Row r;
+  r.append(42);
+  r.append(23);
+  r.append(666);
+  auto rowIt = r.begin();
+  ++rowIt;
+  r.erase(rowIt);
+  ASSERT_EQ(2, r.size());
+  ASSERT_EQ(666, r[1].get<long>());
+
+  Sloppy::CSV_Table t;
+  t.append(r);
+  t.append(r);
+  t.append(r);
+  auto tabIt = t.cbegin();
+  ++tabIt;
+  t.erase(tabIt);
+  ASSERT_EQ(2, t.size());
+}

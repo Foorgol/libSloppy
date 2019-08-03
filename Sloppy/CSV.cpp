@@ -507,6 +507,13 @@ namespace Sloppy
 
   //----------------------------------------------------------------------------
 
+  CSV_Table::ContainerType::const_iterator CSV_Table::erase(CSV_Table::ContainerType::const_iterator it)
+  {
+    return rows.erase(it);
+  }
+
+  //----------------------------------------------------------------------------
+
   string CSV_Table::asString(bool includeHeaders, CSV_StringRepresentation rep) const
   {
     const bool usesEscaping = ((rep == CSV_StringRepresentation::Escaped) || (rep == CSV_StringRepresentation::QuotedAndEscaped));

@@ -465,6 +465,33 @@ TEST(Strings, ArgString)
 
   e.arg("Z");
   ASSERT_EQ("abc % def X %a %% Y", e);
+
+  //
+  // corner cases
+  //
+
+  e = estring{""};  // empty source
+  e.arg("X");
+  ASSERT_EQ("", e);
+
+  e = estring{"%42"};  // string is pure tag
+  e.arg("Q");
+  ASSERT_EQ("Q", e);
+
+  e = estring{"%42"};  // string is pure tag
+  e.arg("");  // empty replacement string
+  ASSERT_TRUE(e.empty());
+
+  e = estring{"%1%1"};
+  e.arg("");  // empty replacement string
+  ASSERT_TRUE(e.empty());
+
+  e = estring{"%3%10%%2%1"};
+  e.arg("%10");  // replace "%1" with "%10" ==> insert a new tag!
+  e.arg("A");
+  e.arg(42);
+  e.arg("x");
+  ASSERT_EQ("42x%Ax", e);
 }
 
 //----------------------------------------------------------------------------

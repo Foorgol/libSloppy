@@ -62,6 +62,12 @@ namespace Sloppy
     /// default ctor, creates an empty estring
     estring() : std::string() {}
 
+    /// ctor that allocates a given memory block
+    explicit estring(
+        size_t cnt  ///< the number of characters to allocate
+        )
+      : std::string{cnt} {}
+
     /// ctor from an C-style string (zero-terminated)
     estring(const char* s) : std::string(s) {}
 
@@ -479,6 +485,26 @@ namespace Sloppy
      * \returns a string_view for this string
      */
     std::string_view toStringView() const { return std::string_view{c_str(), size()}; }
+
+  protected:
+    /** \brief A supporting data structure used to store tag data for the arg() functions
+     */
+    struct TagData
+    {
+      static constexpr int NotFound = 999999;
+
+      int idxStart{-1};  // includes the '%'
+      int idxEnd{-1};
+      int len{-1};  // includes the '%'
+      int val{NotFound};
+    };
+
+    /** \brief Searches the string for all "%XXX" occurences
+     *
+     * \returns A list of all found tags along with the value of lowest arg number
+     */
+    std::tuple<std::vector<TagData>, int> findAllArgTags() const;
+
   };
 
   using StringList = std::vector<estring>;

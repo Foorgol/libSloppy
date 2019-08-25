@@ -344,9 +344,76 @@ namespace Sloppy
 
   void estring::arg(const string& s)
   {
-    constexpr int NotFound = 999999;
-    int minArg = NotFound;
+    // get all tags in the string
+    auto [allTags, lowestArgNum] = findAllArgTags();
+    if ((lowestArgNum == TagData::NotFound) || (allTags.empty()))
+    {
+      return;   // string doesn't contain any tags
+    }
 
+    //
+    // We could now delete unnecessary tags elements from
+    // the vector or sort the vector by arg num.
+    //
+    // But all this would require data movements and/or
+    // memory allocation / de-allocation so I think
+    // we're better of by just looping over all tags
+    // and skip the tags we don't need.
+    //
+
+    // calculate the size of the target string
+    int sizeDiff{0};
+    for (const auto& tag : allTags)
+    {
+      if (tag.val != lowestArgNum) continue;
+
+      // we remove the tag and insert the substitution string
+      //
+      // the tag len can vary, because "%0001" and "%1" are
+      // technically equal
+      sizeDiff = sizeDiff - tag.len + s.size();
+    }
+
+    // prepare a temporary string that is sufficiently long
+    // to store the complete target string
+    estring tmp;
+    tmp.reserve(size() + sizeDiff);
+
+    // iterative concatenation of source string fragments
+    // and the replacement string
+    size_t srcPos{0};
+    for (const auto& tag : allTags)
+    {
+      if (tag.val != lowestArgNum) continue;
+
+      // append everything before the tag
+      if (srcPos < tag.idxStart)
+      {
+        tmp.append(slice(srcPos, tag.idxStart - 1));
+      }
+
+      // append the replacement string
+      tmp.append(s);
+
+      // fast-forward to one character after the tag
+      srcPos = tag.idxEnd + 1;
+    }
+
+    // append everything after the last tag
+    //
+    // the call does no harm if srcPos points after the string's
+    // end (---> the string ended with a tag)
+    tmp.append(substr(srcPos));
+
+    // replace our data with the temp string
+    operator=(std::move(tmp));
+
+
+    /*
+     * Old, slow implementation based on regex
+     */
+
+    /*
     // determine the lowest argument index
     regex re{R"(%(\d+))"};
     sregex_iterator begin{cbegin(), cend(), re};
@@ -363,6 +430,7 @@ namespace Sloppy
       string key = "%" + to_string(minArg);
       replaceAll(key, s);
     }
+    */
   }
 
   //----------------------------------------------------------------------------
@@ -480,6 +548,96 @@ namespace Sloppy
     }
 
     return result;
+  }
+
+  //----------------------------------------------------------------------------
+
+  std::tuple<std::vector<estring::TagData>, int> estring::findAllArgTags() const
+  {
+    // reserve space for 20 tags; that should fit to most
+    // use cases and avoids frequent re-allocations
+    vector<TagData> allTags;
+    allTags.reserve(20);
+    int lowestArg{TagData::NotFound};
+
+    // helper variables for the iteration of all characters
+    TagData curTag;
+
+    // a helper function that closes the current tag data element
+    // at a given index position
+    auto closeCurrentTag = [&](size_t idxEnd)
+    {
+      curTag.idxEnd = idxEnd;
+      curTag.len = idxEnd - curTag.idxStart + 1;
+
+      const string sVal = this->substr(curTag.idxStart + 1, curTag.len - 1);
+      curTag.val = stoi(sVal);
+      allTags.push_back(curTag);
+
+      // keep track of the lowest arg number
+      if (curTag.val < lowestArg) lowestArg = curTag.val;
+    };
+
+    // determine the lowest argument index
+    for (size_t idx=0; idx < size(); ++idx)
+    {
+      bool isInTag = (curTag.idxStart >= 0);
+
+      const auto& c = at(idx);
+
+      // deal with one or more '%' in a row
+      if (isInTag && (c == '%') && (idx == (curTag.idxStart + 1)))
+      {
+        curTag.idxStart = idx;
+        continue;
+      }
+
+      // deal with a '%' that isn't followed by a number
+      if (isInTag && (idx == (curTag.idxStart + 1)) && ((c < '0') || (c > '9')))
+      {
+        curTag.idxStart = -1;  // cancel the current tag
+        continue;
+      }
+
+      // end of the current tag
+      if (isInTag && ((c < '0') || (c > '9')))
+      {
+        closeCurrentTag(idx - 1);
+
+        // reset the current tag
+        curTag = TagData{};  // reset
+
+        //
+        // DON'T break here by calling `continue`!!
+        //
+        // We need to further evaluate the character
+        // in order to deal with two subsequent tags
+        // like in "%1%2".
+        //
+        isInTag = false;
+      }
+
+      // tag continues (we're on the tag number
+      if (isInTag) continue;
+
+      // normal string parts, not tags
+      if (!isInTag && (c != '%')) continue;
+
+      // start of a new tag
+      if (!isInTag && (c == '%'))
+      {
+        curTag.idxStart = idx;
+      }
+    }
+
+    // if the string ended with a tag, close the
+    // current tag
+    if (curTag.idxStart >= 0)
+    {
+      closeCurrentTag(size() - 1);
+    }
+
+    return std::tuple{std::move(allTags), lowestArg};
   }
 }
 

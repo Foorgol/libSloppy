@@ -102,11 +102,17 @@ namespace Sloppy
 
     /** \brief Reads data from the queue into a caller-provided reference
      *
+     * \note With a timeout value of "0" this call be used as a smart replacement
+     * for `hasData()`: the boolean return value is the same as for `hasData()`
+     * but if there is data available we return it without an extra call. That saves
+     * a mutex lock/unlock operation compared with calling `hasData()` followed
+     * by `get()`.
+     *
      * \returns `true` if data was returned, `false` otherwise
      */
     bool get(
         T& outData,   ///< the reference to copy the data to
-        int timeout_ms   /// an optional timeout after which the function returns without value if the queue remains empty (< 0 means: wait forever)
+        int timeout_ms   /// an optional timeout after which the function returns without value if the queue remains empty (< 0 means: wait forever; == 0: return immediately with or without data)
         )
     {
       // special case: wait forever
@@ -116,28 +122,34 @@ namespace Sloppy
         return true;
       }
 
+      // get exclusive access to the queue;
       //
-      // use "wait" with a timeout
-      //
-
       // condition variables only work with unique_lock, not with lock_guard
       std::unique_lock<std::mutex> lock{listMutex};
+      bool hasData = !queue.empty();
 
-      Sloppy::Timer t;
-      t.setTimeoutDuration__ms(timeout_ms);
-      bool hasData = false;
-      while (!t.isElapsed())
+      //
+      // wait / sleep if there is no data available and if the
+      // caller provided a "real" timeout value > 0
+      //
+      if (!hasData && (timeout_ms > 0))
       {
-        hasData = cv.wait_for(lock, std::chrono::milliseconds{timeout_ms - t.getTime__ms()},
-                          [this](){ return !queue.empty(); });
 
-        if (hasData) break;
+        Sloppy::Timer t;
+        t.setTimeoutDuration__ms(timeout_ms);
+        while (!t.isElapsed())
+        {
+          hasData = cv.wait_for(lock, std::chrono::milliseconds{timeout_ms - t.getTime__ms()},
+                            [this](){ return !queue.empty(); });
 
-        // sometime we might have "spurious wake-ups" before the
-        // timeout has elapsed.
-        //
-        // by using the timer we make sure that we stick to the
-        // demanded waiting time
+          if (hasData) break;
+
+          // sometime we might have "spurious wake-ups" before the
+          // timeout has elapsed.
+          //
+          // by using the timer we make sure that we stick to the
+          // demanded waiting time
+        }
       }
 
       // at this point, we either have data or a timeout

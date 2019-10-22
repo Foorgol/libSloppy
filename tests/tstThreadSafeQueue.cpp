@@ -43,6 +43,12 @@ TEST(ThreadSafeQueue, BasicUsage)
   ASSERT_TRUE(t.getTime__ms() <= (timeoutMs + 1));
   ASSERT_EQ(-42, data);  // variable has not been altered
 
+  // get without timeout on empty queue
+  t.restart();
+  ASSERT_FALSE(q.get(data, 0));
+  ASSERT_TRUE(t.getTime__us() <= 1);
+  ASSERT_EQ(-42, data);  // variable has not been altered
+
   // push some data
   q.put(99);
   ASSERT_EQ(1, q.size());

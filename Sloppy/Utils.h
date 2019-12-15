@@ -22,6 +22,8 @@
 #include <vector>
 #include <algorithm>
 #include <string>
+#include <sstream>
+#include <iomanip>
 
 // we include some special file functions for
 // non-Windows builds only
@@ -261,6 +263,34 @@ namespace Sloppy
           const std::string& dirName   ///< string containing the directory path to check (abs. or rel. path)
           );
 #endif
+
+  /** \brief Returns a zero-padded string for an integer value
+   *
+   * A possible minus-sign is NOT included in the padding count!
+   *
+   * \returns a zero-padded `string` representation of the number
+   */
+  template<typename T>
+  std::string zeroPaddedNumber(T v, int width)
+  {
+    static_assert (std::is_integral<T>::value, "Sloppy::zeroPaddedNumber() must be called with int-like argument");
+
+    if (width < 1) return std::to_string(v);
+
+    std::ostringstream oss;
+    if (std::is_signed<T>::value)
+    {
+      if (v < 0)
+      {
+        oss << '-';
+        v *= -1;
+      }
+    }
+
+    oss << std::setfill('0') << std::setw(width) << v;
+
+    return oss.str();
+  }
 
   /** \brief Converts a JSON-value to string, regardless of the actual inner JSON type
    *

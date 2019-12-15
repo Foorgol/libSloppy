@@ -261,3 +261,16 @@ TEST(Utils, CommaSepListFromVals)
 
 }
 
+
+//----------------------------------------------------------------------------
+
+TEST(Utils, ZeroPadding)
+{
+  ASSERT_EQ("001", Sloppy::zeroPaddedNumber(1, 3));
+  ASSERT_EQ("-0042", Sloppy::zeroPaddedNumber(-42, 4));
+  ASSERT_EQ("001", Sloppy::zeroPaddedNumber(1l, 3));
+  ASSERT_EQ("-0042", Sloppy::zeroPaddedNumber(-42l, 4));
+  ASSERT_EQ("-42", Sloppy::zeroPaddedNumber(-42, 0));
+  ASSERT_EQ("-42", Sloppy::zeroPaddedNumber(-42, -1));
+  ASSERT_EQ("0001234", Sloppy::zeroPaddedNumber(1234u, 7));
+}

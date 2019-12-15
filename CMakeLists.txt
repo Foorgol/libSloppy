@@ -64,6 +64,8 @@ IF (NOT WIN32)
       #Sloppy/Net/CryptoClientServer.cpp
       Sloppy/ManagedFileDescriptor.cpp
       Sloppy/Net/ManagedSocket.cpp
+      Sloppy/SubProcess.h
+      Sloppy/SubProcess.cpp
       )
 ENDIF()
 
@@ -174,6 +176,7 @@ set(LIB_SOURCES_TST
     tests/tstAsyncWorker.cpp
     tests/tstNamedType.cpp
     tests/tstCSV.cpp
+    tests/tstSubprocess.cpp
 )
 
 find_package(GTest)

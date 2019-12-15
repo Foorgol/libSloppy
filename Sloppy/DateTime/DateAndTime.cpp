@@ -404,7 +404,7 @@ namespace Sloppy
 
     UTCTimestamp LocalTimestamp::toUTC() const
     {
-      return raw;
+      return UTCTimestamp{getRawTime()};
     }
 
     //----------------------------------------------------------------------------

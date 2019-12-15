@@ -161,3 +161,29 @@ TEST(DateTimeFuncs, PopulatedTzDatabase)
   ASSERT_TRUE(tst != nullptr);
   ASSERT_TRUE(tst->has_dst());
 }
+
+//----------------------------------------------------------------------------
+
+TEST(DateTimeFuncs, Conversion)
+{
+  time_t raw = time(nullptr);
+  auto tzp = getPopulatedTzDatabase().time_zone_from_region("Europe/Berlin");
+  UTCTimestamp nowUtc;
+  LocalTimestamp nowLocal{tzp};
+  ASSERT_EQ(raw, nowUtc.getRawTime());
+  ASSERT_EQ(raw, nowLocal.getRawTime());
+
+  // conversion UTC --> Local
+  auto ltConverted = nowUtc.toLocalTime(tzp);
+  ASSERT_EQ(ltConverted.getRawTime(), nowLocal.getRawTime());
+  ASSERT_FALSE(ltConverted.getTimestamp() == nowUtc.getTimestamp());
+  ASSERT_TRUE(ltConverted.getTimestamp() == nowLocal.getTimestamp());
+  ASSERT_EQ(ltConverted.getTimestamp(), nowLocal.getTimestamp());
+
+  // conversion Local --> UTC
+  auto utcConverted = nowLocal.toUTC();
+  ASSERT_EQ(raw, utcConverted.getRawTime());
+  ASSERT_EQ(utcConverted.getRawTime(), nowUtc.getRawTime());
+  ASSERT_FALSE(utcConverted.getTimestamp() == nowLocal.getTimestamp());
+  ASSERT_TRUE(utcConverted.getTimestamp() == nowUtc.getTimestamp());
+}

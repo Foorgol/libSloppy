@@ -20,7 +20,7 @@
 
 #include <string>
 #include <vector>
-#include <Sloppy/String.h>
+#include "String.h"
 
 namespace Sloppy
 {

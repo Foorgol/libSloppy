@@ -396,7 +396,7 @@ namespace Sloppy
      *  \note Unlike QString, this method modifies the string directly and does *not* return a copy!
      */
     void arg(int i) { arg1<int>(i); }
-    void arg(long i) { arg1<long>(i); }
+    void arg(int64_t i) { arg1<int64_t>(i); }
     void arg(unsigned int i) { arg1<unsigned int>(i); }
     void arg(size_t i) { arg1<size_t>(i); }
     void arg(uint8_t i) { arg(std::to_string(static_cast<unsigned>(i))); }

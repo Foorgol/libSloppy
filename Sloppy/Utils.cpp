@@ -145,10 +145,10 @@ namespace Sloppy
       return to_string(jv.get<bool>());
 
     case json::value_t::number_unsigned:
-      return to_string(jv.get<unsigned long>());
+      return to_string(jv.get<unsigned long long>());
 
     case json::value_t::number_integer:
-      return to_string(jv.get<long>());
+      return to_string(jv.get<int64_t>());
 
     case json::value_t::number_float:
       if (numDigits >=0) fmt += "." + to_string(numDigits);

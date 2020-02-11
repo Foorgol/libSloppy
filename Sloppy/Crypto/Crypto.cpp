@@ -29,7 +29,7 @@ namespace Sloppy
 {
   namespace Crypto
   {
-    mt19937_64 rng = mt19937_64{static_cast<unsigned long>(chrono::system_clock::now().time_since_epoch().count())};
+    mt19937_64 rng = mt19937_64{static_cast<uint64_t>(chrono::system_clock::now().time_since_epoch().count())};
 
     string getRandomAlphanumString(size_t len)
     {

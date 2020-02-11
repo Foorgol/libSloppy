@@ -104,7 +104,7 @@ namespace Sloppy
       {
         static constexpr int ReadBufSize{1000};
         char buf[ReadBufSize];
-        long cnt;
+        int64_t cnt;
         estring data;
         while ((cnt = read(pipeFd, buf, ReadBufSize)) > 0)
         {

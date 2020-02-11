@@ -34,7 +34,7 @@ TEST(Utils, CSV_Val_Ctor)
   Sloppy::CSV_Value v1{42};
   ASSERT_EQ(Sloppy::CSV_Value::Type::Long, v1.valueType());
   ASSERT_TRUE(v1.has_value());
-  ASSERT_EQ(42, v1.get<long>());
+  ASSERT_EQ(42, v1.get<int64_t>());
 
   Sloppy::CSV_Value v2{42.4242};
   ASSERT_EQ(Sloppy::CSV_Value::Type::Double, v2.valueType());
@@ -64,7 +64,7 @@ TEST(Utils, CSV_Val_Set)
   v.set(42);
   ASSERT_EQ(Sloppy::CSV_Value::Type::Long, v.valueType());
   ASSERT_TRUE(v.has_value());
-  ASSERT_EQ(42, v.get<long>());
+  ASSERT_EQ(42, v.get<int64_t>());
 
   v.set();
   ASSERT_EQ(Sloppy::CSV_Value::Type::Null, v.valueType());
@@ -149,7 +149,7 @@ TEST(Utils, CSV_Row_Ctor)
 
       auto [dataType, data] = tstData[idx];
 
-      long l;
+      int64_t l;
       double d;
       switch (dataType)
       {
@@ -160,7 +160,7 @@ TEST(Utils, CSV_Row_Ctor)
         case 'l':
           ASSERT_EQ(Sloppy::CSV_Value::Type::Long, val.valueType());
           l = stol(data);
-          ASSERT_EQ(l, val.get<long>());
+          ASSERT_EQ(l, val.get<int64_t>());
           continue;
 
         case 'd':
@@ -314,7 +314,7 @@ TEST(Utils, CSV_Row_Append)
   r.append(-9);
   ASSERT_EQ(5, r.size());
   ASSERT_EQ(Sloppy::CSV_Value::Type::Long, r[4].valueType());
-  ASSERT_EQ(-9, r[4].get<long>());
+  ASSERT_EQ(-9, r[4].get<int64_t>());
 
   ASSERT_EQ(R"(42.420000,"abc,","",,-9)", r.asString(Rep::Quoted));
   ASSERT_EQ(R"(42.420000,"abc\,","",,-9)", r.asString(Rep::QuotedAndEscaped));
@@ -376,7 +376,7 @@ TEST(Utils, CSV_Tab_Ctor)
   ASSERT_EQ("a", t.getHeader(0));
   ASSERT_EQ("b", t.getHeader(1));
   ASSERT_EQ("c", t.getHeader(2));
-  ASSERT_EQ(1, t.get(0,0).get<long>());
+  ASSERT_EQ(1, t.get(0,0).get<int64_t>());
   ASSERT_EQ(2.2, t.get(0,"b").get<double>());
   ASSERT_EQ("x", t.get(0,2).get<string>());
 
@@ -417,7 +417,7 @@ TEST(Utils, CSV_Tab_Append)
   r.append(4);
   ASSERT_TRUE(t.append(r));
   ASSERT_EQ("x", t.get(0,4).get<string>());
-  ASSERT_EQ(2, t.get(1,2).get<long>());
+  ASSERT_EQ(2, t.get(1,2).get<int64_t>());
   ASSERT_EQ(2, t.size());
 }
 
@@ -502,9 +502,9 @@ TEST(Utils, CSV_Tab_EraseColumn)
   ASSERT_TRUE(t.eraseColumn(3));
   ASSERT_EQ(4, t.nCols());
   ASSERT_EQ(3.14, t.get(0,2).get<double>());
-  ASSERT_EQ(97, t.get(1,2).get<long>());
+  ASSERT_EQ(97, t.get(1,2).get<int64_t>());
   ASSERT_EQ(" x", t.get(0,3).get<string>());
-  ASSERT_EQ(100, t.get(1,3).get<long>());
+  ASSERT_EQ(100, t.get(1,3).get<int64_t>());
   ASSERT_EQ("c", t.getHeader(2));
   ASSERT_EQ("e", t.getHeader(3));
 
@@ -513,14 +513,14 @@ TEST(Utils, CSV_Tab_EraseColumn)
   ASSERT_EQ(3, t.nCols());
   ASSERT_EQ("c", t.getHeader(2));
   ASSERT_EQ(3.14, t.get(0,2).get<double>());
-  ASSERT_EQ(97, t.get(1,2).get<long>());
+  ASSERT_EQ(97, t.get(1,2).get<int64_t>());
 
   // boundary case: first column
   ASSERT_TRUE(t.eraseColumn(0));
   ASSERT_EQ(2, t.nCols());
   ASSERT_EQ("b", t.getHeader(0));
-  ASSERT_EQ(2, t.get(0,0).get<long>());
-  ASSERT_EQ(98, t.get(1,0).get<long>());
+  ASSERT_EQ(2, t.get(0,0).get<int64_t>());
+  ASSERT_EQ(98, t.get(1,0).get<int64_t>());
 
   // invalid column
   ASSERT_FALSE(t.eraseColumn(99));
@@ -542,7 +542,7 @@ TEST(Utils, CSV_Erase)
   ++rowIt;
   r.erase(rowIt);
   ASSERT_EQ(2, r.size());
-  ASSERT_EQ(666, r[1].get<long>());
+  ASSERT_EQ(666, r[1].get<int64_t>());
 
   Sloppy::CSV_Table t;
   t.append(r);

@@ -309,7 +309,7 @@ namespace Sloppy
        * Positive paramters shift the timestamp's value forward (==> later / future), negative
        * values shift the timestamp's value backwards (==> earlier / past)
        */
-      void applyOffset(long secs)
+      void applyOffset(int64_t secs)
       {
         raw += boost::posix_time::seconds(secs);
       }
@@ -652,7 +652,7 @@ namespace Sloppy
 
       /** \returns the length of the time period in seconds or `-1` in case of open periods
        */
-      long getLength_Sec() const;
+      int64_t getLength_Sec() const;
 
       /** \returns the length of the time period in minutes (incl. digits) or `-1` in case of open periods
        */
@@ -679,7 +679,7 @@ namespace Sloppy
        *
        * \returns `true` if the start has been updated or `false` if start+offset would be after the end
        */
-      bool applyOffsetToStart(long secs);
+      bool applyOffsetToStart(int64_t secs);
 
       /** \brief Applies an offset to the period's end
        *
@@ -691,7 +691,7 @@ namespace Sloppy
        * \returns `true` if the end has been updated or `false` if end+offset would be after the end or
        * the period has an open end
        */
-      bool applyOffsetToEnd(long secs);
+      bool applyOffsetToEnd(int64_t secs);
     };
 
     /** \brief A class for a date period that is defined by two `boost::gregorian::date` values
@@ -743,7 +743,7 @@ namespace Sloppy
 
       /** \returns the length of the date period in days or `-1` in case of open periods
        */
-      long getLength_Days() const
+      int64_t getLength_Days() const
       {
         if (!(end.has_value())) return -1;
 

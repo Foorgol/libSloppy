@@ -47,8 +47,8 @@ namespace Sloppy
    */
   struct AsyncWorkerStats
   {
-    unsigned long nCalls{0};   ///< the number of calls to the worker function
-    unsigned long totalRuntime_ms{0};   ///< the accumulated execution time of all worker function calls
+    unsigned long long nCalls{0};   ///< the number of calls to the worker function
+    unsigned long long totalRuntime_ms{0};   ///< the accumulated execution time of all worker function calls
     int lastRuntime_ms{0};   ///< the number of millisecs the last worker function call lasted
     int minWorkerTime_ms{INT_MAX};
     int maxWorkerTime_ms{0};

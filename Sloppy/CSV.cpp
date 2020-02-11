@@ -126,7 +126,7 @@ namespace Sloppy
       return string{};
 
     case Type::Long:
-      return to_string(std::get<long>(value()));
+      return to_string(std::get<int64_t>(value()));
 
     case Type::Double:
       return to_string(std::get<double>(value()));
@@ -166,7 +166,7 @@ namespace Sloppy
 
       if (Sloppy::checkConstraint(trimmed, Sloppy::ValueConstraint::Integer))
       {
-        long l = stol(trimmed);
+        int64_t l = stol(trimmed);
         cols.push_back(CSV_Value{l});
         continue;
       }

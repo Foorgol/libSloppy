@@ -74,10 +74,10 @@ namespace Sloppy
   /** \brief A single value in a (CSV-)table that can hold either
    * a string, a long integer or a double; it can also be empty (NULL)
    */
-  class CSV_Value : public std::optional<std::variant<long, double, std::string>>
+  class CSV_Value : public std::optional<std::variant<int64_t, double, std::string>>
   {
   public:
-    using InnerType = std::variant<long, double, std::string>;
+    using InnerType = std::variant<int64_t, double, std::string>;
 
     /** \brief An enum that represents the index of the different
      * value types in the underlying std::variant
@@ -94,36 +94,36 @@ namespace Sloppy
     /** \brief Ctor for an empty NULL value
      */
     CSV_Value() noexcept
-      : std::optional<std::variant<long, double, std::string>>{} {}
+      : std::optional<std::variant<int64_t, double, std::string>>{} {}
 
-    /** \brief Ctor for a long int value
+    /** \brief Ctor for a 64-bit int value
      */
-    explicit CSV_Value(const long& l) noexcept
-      : std::optional<std::variant<long, double, std::string>>{l} {}
+    explicit CSV_Value(const int64_t& l) noexcept
+      : std::optional<std::variant<int64_t, double, std::string>>{l} {}
 
     /** \brief Ctor for a standard int value
      */
     explicit CSV_Value(const int& i) noexcept
-      : std::optional<std::variant<long, double, std::string>>{static_cast<long>(i)} {}
+      : std::optional<std::variant<int64_t, double, std::string>>{static_cast<int64_t>(i)} {}
 
     /** \brief Ctor for a double value
      */
     explicit CSV_Value(const double& d) noexcept
-      : std::optional<std::variant<long, double, std::string>>{d} {}
+      : std::optional<std::variant<int64_t, double, std::string>>{d} {}
 
     /** \brief Ctor for a string value (creates string copy)
      */
     explicit CSV_Value(
         const std::string& s   ///< the raw, unescaped, unquoted string (means: the actual user level data)
         ) noexcept
-      : std::optional<std::variant<long, double, std::string>>{s} {}
+      : std::optional<std::variant<int64_t, double, std::string>>{s} {}
 
     /** \brief Ctor for a string value (moves string content)
      */
     explicit CSV_Value(
         std::string&& s   ///< the raw, unescaped, unquoted string (means: the actual user level data)
         ) noexcept
-      : std::optional<std::variant<long, double, std::string>>{std::move(s)} {}
+      : std::optional<std::variant<int64_t, double, std::string>>{std::move(s)} {}
 
     /** \brief Overrides the contained value with a new value
      */
@@ -143,7 +143,7 @@ namespace Sloppy
      */
     void set(const int& i)
     {
-      set(static_cast<const long&>(i));
+      set(static_cast<const int64_t&>(i));
     }
 
     /** \brief Overrides the contained value with a new value; convenience function

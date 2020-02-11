@@ -1102,7 +1102,7 @@ namespace Sloppy
 
     /** \returns the size of the file in bytes
      */
-    long size() const { return fSize; }
+    int64_t size() const { return fSize; }
 
     /** \returns the file contents as a MemView
      */
@@ -1146,7 +1146,7 @@ namespace Sloppy
      *
      * \throws std::out_of_range if the index is invalid
      */
-    long getLong(size_t idx) const { return get<long>(idx); }
+    int64_t getLong(size_t idx) const { return get<int64_t>(idx); }
 
     /** \returns the integer value at a given index using the hosts's endianess
      *
@@ -1197,7 +1197,7 @@ namespace Sloppy
 
   private:
     void *mapAddr{nullptr};
-    long fSize{-1};
+    int64_t fSize{-1};
     int fd{-1};
   };
 

@@ -71,7 +71,7 @@ TEST(Timer, RemainingTime)
 
   t.setTimeoutDuration__ms(70);
   this_thread::sleep_for(chrono::milliseconds(50));
-  long r = t.getRemainingTime__ms();
+  int64_t r = t.getRemainingTime__ms();
   ASSERT_TRUE(r <= 20);
   ASSERT_TRUE(r > 18);
   this_thread::sleep_for(chrono::milliseconds(50));

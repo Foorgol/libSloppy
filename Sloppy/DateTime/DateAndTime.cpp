@@ -458,7 +458,7 @@ namespace Sloppy
     //----------------------------------------------------------------------------
     //----------------------------------------------------------------------------
 
-    long TimePeriod::getLength_Sec() const
+    int64_t TimePeriod::getLength_Sec() const
     {
       if (hasOpenEnd()) return -1;
 
@@ -469,7 +469,7 @@ namespace Sloppy
 
     double TimePeriod::getLength_Minutes() const
     {
-      long secs = getLength_Sec();
+      int64_t secs = getLength_Sec();
 
       return (secs < 0 ? -1 : secs / 60.0);
     }
@@ -478,7 +478,7 @@ namespace Sloppy
 
     double TimePeriod::getLength_Hours() const
     {
-      long secs = getLength_Sec();
+      int64_t secs = getLength_Sec();
 
       return (secs < 0 ? -1 : secs / (3600.0));
     }
@@ -487,7 +487,7 @@ namespace Sloppy
 
     double TimePeriod::getLength_Days() const
     {
-      long secs = getLength_Sec();
+      int64_t secs = getLength_Sec();
 
       return (secs < 0 ? -1 : secs / (3600.0 * 24.0));
     }
@@ -496,14 +496,14 @@ namespace Sloppy
 
     double TimePeriod::getLength_Weeks() const
     {
-      long secs = getLength_Sec();
+      int64_t secs = getLength_Sec();
 
       return (secs < 0 ? -1 : secs / (3600.0 * 24.0 * 7));
     }
 
     //----------------------------------------------------------------------------
 
-    bool TimePeriod::applyOffsetToStart(long secs)
+    bool TimePeriod::applyOffsetToStart(int64_t secs)
     {
       UTCTimestamp newStart{start.getRawTime() + secs};
 
@@ -512,7 +512,7 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    bool TimePeriod::applyOffsetToEnd(long secs)
+    bool TimePeriod::applyOffsetToEnd(int64_t secs)
     {
       if (hasOpenEnd()) return false;
 

@@ -30,10 +30,8 @@ using namespace std;
 
 namespace Sloppy
 {
-  constexpr int ManagedFileDescriptor::DefaultReadWait_ms;
-
   ManagedFileDescriptor::ManagedFileDescriptor(int _fd, size_t readBufferSize)
-    :fd{_fd}, fdMutex{}, st{State::Idle}, readBuf{readBufferSize}
+    :fd{_fd}, fdMutex{}, st{State::Idle}, defaultReadBufSize{readBufferSize}
   {
     if (fd < 0)
     {
@@ -102,7 +100,7 @@ namespace Sloppy
 
   //----------------------------------------------------------------------------
 
-  MemArray ManagedFileDescriptor::blockingRead(size_t minLen, size_t maxLen, size_t timeout_ms)
+  MemArray ManagedFileDescriptor::blockingRead(size_t minLen, size_t maxLen, int timeout_ms)
   {
     if (minLen == 0) minLen = 1;   // zero means: no min length which is equivalent to "at least one byte"
     if ((maxLen > 0) && (minLen > maxLen))
@@ -115,12 +113,12 @@ namespace Sloppy
     // apply some "intelligence" that avoids too
     // frequent resize()-operations of the buffer
     // and that avoids allocating too much memory.
-    size_t initialResultBufSize = ReadChunkSize;
+    size_t initialResultBufSize = defaultReadBufSize;
     if (minLen == maxLen)
     {
       initialResultBufSize = minLen;
     }
-    if (initialResultBufSize > maxLen)
+    if ((maxLen > 0) && (maxLen < initialResultBufSize))
     {
       initialResultBufSize = maxLen;
     }
@@ -148,6 +146,7 @@ namespace Sloppy
       // to the timeout value. In case we need multiple read() calls
       // to collect the requested number of bytes, we need to
       // calculate how much time is left.
+      int actualTimeout = timeout_ms;
       if (timeout_ms > 0)
       {
         if (readTimer.isElapsed())
@@ -156,57 +155,14 @@ namespace Sloppy
           throw ReadTimeout{result.view()};
         }
 
-        // wait for data to become available
-        size_t remainingTime = timeout_ms - readTimer.getTime__ms();
-        bool hasData;
-        try
-        {
-          hasData = waitForReadOnDescriptor(fd, remainingTime);
-        }
-        catch (IOError)
-        {
-          st = State::Idle;
-          throw;
-        }
-
-        // evaluate the result
-        if (!hasData)
-        {
-          st = State::Idle;
-          throw ReadTimeout{result.view()};
-        }
-
-        // at this point, the descriptor is ready for reading
-        // and the timeout has not yet been reached.
+        // calcuate the remaining time
+        int actualTimeout = timeout_ms - static_cast<int>(readTimer.getTime__ms());
+        if (actualTimeout < 0) actualTimeout = 0;   // avoid blocking if the time has elapsed in the meantime
       }
 
-      // determine the maximum number of bytes to be read. do not read
-      // more than requested. do not read more than what fits into our read buffer
-      size_t nMax = (maxLen > 0) ? (maxLen - bytesRead) : readBuf.size();
-      if (nMax > readBuf.size()) nMax = readBuf.size();
-
-      int n = read(fd, readBuf.to_charPtr(), nMax);
-
-      if (n > 0)   /// the read succeeded
-      {
-        // does the received data fit into the result
-        // buffer or is a resize()-operation necessary
-        if ((bytesRead + n) > result.size())
-        {
-          size_t newSize = (bytesRead + n) * 1.2;  // 20 % additional space
-          result.resize(newSize);
-        }
-        result.copyOver(readBuf.view().slice_byCount(0, n), bytesRead);
-        bytesRead += n;
-      }
-      if (n == 0)  // descriptor is non-blocking
-      {
-        this_thread::sleep_for(chrono::milliseconds{DefaultReadWait_ms});
-      }
-      if (n < 0)
-      {
-        throw IOError{};
-      }
+      // execute a single read and write the result directly into
+      // the result buffer
+      bytesRead += readSingleShot(result, bytesRead, actualTimeout);
 
       if (bytesRead >= minLen) break;
     }
@@ -240,7 +196,6 @@ namespace Sloppy
     fd = -1;
     if (rc < 0) throw IOError{};
 
-    readBuf.releaseMemory();
     st = State::Closed;
   }
 
@@ -268,9 +223,95 @@ namespace Sloppy
 
     int tmp = fd;
     fd = -1;
-    readBuf.releaseMemory();
 
     return tmp;
+  }
+
+  //----------------------------------------------------------------------------
+
+  bool ManagedFileDescriptor::waitForInput(int timeout_ms)
+  {
+    PollFlags reqFlags;
+    reqFlags.in = true;
+    const auto outFlags = poll(reqFlags, timeout_ms);
+    if (!outFlags) return false;
+    return outFlags->in;
+  }
+
+  //----------------------------------------------------------------------------
+
+  std::optional<PollFlags> ManagedFileDescriptor::poll(const PollFlags& reqFlags, int timeout_ms)
+  {
+    // wait for the fd to become available
+    lock_guard<mutex> lockFd{fdMutex};
+
+    // just to be sure: check the state
+    if (st != State::Idle)
+    {
+      throw std::runtime_error("ManagedFileDescriptor: unexpected, inconsistent FD state!");
+    }
+
+    return poll_internal_noMutex(reqFlags, timeout_ms);
+  }
+
+  //----------------------------------------------------------------------------
+
+  std::optional<PollFlags> ManagedFileDescriptor::poll_internal_noMutex(const PollFlags& reqFlags, int timeout_ms)
+  {
+    pollfd pfd;
+    pfd.fd = fd;
+    pfd.events = reqFlags.toInt();
+
+    st = State::Polling;
+    const int rc = ::poll(&pfd, 1, timeout_ms);
+    st = State::Idle;
+
+    if (rc == -1)
+    {
+      throw IOError{};
+    }
+
+    if (rc == 0) return {};
+
+    return PollFlags{pfd.revents};
+  }
+
+  //----------------------------------------------------------------------------
+
+  size_t ManagedFileDescriptor::readSingleShot(MemArray& buf, size_t idxForStorage, int timeout_ms)
+  {
+    if (idxForStorage >= buf.size())
+    {
+      throw std::out_of_range("ManagedFileDescriptor::readSingleShot(): inconsistent parameters, storage index exceeds buffer size");
+    }
+
+    // wait for data to become available
+    PollFlags pf;
+    pf.in = true;
+    try
+    {
+      auto outFlags = poll_internal_noMutex(pf, timeout_ms);
+      const bool hasData = outFlags ? outFlags->in : false;
+      if (!hasData) return 0;
+    }
+    catch (IOError)
+    {
+      st = State::Idle;
+      throw;
+    }
+
+    // execute the actual read
+    const auto nMax = buf.size() - idxForStorage;
+    auto it = buf.begin();
+    std::advance(it, idxForStorage);
+    int n = read(fd, it, nMax);
+
+    if (n < 0)
+    {
+      throw IOError{};
+    }
+
+    return n;
   }
 
   //----------------------------------------------------------------------------
@@ -287,7 +328,6 @@ namespace Sloppy
     State tmp = other.st;
     st = tmp;
     other.st = State::Closed;
-    readBuf = std::move(other.readBuf);  // re-use MemArray's move assignment
   }
 
   //----------------------------------------------------------------------------
@@ -306,23 +346,12 @@ namespace Sloppy
       if (rc < 0) throw IOError{};
     }
 
-    // release our read buffer, if any
-    //
-    // should also be handled by MemArray's move
-    // assignment operator, but better be safe than
-    // sorry
-    if (readBuf.notEmpty())
-    {
-      readBuf.releaseMemory();
-    }
-
     // transfer ownership
     fd = other.fd;
     other.fd = -1;
     State tmp = other.st;
     st = tmp;
     other.st = State::Closed;
-    readBuf = std::move(other.readBuf);  // re-use MemArray's move assignment
 
     return *this;
   }
@@ -354,6 +383,36 @@ namespace Sloppy
     }
 
     return (retVal > 0);
+  }
+
+  //----------------------------------------------------------------------------
+
+  PollFlags::PollFlags(int events)
+  {
+    in = events & POLLIN;
+    pri = events & POLLPRI;
+    out = events & POLLOUT;
+    rdhup = events & POLLRDHUP;
+    err = events & POLLERR;
+    hup = events & POLLHUP;
+    nval = events & POLLNVAL;
+  }
+
+  //----------------------------------------------------------------------------
+
+  short PollFlags::toInt() const
+  {
+    short result{0};
+
+    if (in) result |= POLLIN;
+    if (pri) result |= POLLPRI;
+    if (out) result |= POLLOUT;
+    if (rdhup) result |= POLLRDHUP;
+    if (err) result |= POLLERR;
+    if (hup) result |= POLLHUP;
+    if (nval) result |= POLLNVAL;
+
+    return result;
   }
 
 }

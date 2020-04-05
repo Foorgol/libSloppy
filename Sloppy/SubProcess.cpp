@@ -19,7 +19,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-
+#include "ManagedFileDescriptor.h"
 #include "SubProcess.h"
 #include "Memory.h"
 
@@ -95,31 +95,67 @@ namespace Sloppy
       close(outPipe_writeEnd);
       close(errPipe_writeEnd);
 
+      // convert to managed descriptors for easier I/O
+      ManagedFileDescriptor outFromChild{outPipe_readEnd};
+      ManagedFileDescriptor errFromChild{errPipe_readEnd};
+
+      // cyclically read the child's stderr and stdout
+      // until the child exits
+      Sloppy::estring outData;
+      Sloppy::estring errData;
+      bool errHup{false};
+      bool outHup{false};
+      while (true)
+      {
+        static constexpr int IdleTime_ms = 20;
+        static constexpr int ReadBufSize = 4096;
+
+        // is there any data on stdout or stderr?
+        PollFlags reqFlags;
+        reqFlags.in = true;
+        reqFlags.hup = true;
+        auto actOutFlags = outFromChild.poll(reqFlags, IdleTime_ms);
+        auto actErrFlags = errFromChild.poll(reqFlags, 0);  // <-- intentionally no timeout here; the timeout is used in the previous call so that we do not consume more that 20 ms in total
+        const bool hasOutData = (actOutFlags && actOutFlags->in);
+        const bool hasErrData = (actErrFlags && actErrFlags->in);
+
+        // process stdout data
+        if (hasOutData)
+        {
+          auto data = outFromChild.blockingRead(0, ReadBufSize, 0);
+          outData.append(data.to_charPtr(), data.size());
+        }
+
+        // process stderr data
+        if (hasErrData)
+        {
+          auto data = errFromChild.blockingRead(0, ReadBufSize, 0);
+          errData.append(data.to_charPtr(), data.size());
+        }
+
+        // store if the child has closed the connections
+        if (actOutFlags && actOutFlags->hup)
+        {
+          outHup = true;
+        }
+        if (actErrFlags && actErrFlags->hup)
+        {
+          errHup = true;
+        }
+
+        // leave the loop if the child has hung up now (or earlier)
+        // and if there is no more data to read
+        if (outHup && errHup && !hasErrData && !hasOutData) break;
+      }
+
       // wait for the child to exit
       int status;
-      waitpid(pid, &status, 0);
+      waitpid(pid, &status, 0);  // blocks, but should return immediately because the child already closed stderr and stdout
 
-      // helper for reading from a pipe until it's empty
-      auto readAllFromPipe = [](int pipeFd)
-      {
-        static constexpr int ReadBufSize{1000};
-        char buf[ReadBufSize];
-        int64_t cnt;
-        estring data;
-        while ((cnt = read(pipeFd, buf, ReadBufSize)) > 0)
-        {
-          data.append(buf, static_cast<size_t>(cnt));
-        }
-        return data;
-      };
-
-      // read the buffered stdout / stderr data from
-      // the pipe
+      // store the buffered stdout / stderr data
       CmdReturnData result;
-      result.out = readAllFromPipe(outPipe_readEnd).split("\n", true, false);
-      close(outPipe_readEnd);
-      result.err = readAllFromPipe(errPipe_readEnd).split("\n", true, false);
-      close(errPipe_readEnd);
+      result.out = outData.split("\n", true, false);
+      result.err = errData.split("\n", true, false);
 
       // remove the last empty output line, if any
       for (std::vector<estring>* data : {&result.out, &result.err})

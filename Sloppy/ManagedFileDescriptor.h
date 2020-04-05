@@ -24,6 +24,8 @@
 #include <optional>
 #include <mutex>
 #include <atomic>
+#include <signal.h>
+#include <poll.h>
 
 #include "Memory.h"
 
@@ -37,6 +39,34 @@ namespace Sloppy
   class InvalidDataSize{};
 
   class OutOfMemory{};
+
+  /** \brief A simple struct that contains a bool for
+   * each flag used by `poll()`.
+   */
+  struct PollFlags
+  {
+    bool in{false};
+    bool pri{false};
+    bool out{false};
+    bool rdhup{false};
+    bool err{false};
+    bool hup{false};
+    bool nval{false};
+
+    /** \brief Default ctor that initializes all flags to `false`
+     */
+    PollFlags() = default;
+
+    /** \brief Ctor that initializes all flags from an integer as
+     * returned by `poll()` via `pollfd'.
+     */
+    explicit PollFlags(int events);
+
+    /** \brief Converts the current flag settings into an integer
+     * that is consumed by `poll()` via `pollfd'.
+     */
+    short int toInt() const;
+  };
 
   /** \brief A class that indicates a read timeout on a file descriptor
    * and is able to (optionally) return the partially read data.
@@ -153,10 +183,6 @@ namespace Sloppy
      */
     static constexpr size_t ReadChunkSize = 512000;
 
-    /** \brief The default timeout for read operations in milliseconds
-     */
-    static constexpr int DefaultReadWait_ms = 10;
-
     /** \brief An enum class that indicated the current state of the
      * file descriptor.
      */
@@ -165,6 +191,7 @@ namespace Sloppy
       Idle,   ///< the descriptor is idle, no operations are currently taking place
       Reading,   ///< a blocking, synchronous read is currently running
       Writing,   ///< a blocking, synchronous write is currently running
+      Polling,   ///< a poll() request is currently ongoing
       Closed   ///< the descriptor has been closed by the user
     };
 
@@ -286,10 +313,9 @@ namespace Sloppy
      *
      * \returns a heap allocated buffer that contains the received data
      */
-    MemArray blockingRead(
-        size_t minLen,   ///< the minimal number of bytes to read; if zero, we'll wait for at least one byte
+    MemArray blockingRead(size_t minLen,   ///< the minimal number of bytes to read; if zero, we'll wait for at least one byte
         size_t maxLen = 0,   ///< the maximum of bytes to read from the descriptor; if zero, we read as much as possible until we have at least `minLen`
-        size_t timeout_ms = 0   ///< the timeout
+        int timeout_ms = 0   ///< the timeout (0 = return immediatly, even if no data is avail; < 0 = wait infinitely)
         );
 
     /** \brief Executes a blocking read operation on the descriptor using `read()'
@@ -326,12 +352,76 @@ namespace Sloppy
      */
     int releaseDescriptor();
 
+    /** \returns `true` if the FD has pending input data that is available
+     * for reading.
+     *
+     * \throws IOError if an I/O error occurred during waiting
+     *
+     * This is essentially a wrapper for `poll()` and thus works for blocking
+     * and as well as for non-blocking file descriptors.
+     */
+    bool waitForInput(
+        int timeout_ms  ///< max time to wait for data; special values: 0: returns immediately, < 0: blocks infintely until data becomes available
+        );
+
+    /** \brief Executes a `poll()` call on the file descriptor and returns the
+     * events that actually occurred.
+     *
+     * \note The time necessary for acquiring the internal file descriptor mutex
+     * is not considered in the timeout value!
+     *
+     * \throws IOError if an I/O error occurred during waiting
+     *
+     * \returns an empty object in case a timeout occurs; otherwise, a filled `PollFlags` struct
+     * with the actual events is returned.
+     */
+    std::optional<PollFlags> poll(
+        const PollFlags& reqFlags,   ///< the flags the caller is interested in
+        int timeout_ms   ///< max time to wait for the event(s); special values: 0 = return immediately, < 0 = wait infinitely
+        );
+
   protected:
+    /** \brief Behaves just like the public `poll()` (and is essentially the worker behind
+     * the public interface) but without acquiring the mutex.
+     *
+     * \pre The mutex has to be acquired by the caller and the caller has to assert that
+     * the file descriptor is in a suitable state.
+     *
+     * This is only intented for internal use when the file descriptor mutex
+     * has already been acquired.
+     */
+    std::optional<PollFlags> poll_internal_noMutex(
+        const PollFlags& reqFlags,   ///< the flags the caller is interested in
+        int timeout_ms   ///< max time to wait for the event(s); special values: 0 = return immediately, < 0 = wait infinitely
+        );
+
+    /** \brief Optionally waits for a timeout and executes a SINGLE `read()` call in order
+     * to fill a caller-provided MemArray.
+     *
+     * We never read more that what fits into the provided `MemArray`. But it
+     * is not guaranteed that the array will be filled completely.
+     *
+     * \throws IOError if an I/O error occurred during waiting or reading
+     *
+     * \throws std::out_of_range if the provided storage index is outside the buffer
+     *
+     * \pre The mutex has to be acquired by the caller and the caller has to assert that
+     * the file descriptor is in a suitable state.
+     *
+     * \returns the number of bytes that have actually been read (0 = timeout); this value is
+     * never less than zero.
+     */
+    size_t readSingleShot(
+        MemArray& buf,   ///< the buffer for storing the data
+        size_t idxForStorage,   ///< the 0-based index in `buf` where the input data shall be stored
+        int timeout_ms   ///< timeout for the operation; 0 = return immediately if there's no data, < 0 = wait infinitely
+        );
+
+
     int fd{-1};
     std::mutex fdMutex{};
     std::atomic<State> st{State::Closed};
-    MemArray readBuf{};
-
+    size_t defaultReadBufSize{0};
   };
 }
 

@@ -36,6 +36,15 @@ TEST(SubProcess, HappyPath)
 
 //----------------------------------------------------------------------------
 
+TEST(SubProcess, LongRunningMuchData)
+{
+  auto cmdResult = Sloppy::execCmd({"/usr/bin/find", "/"});
+  ASSERT_EQ(1, cmdResult.rc);
+  cout << "execCmd() successfully read " << cmdResult.out.size() << " lines of data!" << std::endl;
+}
+
+//----------------------------------------------------------------------------
+
 TEST(SubProcess, Remote)
 {
   auto cmdResult = Sloppy::execRemoteCmd({"/usr/bin/hostname"}, "lessing-vpn");

@@ -115,7 +115,7 @@ TEST(ManagedFileDescr, BasicReadWrite)
 
   // start an async thread for reading, with INSUFFICIENT
   // time to read all data
-  a = async(launch::async, reader, ref(fdRead), (totalRuntime_us * 0.9) / 1000);
+  a = async(launch::async, reader, ref(fdRead), (totalRuntime_us * 0.8) / 1000);
   ASSERT_THROW(d = a.get(), ReadTimeout);
 
   // wait for the writer to finish

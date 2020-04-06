@@ -367,9 +367,6 @@ namespace Sloppy
     /** \brief Executes a `poll()` call on the file descriptor and returns the
      * events that actually occurred.
      *
-     * \note The time necessary for acquiring the internal file descriptor mutex
-     * is not considered in the timeout value!
-     *
      * \throws IOError if an I/O error occurred during waiting
      *
      * \returns an empty object in case a timeout occurs; otherwise, a filled `PollFlags` struct

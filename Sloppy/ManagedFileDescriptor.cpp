@@ -242,6 +242,8 @@ namespace Sloppy
 
   std::optional<PollFlags> ManagedFileDescriptor::poll(const PollFlags& reqFlags, int timeout_ms)
   {
+    Sloppy::Timer t;
+
     // wait for the fd to become available
     lock_guard<mutex> lockFd{fdMutex};
 
@@ -251,7 +253,11 @@ namespace Sloppy
       throw std::runtime_error("ManagedFileDescriptor: unexpected, inconsistent FD state!");
     }
 
-    return poll_internal_noMutex(reqFlags, timeout_ms);
+    // calculate the remaining time after waiting for the lock
+    const int actualTimeout = timeout_ms - static_cast<int>(t.getTime__ms());
+    if (actualTimeout < 0) return {}; // timeout occurred already while waiting for the mutex
+
+    return poll_internal_noMutex(reqFlags, actualTimeout);
   }
 
   //----------------------------------------------------------------------------

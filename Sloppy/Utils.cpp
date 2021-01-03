@@ -54,7 +54,6 @@ namespace Sloppy
                  regex::icase};
 
     string e{email};
-    boost::to_upper(e);
     return regex_match(e, reEmail);
   }
 

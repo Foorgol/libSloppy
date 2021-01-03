@@ -170,7 +170,7 @@ namespace Sloppy
   void CyclicWorkerThread::mainLoop()
   {
     // short-cut
-    using Clock = chrono::high_resolution_clock;
+    using Clock = chrono::steady_clock;
 
     // initially lock the mutex because that's a pre-condition
     // when starting the while loop

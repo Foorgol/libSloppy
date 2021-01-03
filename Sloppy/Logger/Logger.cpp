@@ -49,12 +49,12 @@ namespace Sloppy
       estring outText{"%1%2%3: "};
       if (useTimestamps)
       {
-        DateTime::UTCTimestamp now;
-        if (tzp != nullptr)
+        DateTime::WallClockTimepoint_secs now{tzPtr};
+        if (tzPtr != nullptr)
         {
-          outText.arg(now.toLocalTime(tzp).getTimestamp() + " ");
+          outText.arg(now.timestampString() + " ");
         } else {
-          outText.arg(now.getTimestamp() + "UTC ");
+          outText.arg(now.timestampString() + "UTC ");
         }
       } else {
         outText.arg("");
@@ -100,10 +100,14 @@ namespace Sloppy
 
     bool Logger::setTimezone(const string& tzName)
     {
-      auto tzDb = DateTime::getPopulatedTzDatabase();
-      tzp = tzDb.time_zone_from_region(tzName);
-
-      return (tzp != nullptr);
+      try {
+        const auto tmpPtr = date::locate_zone(tzName);
+        if (tmpPtr != nullptr) tzPtr = tmpPtr;
+        return (tmpPtr != nullptr);
+      }
+      catch (...) {
+        return false;
+      }
     }
 
     //----------------------------------------------------------------------------

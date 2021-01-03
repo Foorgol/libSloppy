@@ -16,12 +16,11 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __LIBSLOPPY_LOGGER_H
-#define __LIBSLOPPY_LOGGER_H
+#pragma once
 
 #include <string>
 
-#include <boost/date_time/local_time/local_time.hpp>
+#include "../DateTime/tz.h"
 
 namespace Sloppy
 {
@@ -152,9 +151,8 @@ namespace Sloppy
       std::string sender{};
       SeverityLevel defaultLvl = SeverityLevel::normal;
       SeverityLevel minLvl = SeverityLevel::normal;
-      boost::local_time::time_zone_ptr tzp{nullptr};
+      const date::time_zone* tzPtr{nullptr};
 
     };
   }
 }
-#endif

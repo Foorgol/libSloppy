@@ -66,7 +66,7 @@ namespace Sloppy
     explicit estring(
         size_t cnt  ///< the number of characters to allocate
         )
-      : std::string{cnt} {}
+      : std::string(cnt, 0) {}
 
     /// ctor from an C-style string (zero-terminated)
     estring(const char* s) : std::string(s) {}

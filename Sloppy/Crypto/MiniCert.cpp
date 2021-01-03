@@ -63,7 +63,7 @@ namespace Sloppy
     bool CertSignReqIn::isValid() const
     {
       if (cn.empty() || cryptoPubKey.empty() || signPubKey.empty()) return false;
-      if (signatureTimestamp > Sloppy::DateTime::UTCTimestamp{}) return false;
+      if (signatureTimestamp > Sloppy::DateTime::WallClockTimepoint_secs{}) return false;
       if (!(addSubjectInfo.is_object())) return false;
 
       // additional info may not overwrite CN
@@ -231,8 +231,8 @@ namespace Sloppy
 
       // prepare the resulting JSON object with all subject data points
       nlohmann::json jOut = csr.addSubjectInfo.is_object() ? csr.addSubjectInfo : nlohmann::json::object();
-      Sloppy::DateTime::UTCTimestamp now;
-      jOut["sts"] = now.getRawTime();
+      Sloppy::DateTime::WallClockTimepoint_secs now;
+      jOut["sts"] = now.to_time_t();
       jOut["cn"] = csr.cn;
       jOut["cpk"] = csr.cryptoPubKey.toBase64();
       jOut["spk"] = spk.toBase64();
@@ -293,10 +293,10 @@ namespace Sloppy
           return make_pair(MiniCertError::BadFormat, CertSignReqIn{});
         }
 
-        result.signatureTimestamp = Sloppy::DateTime::UTCTimestamp{sts};
+        result.signatureTimestamp = Sloppy::DateTime::WallClockTimepoint_secs{sts};
 
         // check the plausibility of the timestamp
-        if (result.signatureTimestamp > Sloppy::DateTime::UTCTimestamp{})
+        if (result.signatureTimestamp > Sloppy::DateTime::WallClockTimepoint_secs{})
         {
           return make_pair(MiniCertError::BadFormat, CertSignReqIn{});
         }
@@ -344,7 +344,7 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    pair<MiniCertError, string> signCertSignRequest(const CertSignReqIn& csr, const string& caName, const Crypto::SodiumLib::AsymSign_SecretKey& caKey, const DateTime::UTCTimestamp& validFrom, const DateTime::UTCTimestamp& validUntil)
+    pair<MiniCertError, string> signCertSignRequest(const CertSignReqIn& csr, const string& caName, const Crypto::SodiumLib::AsymSign_SecretKey& caKey, const Sloppy::DateTime::TimeRange_secs& validityRange)
     {
       Sloppy::Crypto::SodiumLib* sodium = Sloppy::Crypto::SodiumLib::getInstance();
 
@@ -352,8 +352,7 @@ namespace Sloppy
       if (!csr.isValid()) return make_pair(MiniCertError::BadFormat, "");
       if (caName.empty()) return make_pair(MiniCertError::BadFormat, "");
       if (caKey.empty()) return make_pair(MiniCertError::BadKey, "");
-      if (validUntil < validFrom) return make_pair(MiniCertError::BadFormat, "");
-      if (validUntil < Sloppy::DateTime::UTCTimestamp{}) return make_pair(MiniCertError::BadFormat, ""); // create no certs that are expired
+      if (validityRange.hasOpenEnd()) return make_pair(MiniCertError::BadFormat, "");
 
       // prepare the subject's JSON data
       nlohmann::json subject = csr.addSubjectInfo;  // this is guaranteed to be a (possibly empty) JSON instance of type "Object"
@@ -364,9 +363,9 @@ namespace Sloppy
       // prepare the meta data
       nlohmann::json meta = nlohmann::json::object();
       meta["ca"] = caName;
-      meta["vf"] = validFrom.getRawTime();
-      meta["vu"] = validUntil.getRawTime();
-      meta["sts"] = Sloppy::DateTime::UTCTimestamp{}.getRawTime();
+      meta["vf"] = validityRange.getStart().to_time_t();
+      meta["vu"] = validityRange.getEnd()->to_time_t();
+      meta["sts"] = Sloppy::DateTime::WallClockTimepoint_secs{}.to_time_t();
 
       // combine "subject" and "meta" and generate the
       // resulting json string
@@ -459,19 +458,19 @@ namespace Sloppy
       {
         throw BadDataFormatException("MiniCert ctor", "", "invalid time stamp for 'valid from' (vf)");
       }
-      meta.validFrom = Sloppy::DateTime::UTCTimestamp{t};
+      meta.validFrom = Sloppy::DateTime::WallClockTimepoint_secs{t};
       t = jMeta.value("vu", 0);
       if (t == 0)
       {
         throw BadDataFormatException("MiniCert ctor", "", "invalid time stamp for 'valid until' (vu)");
       }
-      meta.validUntil = Sloppy::DateTime::UTCTimestamp{t};
+      meta.validUntil = Sloppy::DateTime::WallClockTimepoint_secs{t};
       t = jMeta.value("sts", 0);
       if (t == 0)
       {
         throw BadDataFormatException("MiniCert ctor", "", "invalid signature time stamp (sts)");
       }
-      meta.sigTime = Sloppy::DateTime::UTCTimestamp{t};
+      meta.sigTime = Sloppy::DateTime::WallClockTimepoint_secs{t};
       if (meta.validFrom > meta.validUntil)
       {
         throw BadDataFormatException("MiniCert ctor", "", "inconsistent validity timestamps");

@@ -98,8 +98,8 @@ TEST_F(MiniCertTestFixture, CreateValidCSR)
   ASSERT_TRUE(j.is_object());
   ASSERT_EQ("Volker", j["cn"]);
   time_t stsRaw = j["sts"];
-  Sloppy::DateTime::UTCTimestamp now;
-  ASSERT_EQ(now.getRawTime(), stsRaw);
+  Sloppy::DateTime::WallClockTimepoint_secs now;
+  ASSERT_EQ(now.to_time_t(), stsRaw);
   string rawPubKey = j["spk"];
   rawPubKey = sodium->base642Bin(rawPubKey);
   SodiumLib::AsymSign_PublicKey _spk;
@@ -217,7 +217,7 @@ TEST_F(MiniCertTestFixture, ParseValidCSR)
   ASSERT_EQ("Volker", csrIn.cn);
   ASSERT_TRUE(sodium->memcmp(csrIn.cryptoPubKey.toMemView(), cpk.toMemView()));
   ASSERT_TRUE(sodium->memcmp(csrIn.signPubKey.toMemView(), spk.toMemView()));
-  ASSERT_EQ(Sloppy::DateTime::UTCTimestamp{}, csrIn.signatureTimestamp);
+  ASSERT_EQ(Sloppy::DateTime::WallClockTimepoint_secs{}, csrIn.signatureTimestamp);
   ASSERT_EQ(2, csrIn.addSubjectInfo.size());
   ASSERT_EQ(42, csrIn.addSubjectInfo["x"]);
   ASSERT_EQ("abc", csrIn.addSubjectInfo["y"]);
@@ -233,7 +233,7 @@ TEST_F(MiniCertTestFixture, ParseValidCSR)
   ASSERT_EQ("Volker", csrIn.cn);
   ASSERT_TRUE(sodium->memcmp(csrIn.cryptoPubKey.toMemView(), cpk.toMemView()));
   ASSERT_TRUE(sodium->memcmp(csrIn.signPubKey.toMemView(), spk.toMemView()));
-  ASSERT_EQ(Sloppy::DateTime::UTCTimestamp{}, csrIn.signatureTimestamp);
+  ASSERT_EQ(Sloppy::DateTime::WallClockTimepoint_secs{}, csrIn.signatureTimestamp);
   ASSERT_TRUE(csrIn.addSubjectInfo.is_object());
   ASSERT_EQ(0, csrIn.addSubjectInfo.size());
 }
@@ -299,7 +299,7 @@ TEST_F(MiniCertTestFixture, ParseInvalidCSR)
   j["cpk"] = string{tmp.to_charPtr(), tmp.size()};
   tmp = sodium->bin2Base64(spk.toMemView());
   j["spk"] = string{tmp.to_charPtr(), tmp.size()};
-  j["sts"] = Sloppy::DateTime::UTCTimestamp{}.getRawTime();
+  j["sts"] = Sloppy::DateTime::WallClockTimepoint_secs{}.to_time_t();
   csrExport = json2SignedCSR(j);
   tie(err, csrIn) = Sloppy::MiniCert::parseCertSignRequest(csrExport);
   ASSERT_EQ(MiniCertError::Okay, err);
@@ -346,13 +346,13 @@ TEST_F(MiniCertTestFixture, ParseInvalidCSR)
   }
 
   // signature timestamp in the future
-  j["sts"] = Sloppy::DateTime::UTCTimestamp{}.getRawTime() + 10;
+  j["sts"] = Sloppy::DateTime::WallClockTimepoint_secs{}.to_time_t() + 10;
   csrExport = json2SignedCSR(j);
   tie(err, csrIn) = Sloppy::MiniCert::parseCertSignRequest(csrExport);
   ASSERT_EQ(MiniCertError::BadFormat, err);
 
   // restore everything and make sure that we're back at a valid request
-  j["sts"] = Sloppy::DateTime::UTCTimestamp{}.getRawTime() - 10;
+  j["sts"] = Sloppy::DateTime::WallClockTimepoint_secs{}.to_time_t() - 10;
   csrExport = json2SignedCSR(j);
   tie(err, csrIn) = Sloppy::MiniCert::parseCertSignRequest(csrExport);
   ASSERT_EQ(MiniCertError::Okay, err);

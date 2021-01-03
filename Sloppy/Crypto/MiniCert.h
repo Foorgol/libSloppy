@@ -16,8 +16,7 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef SLOPPY__MINICERT_H
-#define SLOPPY__MINICERT_H
+#pragma once
 
 #include <string>
 #include <tuple>
@@ -228,7 +227,7 @@ namespace Sloppy
       std::string cn;  ///< the subject's "Common Name" (CN)
       Sloppy::Crypto::SodiumLib::AsymCrypto_PublicKey cryptoPubKey;   ///< the public key used for encryption
       Sloppy::Crypto::SodiumLib::AsymSign_PublicKey signPubKey;   ///< the public key used for signing cleartext
-      Sloppy::DateTime::UTCTimestamp signatureTimestamp;   ///< the time in UTC when the request was signed by the client
+      Sloppy::DateTime::WallClockTimepoint_secs signatureTimestamp;   ///< the time in UTC when the request was signed by the client
       nlohmann::json addSubjectInfo;   ///< any other data that should become part of the subject description
 
       bool isValid() const;
@@ -294,8 +293,7 @@ namespace Sloppy
         const CertSignReqIn& csr,  ///< the CSR to sign
         const std::string& caName,   ///< the CN of the CA used for signing
         const Crypto::SodiumLib::AsymSign_SecretKey& caKey,   ///< the CA's secret key
-        const Sloppy::DateTime::UTCTimestamp& validFrom,   ///< the validity start for the resulting cert
-        const Sloppy::DateTime::UTCTimestamp& validUntil ///< the validity end for the resulting cert
+        const Sloppy::DateTime::TimeRange_secs& validityRange  ///< the certificate's validity period (may not be an open range!)
         );
 
 
@@ -317,9 +315,9 @@ namespace Sloppy
       {
         std::string caName;   ///< the CA's common name
         Sloppy::Crypto::SodiumLib::AsymSign_PublicKey caPubKey;   ///< the public key used for signing the cert
-        Sloppy::DateTime::UTCTimestamp validFrom;   ///< the validity start for the resulting cert
-        Sloppy::DateTime::UTCTimestamp validUntil; ///< the validity end for the resulting cert
-        Sloppy::DateTime::UTCTimestamp sigTime; ///< the time when the cert was signed
+        Sloppy::DateTime::WallClockTimepoint_secs validFrom;   ///< the validity start for the resulting cert
+        Sloppy::DateTime::WallClockTimepoint_secs validUntil; ///< the validity end for the resulting cert
+        Sloppy::DateTime::WallClockTimepoint_secs sigTime; ///< the time when the cert was signed
       };
 
       /** \brief Standard ctor that constructs a certificate from a Base64-encoded string
@@ -383,5 +381,3 @@ namespace Sloppy
 
   }
 }
-
-#endif

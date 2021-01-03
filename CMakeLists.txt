@@ -51,6 +51,7 @@ set(LIB_SOURCES
     Sloppy/ThreadStats.h
     Sloppy/ThreadStats.cpp
     Sloppy/NamedType.h
+    Sloppy/GenericRange.h
     Sloppy/CSV.h
     Sloppy/CSV.cpp
 )
@@ -149,7 +150,7 @@ set(LIB_SOURCES_TST
     tests/BasicTestClass.cpp
     tests/tstDateTime.cpp
     tests/tstTimestamps.cpp
-    tests/tstGenericPeriod.cpp
+    tests/tstGenericRange.cpp
     tests/tstTimePeriods.cpp
     tests/tstArrayView.cpp
     tests/tstManagedArray.cpp

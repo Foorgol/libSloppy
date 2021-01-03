@@ -26,6 +26,8 @@
 #include "date.h"
 #include "tz.h"
 
+#include "../GenericRange.h"
+
 
 namespace Sloppy
 {
@@ -414,174 +416,10 @@ namespace Sloppy
     );
     
     
-    /** \brief An enumeration of relations between a period and a single time point / sample
-     * 
-     * For open ended ranges, a sample can never be "after" and is always "in" if the sample
-     * is on or beyond the start.
-     */
-    enum class RelationToPeriod
-    {
-      isBefore,    ///< the sample is before the period's start (sample < start)
-      isIn,        ///< start <= sample <= end
-      isAfter,     ///< the sample is after the period's end (sample > end)
-      _undefined   ///< undefind
-    };
-    
-    /** \brief A generic class for periods / ranges of any type.
-     *
-     * The class can be used with types that:
-     *   - can be copy-constructed; and
-     *   - support all relation operators (>, <, >=, <=, ==, !=)
-     *
-     * A special feature is that the period can be "open ended". That
-     * means that the range has a start value but no end value.
-     */
-    template <class T>
-    class GenericPeriod
-    {
-    public:
-      /** \brief Ctor for a period with defined start and end.
-       *
-       * The values for start and end are stored as a copy.
-       *
-       * \throws std::invalid_argument if the end is before the start
-       */
-      GenericPeriod(
-          const T& _start,  ///< the start value of the period
-          const T& _end     ///< the end value of the period
-          )
-        :start{_start}, end{_end}
-      {
-        static_assert(std::is_copy_constructible<T>(), "GenericPeriod works only with copy-constructible types!");
-        if (*end < start)
-        {
-          throw std::invalid_argument("GenericPeriod ctor: 'end'' may not be before start!");
-        }
-      }
-
-      /** \brief Ctor for a period with defined start and open end.
-       *
-       * The start value is stored as a copy.
-       */
-      GenericPeriod(
-          const T& _start  ///< the start value of the period
-          )
-        :start(_start), end{}
-      {
-      }
-
-      /** \returns `true` if the period is open-ended
-       */
-      inline bool hasOpenEnd() const
-      {
-        return (!end.has_value());
-      }
-
-      /** \returns `true` if a sample value is within the period
-       */
-      bool isInPeriod(
-          const T& sample   ///< the sample value to check
-          )
-      {
-        if (end.has_value())
-        {
-          return ((sample >= start) && (sample <= *end));
-        }
-        return (sample >= start);
-      }
-
-      /** \brief Determines the relation of a sample value with the period
-       *
-       * \returns an enum-value of type `Relation` that indicates how the sample relates to the period
-       */
-      RelationToPeriod determineRelationToPeriod(
-          const T& sample   ///< the sample value to check
-          ) const
-      {
-        if (sample < start) return RelationToPeriod::isBefore;
-
-        if (end.has_value())
-        {
-          return (sample > *end) ? RelationToPeriod::isAfter : RelationToPeriod::isIn;
-        }
-
-        return RelationToPeriod::isIn;
-      }
-
-      /** \brief Sets a new start value for the period
-       *
-       * The new start must be before the end. If this condition is not met,
-       * the current start value is not modified.
-       *
-       * \returns `false` if the new start is after the current end; `true` otherwise.
-       */
-      inline bool setStart(
-          const T& newStart    ///< the new start value
-          )
-      {
-        if (end.has_value() && (newStart > *end)) return false;
-        start = newStart;
-        return true;
-      }
-
-
-      /** \brief Sets a new end value for the period
-       *
-       * The new end must be on or after the start. If this condition is not met,
-       * the current end value is not modified.
-       *
-       * \returns `false` if the new end is before the current start; `true` otherwise.
-       */
-      inline bool setEnd(
-          const T& newEnd    ///< the new end value
-          )
-      {
-        if (newEnd < start) return false;
-        end = newEnd;
-        return true;
-      }
-
-      /** \returns a copy of the current start value
-       */
-      inline T getStart() const
-      {
-        return start;
-      }
-
-      /** \returns a copy of the current end value (which is an std::optional<T>)
-       */
-      inline std::optional<T> getEnd() const
-      {
-        return end;
-      }
-
-      /** \returns `true` if this period starts earlier than another period
-       */
-      inline bool startsEarlierThan (
-          const GenericPeriod<T>& other    ///< the period used for the comparison
-          ) const
-      {
-        return (start < other.start);
-      }
-
-      /** \returns `true` if this period starts later than another period
-       */
-      inline bool startsLaterThan (
-          const GenericPeriod<T>& other    ///< the period used for the comparison
-          ) const
-      {
-        return (start > other.start);
-      }
-
-    protected:
-      T start;   ///< the period's start value
-      std::optional<T> end;   ///< the period's end value, potentially empty
-    };
-
     /** \brief A class for a time period that is defined by two system_clock timepoints
      */
     template<class Duration>
-    class TimePeriod : public GenericPeriod<WallClockTimepoint<Duration>>
+    class TimePeriod : public GenericRange<WallClockTimepoint<Duration>>
     {
     public:
       using TpType = typename WallClockTimepoint<Duration>::TpType;
@@ -592,7 +430,7 @@ namespace Sloppy
       TimePeriod(
         const ValueType& _start   ///< the start timestamp for the TimePeriod
       )
-      :GenericPeriod<ValueType>(_start){}
+      :GenericRange<ValueType>(_start){}
       
       /** \brief Ctor for a closed TimePeriod with defined start and end
        *
@@ -602,7 +440,7 @@ namespace Sloppy
         const ValueType& _start,   ///< the start timestamp for the TimePeriod
         const ValueType& _end      ///< the end timestamp for the TimePeriod
       )
-      :GenericPeriod<ValueType>(_start, _end){}
+      :GenericRange<ValueType>(_start, _end){}
             
       /** \returns the length of the time period in seconds; empty in case of open periods
         */

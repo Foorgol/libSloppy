@@ -22,19 +22,17 @@
 #include <sstream>
 #include <fstream>
 
-#include <boost/filesystem.hpp>
+#include <filesystem>
 
 #include "ConstraintChecker.h"
 #include "../String.h"
 #include "../DateTime/tz.h"
 #include "../DateTime/date.h"
 
-namespace bfs = boost::filesystem;
-
 namespace Sloppy
 {
 
-  bool checkConstraint(const std::optional<estring>& val, Sloppy::ValueConstraint c, std::string* errMsg)
+  bool checkConstraint(const std::optional<estring>& val, ValueConstraint c, std::string* errMsg)
   {
     // first basic check: does the value exist at all?
     if (!(val.has_value()))
@@ -175,12 +173,12 @@ namespace Sloppy
       return isOkay;
     }
 
-    // check the file constraint using Boost's file system implementation
+    // check the file constraint using
     if (c == ValueConstraint::File)
     {
       const std::string& s{val};
-      bfs::path p{s};
-      bool isOkay = bfs::is_regular_file(p);
+      std::filesystem::path p{s};
+      bool isOkay = std::filesystem::is_regular_file(p);
       if (!isOkay && (errMsg != nullptr))
       {
         *errMsg = "does not point to an existing, regular file!";
@@ -189,12 +187,12 @@ namespace Sloppy
       return isOkay;
     }
 
-    // check the directory constraint using Boost's file system implementation
+    // check the directory constraint
     if (c == ValueConstraint::Directory)
     {
       const std::string& s{val};
-      bfs::path p{s};
-      bool isOkay = bfs::is_directory(p);
+      std::filesystem::path p{s};
+      bool isOkay = std::filesystem::is_directory(p);
       if (!isOkay && (errMsg != nullptr))
       {
         *errMsg = "does not point to an existing directory!";

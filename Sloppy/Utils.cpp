@@ -22,14 +22,13 @@
 #include <tuple>
 
 #include <boost/algorithm/string.hpp>
-#include <boost/filesystem.hpp>
+#include <filesystem>
 
 #include "Utils.h"
 #include "json.hpp"
 #include "ManagedFileDescriptor.h"
 #include "Memory.h"
 
-namespace bfs = boost::filesystem;
 using json = nlohmann::json;
 using namespace std;
 
@@ -69,33 +68,33 @@ namespace Sloppy
 
   //----------------------------------------------------------------------------
 
+  void getAllFilesInDirTree_Recursion(const std::filesystem::path & basePath, StringList& resultList, bool includeDirNameInList)
+  {
+    
+    for (std::filesystem::directory_iterator it{basePath}; it != std::filesystem::directory_iterator{}; ++it)
+    {
+      if (std::filesystem::is_directory(it->status()))
+      {
+        getAllFilesInDirTree_Recursion(it->path(), resultList, includeDirNameInList);
+        
+        if (!includeDirNameInList) continue;
+      }
+      
+      resultList.push_back(it->path().string());
+    }
+  }
+  
+  //----------------------------------------------------------------------------
+  
   StringList getAllFilesInDirTree(const string& baseDir, bool includeDirNameInList)
   {
-    bfs::path root{baseDir};
-    if (!(bfs::exists(root))) return StringList{};
+    std::filesystem::path root{baseDir};
+    if (!(std::filesystem::exists(root))) return StringList{};
 
     StringList result;
     getAllFilesInDirTree_Recursion(root, result, includeDirNameInList);
 
     return result;
-  }
-
-  //----------------------------------------------------------------------------
-
-  void getAllFilesInDirTree_Recursion(const bfs::path & basePath, StringList& resultList, bool includeDirNameInList)
-  {
-
-    for (bfs::directory_iterator it{basePath}; it != bfs::directory_iterator{}; ++it)
-    {
-      if (bfs::is_directory(it->status()))
-      {
-        getAllFilesInDirTree_Recursion(it->path(), resultList, includeDirNameInList);
-
-        if (!includeDirNameInList) continue;
-      }
-
-      resultList.push_back(it->path().string());
-    }
   }
 
   //----------------------------------------------------------------------------

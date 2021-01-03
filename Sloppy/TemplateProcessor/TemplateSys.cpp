@@ -22,7 +22,7 @@
 #include <algorithm>
 #include <iostream>
 
-#include <boost/filesystem.hpp>
+#include <filesystem>
 
 #include "TemplateSys.h"
 #include "../json.hpp"
@@ -30,7 +30,6 @@
 
 using namespace std;
 using json = nlohmann::json;
-namespace bfs = boost::filesystem;
 
 namespace Sloppy
 {
@@ -542,12 +541,12 @@ namespace Sloppy
     TemplateStore::TemplateStore(const string& rootDir, const StringList& extList)
       :langCode{}
     {
-      bfs::path rootPath{rootDir};
-      if (!(bfs::exists(rootPath)))
+      std::filesystem::path rootPath{rootDir};
+      if (!(std::filesystem::exists(rootPath)))
       {
         throw std::invalid_argument("TemplateStore initialized with invalid base dir");
       }
-      if (!(bfs::is_directory(rootPath)))
+      if (!(std::filesystem::is_directory(rootPath)))
       {
         throw std::invalid_argument("TemplateStore initialized with invalid base dir");
       }
@@ -564,7 +563,7 @@ namespace Sloppy
         while (it != allFiles.end())
         {
           const string& s = *it;
-          bfs::path p{s};
+          std::filesystem::path p{s};
           string ext = p.extension().string();
           if ((!(ext.empty())) && (ext[0] == '.'))
           {
@@ -610,7 +609,7 @@ namespace Sloppy
           continue;
         }
 
-        string relPath = bfs::path{p}.lexically_relative(rootPath).string();
+        string relPath = std::filesystem::path{p}.lexically_relative(rootPath).string();
         docs.emplace(relPath, t);
       }
 

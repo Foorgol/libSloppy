@@ -16,8 +16,7 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __LIBSLOPPY_UTILS_H
-#define __LIBSLOPPY_UTILS_H
+#pragma once
 
 #include <vector>
 #include <algorithm>
@@ -35,9 +34,6 @@
 #include "String.h"
 #include "ManagedFileDescriptor.h"
 #include "json.hpp"
-
-// a forward declaration
-namespace boost { namespace filesystem { class path; }}
 
 namespace std
 {
@@ -218,10 +214,6 @@ namespace Sloppy
           const std::string& baseDir,   ///< the root of the recursive search, either as absolute path or relative to the current work dir
           bool includeDirNameInList=false   ///< set to `true` to include directory names in the result list; if `false`, only files will be returned
           );
-
-  /** \brief Helper function for `getAllFilesInDirTree`; not to be called directly
-   */
-  void getAllFilesInDirTree_Recursion(const boost::filesystem::path& basePath, StringList& resultList, bool includeDirNameInList);
 
   // we include some special file functions for
   // non-Windows builds only
@@ -511,4 +503,3 @@ namespace Sloppy
 
 }
 
-#endif

@@ -139,9 +139,9 @@ namespace Sloppy
 
       std::chrono::nanoseconds elapsed = getTime<std::chrono::nanoseconds>();
 
-      if (elapsed >= *timeoutDuration) return 0;
+      if (elapsed >= timeoutDuration.value()) return 0;
 
-      std::chrono::nanoseconds remain = *timeoutDuration - elapsed;
+      std::chrono::nanoseconds remain = timeoutDuration.value() - elapsed;
 
       return (std::chrono::duration_cast<Resolution>(remain)).count();
     }

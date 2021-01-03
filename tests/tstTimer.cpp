@@ -46,8 +46,7 @@ TEST(Timer, BasicUsage)
   // restart
   t.restart();
   t.stop();
-  ASSERT_TRUE(t.getTime__us() < 5);
-
+  ASSERT_LT(t.getTime__us(), 10);
 }
 
 //----------------------------------------------------------------------------

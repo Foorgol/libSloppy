@@ -35,7 +35,7 @@ namespace Sloppy
   void Timer::restart()
   {
     startTime = chrono::steady_clock::now();
-    stopTime.reset();
+    if (stopTime) stopTime.reset();
   }
 
   //----------------------------------------------------------------------------
@@ -46,7 +46,7 @@ namespace Sloppy
 
     chrono::nanoseconds elapsed = getTime<chrono::nanoseconds>();
 
-    return (elapsed >= *timeoutDuration);
+    return (elapsed >= timeoutDuration.value());
   }
 
 

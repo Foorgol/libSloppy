@@ -16,18 +16,17 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef BASICTESTCLASS_H
-#define	BASICTESTCLASS_H
+#pragma once
 
 #include <string>
 #include <memory>
+#include <filesystem>
+
 #include <gtest/gtest.h>
-#include <boost/filesystem.hpp>
 
 #include "../Sloppy/Logger/Logger.h"
 
 using namespace std;
-namespace boostfs = boost::filesystem;
 
 class EmptyFixture
 {
@@ -44,7 +43,7 @@ protected:
 
   string getTestDir () const;
   string genTestFilePath(string fName) const;
-  boostfs::path tstDirPath;
+  std::filesystem::path tstDirPath;
   unique_ptr<Sloppy::Logger::Logger> log;
   void printStartMsg(string _tcName);
   void printEndMsg();
@@ -53,4 +52,3 @@ private:
   string tcName;
 };
 
-#endif /* BASICTESTCLASS_H */

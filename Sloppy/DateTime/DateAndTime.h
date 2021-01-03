@@ -419,7 +419,7 @@ namespace Sloppy
     /** \brief A class for a time period that is defined by two system_clock timepoints
      */
     template<class Duration>
-    class TimePeriod : public GenericRange<WallClockTimepoint<Duration>>
+    class TimeRange : public GenericRange<WallClockTimepoint<Duration>>
     {
     public:
       using TpType = typename WallClockTimepoint<Duration>::TpType;
@@ -427,7 +427,7 @@ namespace Sloppy
       
       /** \brief Ctor for an open ended TimePeriod
        */
-      TimePeriod(
+      TimeRange(
         const ValueType& _start   ///< the start timestamp for the TimePeriod
       )
       :GenericRange<ValueType>(_start){}
@@ -436,12 +436,18 @@ namespace Sloppy
        *
        * \throws std::invalid_argument if the end is before the start
        */
-      TimePeriod(
+      TimeRange(
         const ValueType& _start,   ///< the start timestamp for the TimePeriod
         const ValueType& _end      ///< the end timestamp for the TimePeriod
       )
       :GenericRange<ValueType>(_start, _end){}
-            
+      
+      TimeRange(const TimeRange<Duration>& other) = default;
+      TimeRange(TimeRange<Duration>&& other) = default;
+      TimeRange<Duration>& operator=(const TimeRange<Duration>& other) = default;
+      TimeRange<Duration>& operator=(TimeRange<Duration>&& other) = default;
+      ~TimeRange() = default;
+      
       /** \returns the length of the time period in seconds; empty in case of open periods
         */
       std::optional<std::chrono::seconds> getLength_Sec() const
@@ -526,6 +532,9 @@ namespace Sloppy
         return true;
       };
   };
-
+  using TimeRange_secs = TimeRange<std::chrono::seconds>;
+  using TimeRange_ms = TimeRange<std::chrono::milliseconds>;
+  using TimeRange_us = TimeRange<std::chrono::microseconds>;
+  
   }
 }

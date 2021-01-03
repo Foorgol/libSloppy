@@ -26,12 +26,6 @@
 #include "DateAndTime.h"
 #include "../String.h"
 
-// a special hack to substitute the missing timegm() call
-// under windows
-#ifdef WIN32
-#define timegm _mkgmtime
-#endif
-
 namespace Sloppy
 {
   namespace DateTime

@@ -151,7 +151,7 @@ set(LIB_SOURCES_TST
     tests/tstDateTime.cpp
     tests/tstTimestamps.cpp
     tests/tstGenericRange.cpp
-    tests/tstTimePeriods.cpp
+    tests/tstTimeRanges.cpp
     tests/tstArrayView.cpp
     tests/tstManagedArray.cpp
     #tests/tstDatePeriods.cpp

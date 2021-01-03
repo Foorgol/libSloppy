@@ -85,6 +85,7 @@ namespace Sloppy {
     GenericRange<T>& operator=(const GenericRange<T>& other) = default;
     GenericRange(GenericRange<T>&& other) = default;
     GenericRange<T>& operator=(GenericRange<T>&& other) = default;
+    ~GenericRange() = default;
     
     /** \returns `true` if the range is open-ended
      */

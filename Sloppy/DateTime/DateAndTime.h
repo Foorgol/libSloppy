@@ -16,80 +16,23 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __LIBSLOPPY_DATEANDTIME_H
-#define __LIBSLOPPY_DATEANDTIME_H
+#pragma once
 
 #include <string>
-#include <memory>
-#include <ctime>
-#include <cstring>
 #include <tuple>
 #include <optional>
-#include <type_traits>
+#include <chrono>
 
-#include <boost/date_time/local_time/local_time.hpp>
+#include "date.h"
+#include "tz.h"
 
-
-//
-// Extend boost's gregorian date to deal with
-// integer date representations, e.g. "20160801" = 2016-08-01
-//
-namespace boost
-{
-  namespace gregorian
-  {
-    class date;
-
-    /** \brief Converts a gregorian date into a tuple of ints for year, month, days
-     *
-     * \returns a 3-tuple of ints containing <year, month, day>
-     */
-    inline std::tuple<int, int, int> to_tuple(
-        const date& d     ///< the boost::gregorian::date to convert
-        )
-    {
-      return std::make_tuple(d.year(), d.month(), d.day());
-    }
-
-    /** \brief Converts a gregorian date into a single integer
-     *
-     * The integer representation is quite simple, e.g. "20160801" = 2016-08-01
-     *
-     * The earliest date supported by Boost is 1400-01-01, thus the
-     *
-     * \returns a single integer representing a date
-     */
-    inline int to_int(const date& d     ///< the boost::gregorian::date to convert
-                      )
-    {
-      return d.year() * 10000 + d.month() * 100 + d.day();
-    }
-
-    /** \brief Converts a single integer into a gregorian date
-     *
-     * The integer representation is quite simple, e.g. "20160801" = 2016-08-01
-     *
-     * The dates supported by Boost are 1400-01-01 -- 9999-12-31, thus the integer
-     * parameter has to be 14000101 <= ymd <= 99991231
-     *
-     * \throws std::out_of_range if the integer value is not within the valid range
-     * \throws all possible exceptions from the boost::gregorian::date ctor
-     *
-     * \returns a boost::gregorian::date
-     */
-    date from_int(int ymd    ///< the integer-date to convert
-                  );
-  }
-
-}
 
 namespace Sloppy
 {
   namespace DateTime {
 
-    extern const std::string defaultTzData;
-
-    /** \brief Converts a single integer into a 3-tuple of <year, month, day>
+    /** \brief Converts a single integer into a 3-tuple of <year, month, day>,
+     * represented as date::year_month_day
      *
      * The integer representation is quite simple, e.g. "20160801" = 2016-08-01
      *
@@ -100,348 +43,390 @@ namespace Sloppy
      *
      * \throws std::out_of_range if the parameter value is less than 100000101
      */
-    std::tuple<unsigned short, unsigned short, unsigned short> YearMonthDayFromInt(
+    date::year_month_day ymdFromInt(
         int ymd  ///< the integer-date to convert
         );
 
-    /** \brief Converts a string with custom formatting into a boost::gregorian::date
+    /** \brief Converts a string with custom formatting into a data::year_month_day
      *
-     *  The conversion uses a `boost::gregorian::date_input_facet` for the conversion. The
-     *  format of the conversion string can be found
-     *  [here](http://www.boost.org/doc/libs/1_66_0/doc/html/date_time/date_time_io.html#format_strings).
+     *  The format of the conversion string can be found
+     *  [here](https://howardhinnant.github.io/date/date.html#from_stream_formatting).
      *
      *  If strict checking is requested, the resulting date object will be converted back into a string
      *  and this string will be compared to the input string. The conversion is deemed successful if
      *  both strings are equal.
+     * 
+     * \note It is guaranteed that for the resulting date a call to .ok() will yield `true`.
+     * We never return `year_month_day` objects for that `.ok()` would be false.
      *
-     *  \returns the parsed date or the special value "not_a_date" is the conversion failed
+     *  \returns the parsed date, empty if the strict check failed
      *
      */
-    boost::gregorian::date parseDateString(
+    std::optional<date::year_month_day> parseDateString(
         const std::string& in,            ///< the string to parse
         const std::string& fmtString="",  ///< the format of the string; if empty, "yyyy-mm-dd" will be used
         bool strictChecking=true     ///< enable or disable strict checking
         );
 
-    /** \brief Creates a standard Boost timezone database using compiled-in zone definitions.
+    /** \brief Checks whether a tuple of year, month and day forms a valid date
+     * 
+     * This method constructs a temporary `date::year_month_day` object from the
+     * provided parameters. If this works without exception and yields an object
+     * that contains a regular date (`.ok() = true`), the provided tuple is
+     * deemed valid.
      *
-     * The zone definitions are taken from Boost's Github repository, see Zonespec.cpp
+     * This approach takes leap years etc. into account.
      *
-     * Boost's tz_database is documented [here](https://www.boost.org/doc/libs/1_67_0/doc/html/date_time/local_time.html).
-     *
-     * \returns A instance of Boost's tz_database populated with standard, compiled-in timezone definitions
+     * \returns `true` if the provided values for year, month and day represent a valid date; `false` otherwise
      */
-    boost::local_time::tz_database getPopulatedTzDatabase();
-
-    /** \brief A wrapper class for boost's ptime
+    bool isValidDate(
+      int year,   ///< the year value of the date to check
+      int month,  ///< the month value of the date to check
+      int day     ///< the day value of date to check
+    );
+    
+    /** \brief Checks whether a given year is a leap year or not
+     * 
+     * This is a wrapper for `date::year::is_leap()`
      *
-     * The documentation for `ptime` is [here](http://www.boost.org/doc/libs/1_66_0/doc/html/date_time/posix_time.html).
-     *
-     * \note The timestamp stored herein is agnostic of a specific time zone
+     * \returns `true` if the given year is a leap year; `false` otherwise
      */
-    class CommonTimestamp
+    bool isLeapYear(int year);
+    
+    template<typename Duration = typename std::chrono::system_clock::duration>
+    class WallClockTimepoint
     {
     public:
-      /** \brief Ctor from a 6-tuple of year, month, day, hour, minute and second
-       *
-       * \throws std::out_of_range if not 1400 <= year <= 9999, because that's a Boost limitation
-       * \throws std::invalid_argument if the values if year, month, day do not form a valid date
-       * \throws std::invalid_argument if the values if hour, minute, second do not form a valid time in 24h format
+      using clock = std::chrono::system_clock;
+      using duration = Duration;
+      using TpType = std::chrono::time_point<std::chrono::system_clock, Duration>;
+      
+      /** \brief Ctor for "now". If a timezone name is provided, all
+       * output operations (e.g., conversion to strings) are in local time
        */
-      CommonTimestamp(
-          int year,   ///< the year of the timestamp; shall be >= 1400 and <= 9999
-          int month,  ///< the month of the timestamp
-          int day,    ///< the day of the timestamp
-          int hour,   ///< hours
-          int min,    ///< minutes
-          int sec     ///< seconds
-          );
-
-      /** \brief Ctor that converts an existing `ptime` object into a CommonTimestamp
-       *
-       * The documentation for `ptime` is [here](http://www.boost.org/doc/libs/1_66_0/doc/html/date_time/posix_time.html).
+      explicit WallClockTimepoint(
+        const std::optional<std::string> tzName = std::nullopt   ///< optional name of the timezone that should be used for output and conversion
+      )
+      : tp{std::chrono::time_point_cast<duration>(clock::now())}
+      , tzPtr{tzName ? date::locate_zone(*tzName) : nullptr} {}
+      
+      /** \brief Ctor for "now". If a timezone pointer is provided, all
+       * output operations (e.g., conversion to strings) are in local time
        */
-      CommonTimestamp(boost::posix_time::ptime rawTime);
-
-      /** \brief Dtor, currently empty.
+      explicit WallClockTimepoint(
+        const date::time_zone* ptr   ///< pointer to a previously looked up timezone definition 
+      )
+      : tp{std::chrono::time_point_cast<duration>(clock::now())}
+      , tzPtr{ptr} {}
+      
+      // ctor from an existing time_t
+      explicit WallClockTimepoint(const time_t& utc)
+      :tp{std::chrono::time_point_cast<duration>(clock::from_time_t(utc))}, tzPtr{nullptr} {}
+      
+      explicit WallClockTimepoint(
+        const time_t& utc,   ///< existing timepoint in UTC
+        const date::time_zone* zonePtr  ///< timezone for output operations
+      )
+      :tp{std::chrono::time_point_cast<duration>(clock::from_time_t(utc))}, tzPtr{zonePtr} {}
+      
+      explicit WallClockTimepoint(
+        const time_t& utc,   ///< existing timepoint in UTC
+        const std::string& tzName   ///< timezone for output operations
+      )
+      :tp{std::chrono::time_point_cast<duration>(clock::from_time_t(utc))}, tzPtr{date::locate_zone(tzName)} {}
+      
+      /** \brief Ctor for an existing UTC timepoint along with an optional
+       * timezone for subsequent output operations
        */
-      virtual ~CommonTimestamp(){}
-
-      /** \brief Converts the timestamp into a `time_t` value (seconds since the UNIX epoch) in UTC
-       *
-       * This is a `virtual` function because it needs to be overridden by derived classes for
-       * timestamps in local time.
-       *
-       * \returns A `time_t` value of the timestamp with seconds since the epoch, in UTC
+      explicit WallClockTimepoint(
+        const std::chrono::system_clock::time_point& utcTp,   ///< the represented timepoint in UTC
+        const date::time_zone* zonePtr = nullptr   ///< optional timezone for output operations
+      )
+      : tp{std::chrono::time_point_cast<duration>(utcTp)}
+      , tzPtr{zonePtr} {}
+      
+      /** \brief Ctor for a given point in time; all date and time values are
+       * interpreted in UTC
        */
-      virtual time_t getRawTime() const;
-
+      explicit WallClockTimepoint(
+        const date::year_month_day& ymd,   ///< the date part of the time point
+        const std::chrono::hours& h = std::chrono::hours{0},   ///< hours past midnight of that date
+        const std::chrono::minutes& m = std::chrono::minutes{0},   ///< minutes past midnight of that date
+        const std::chrono::seconds& s = std::chrono::seconds{0}   ///< seconds since midnight of that date
+      )
+      :WallClockTimepoint(ymd, h, m, s, nullptr) {}
+      
+      /** \brief Ctor for a given point in time; all date and time values are
+       * interpreted as local values
+       * 
+       * \note Hours, minutes and seconds are arbitrary durations. It is completely fine to
+       * use larger values than 24 / 60 / 60 for these parameters. Or even negative values. In such
+       * cases the constructed time point is not on the same day as given by `ymd` since we simply
+       * apply the durations as offsets to midnight on the `ymd` day.
+       * 
+       * \throws std::runtime_error if the provided time zone name could not be found in the database
+       */
+      explicit WallClockTimepoint(
+        const date::year_month_day& ymd,   ///< the date part of the time point
+        const std::chrono::hours& h,  ///< hours past midnight of that date
+        const std::chrono::minutes& m,    ///< minutes past midnight of that date
+        const std::chrono::seconds& s,   ///< seconds since midnight of that date
+        const std::string& tzName   ///< name of the time zone for the provided date and time (e.g. "Europe/Berlin"); if empty, everything will be interpreted as UTC (exactly: as unix time which is UTC without leap seconds)
+      )
+      :WallClockTimepoint(ymd, h, m, s, date::locate_zone(tzName)) {}
+      
+      
+      /** \brief Ctor for a given point in time; all date and time values are
+       * interpreted as local values
+       * 
+       * \note Hours, minutes and seconds are arbitrary durations. It is completely fine to
+       * use larger values than 24 / 60 / 60 for these parameters. Or even negative values. In such
+       * cases the constructed time point is not on the same day as given by `ymd` since we simply
+       * apply the durations as offsets to midnight on the `ymd` day.
+       * 
+       */
+      explicit WallClockTimepoint(
+        const date::year_month_day& ymd,   ///< the date part of the time point
+        const std::chrono::hours& h,   ///< hours past midnight of that date
+        const std::chrono::minutes& m,   ///< minutes past midnight of that date
+        const std::chrono::seconds& s,   ///< seconds since midnight of that date
+        const date::time_zone* zonePtr   ///< pointer to the timezone definition of the local time
+      )
+      :tzPtr{zonePtr}
+      {
+        // translate the "local midnight" of the provided data
+        // to UTC
+        if (tzPtr != nullptr) {
+          const auto localMidnight = date::make_zoned(tzPtr, date::local_days{ymd});
+          tp = localMidnight.get_sys_time();
+        } else {
+          tp = date::sys_days{ymd};
+        }
+        
+        tp += h + m + s;
+      }
+      
+      WallClockTimepoint(const WallClockTimepoint& other) = default;
+      WallClockTimepoint& operator=(const WallClockTimepoint& other) = default;
+      WallClockTimepoint(WallClockTimepoint&& other) = default;
+      WallClockTimepoint& operator=(WallClockTimepoint&& other) = default;
+      
       /** \brief Gets the date-part of the timestamp as string in "yyyy-mm-dd" format
-       *
+       * 
        * \returns a string in "yyyy-mm-dd" format, representing the date-part of the timestamp
        */
-      std::string getISODate() const;
-
+      std::string isoDateString() const {
+        return formattedString("%F");
+      }
+      
       /** \brief Gets the time-part of the timestamp as string in "hh:mm:ss" format
-       *
+       * 
        * \returns a string in "hh:mm:ss" format, representing the time-part of the timestamp
        */
-      std::string getTime() const;
-
+      std::string timeString() const {
+        return formattedString("%T");
+      }
+      
       /** \brief Gets a string representation of the timestamp in "yyyy-mm-dd hh:mm:ss" format
-       *
+       * 
        * \returns a string in "yyyy-mm-dd hh:mm:ss" format representing timestamp
        */
-      std::string getTimestamp() const;
-
-      /** \brief Gets the day-of-week for the timestamp as an int
-       *
-       * \returns an integer representing the day-of-week (0 = Sunday, 1 = Monday, ...)
-       */
-      int getDoW() const;
-
-      /** \brief Gets the timestamp's date as a single integer
-       *
-       * \returns an integer representing the timestamp's date (e.g., 2018-02-24 = 20180224)
-       */
-      int getYMD() const;
-
-      /** \brief Converts the full timestamp in to custom formatted string
-       *
-       * Uses `strftime' for generating the formatted string. The result may not be longer
-       * than 100 bytes including terminating zero.
-       *
-       * The specification of the format string can be found [here](http://www.cplusplus.com/reference/ctime/strftime/)
+      std::string timestampString() const {
+        return formattedString("%F %T");
+      }
+      
+      /** \brief Converts the time point in to custom formatted string
+       * 
+       * The specification of the format string can be found [here](https://howardhinnant.github.io/date/date.html#from_stream_formatting)
        *
        * \returns a string representation of the timestamp in a custom format
        */
-      std::string getFormattedString(const std::string& fmt) const;
-
-      /** \brief Sets the time information of the timestamp to a new value.
-       *
-       * \returns `false` if the user submitted invalid parameters and `true` on success
+      std::string formattedString(const std::string& fmt) const {
+        if (tzPtr != nullptr) {
+          const auto localTime = date::make_zoned(tzPtr, tp).get_local_time();
+          return date::format(fmt, localTime);
+        }
+        
+        return date::format(fmt, tp);
+      }
+      
+      /** \returns true if this object outputs local date or time */
+      bool usesLocalTime() const { return (tzPtr != nullptr); }
+      
+      /** \returns true if this object outputs Unix date or time, which is
+       * almost identical to UTC except for leap seconds
        */
-      bool setTime(
-          int hour,   ///< the hours value of the new timestamp
-          int min,    ///< the minutes value of the new timestamp
-          int sec     ///< the seconds value of the new timestamp
-          );
-
-      /** \brief Retrieves a 3-tuple of year, month and day of the stored timestamp
-       *
-       * \returns a 3-tuple of <year, month, day> of the stored timestamp
+      bool usesUnixTime() const { return (tzPtr == nullptr); }
+      
+      /** \return the time that has passed since midnight; if we have been
+       * constructed with a timezone name, the local midnight is used
        */
-      std::tuple<unsigned short, unsigned short, unsigned short> getYearMonthDay() const;
-
-      /** \brief Checks whether a tuple of year, month and day forms a valid date
-       *
-       * This method constructs a temporary `boost::gregorian::date` object from the
-       * provided parameters. If this works without exception and yields an object
-       * that contains a regular date (no special value), the provided tuple is
-       * deemed valid.
-       *
-       * This approach takes leap years etc. into account.
-       *
-       * \returns `true` if the provided values for year, month and day represent a valid date; `false` otherwise
+      duration sinceMidnight() const {
+        if (tzPtr != nullptr) {
+          const auto localTime = date::make_zoned(tzPtr, tp).get_local_time();
+          const auto localMidnight = date::floor<date::days>(localTime);
+          
+          return (localTime - localMidnight);
+        }
+        
+        const auto utcMidnight = date::floor<date::days>(tp);
+        return (tp - utcMidnight);
+      }
+      
+      /** \returns a tuple with hours, minutes and seconds since (local) midnight
        */
-      static bool isValidDate(
-          int year,   ///< the year value of the date to check
-          int month,  ///< the month value of the date to check
-          int day     ///< the day value of date to check
-          );
-
-      /** \brief Checks wheter a tuple of hours, minutes and seconds forms a valid time in the 24h-format
-       *
-       * This is basically a simple range check of the provided parameters.
-       *
-       * \returns `true` if the provided values for hours, minutes and seconds represent a valid time in 24h format; `false` otherwise
+      std::tuple<std::chrono::hours, std::chrono::minutes, std::chrono::seconds> hms() const {
+        const auto sm = sinceMidnight();
+        const std::chrono::hours h = std::chrono::floor<std::chrono::hours>(sm);
+        const std::chrono::minutes m = std::chrono::floor<std::chrono::minutes>(sm - h);
+        const std::chrono::seconds s = std::chrono::floor<std::chrono::seconds>(sm - h - m);
+        
+        return std::tuple{h, m, s};
+      }
+      
+      /** \brief Adds the provided duration to the time point.
        */
-      static bool isValidTime(
-          int hour,   ///< the hours value to check
-          int min,    ///< the minutes value to check
-          int sec     ///< the seconds value to check
-          );
-
-      /** \brief Checks whether a given year is a leap year or not
-       *
-       * This is a wrapper for `boost::gregorian::gregorian_calendar::is_leap_year()`
-       *
-       * \returns `true` if the given year is a leap year; `false` otherwise
+      void applyOffset(const duration& d) {
+        tp += d;
+      }
+      
+      /** \brief Rewinds the internal time point to (local) midnight and
+       * applies hours, minutes and seconds as an offset.
        */
-      static bool isLeapYear(int year);
-
-      /** \brief Retrieves a copy of the internal `ptime` object
-       *
-       * \returns the current timestamp as Boost's `ptime`
+      void setTimeSinceMidnight(
+        const std::chrono::hours& h = std::chrono::hours{0},   ///< new hours past midnight of the current date
+        const std::chrono::minutes& m = std::chrono::minutes{0},   ///< new minutes past midnight of the current date
+        const std::chrono::seconds& s = std::chrono::seconds{0}   ///< new seconds since midnight of the current date
+      )
+      {
+        tp += -sinceMidnight() + h + m + s;
+      }
+      
+      /** \returns a year, month, day tuple for the time point.
+       * 
+       * The returned date is local date if a timezone was specified during construction.
        */
-      boost::posix_time::ptime getRawPtime() const
-      {
-        return raw;
+      date::year_month_day ymd() const {
+        if (tzPtr != nullptr) {
+          const auto localTime = date::make_zoned(tzPtr, tp).get_local_time();
+          return date::year_month_day{date::floor<date::days>(localTime)};
+        }
+        
+        return date::year_month_day{date::floor<date::days>(tp)};
       }
-
-      inline bool operator< (const CommonTimestamp& other) const
-      {
-        return (raw < other.raw);   // maybe I should use difftime() here...
-      }
-      inline bool operator> (const CommonTimestamp& other) const
-      {
-        return (other < (*this));
-      }
-      inline bool operator<= (const CommonTimestamp& other) const
-      {
-        return (!(*this > other));
-      }
-      inline bool operator>= (const CommonTimestamp& other) const
-      {
-        return (!(*this < other));
-      }
-      inline bool operator== (const CommonTimestamp& other) const
-      {
-        return (raw == other.raw);   // maybe I should use difftime() here...
-      }
-      inline bool operator!= (const CommonTimestamp& other) const
-      {
-        return (raw != other.raw);   // maybe I should use difftime() here...
-      }
-
-      /** \brief Shifts the timestamp by a given number of seconds.
-       *
-       * Positive paramters shift the timestamp's value forward (==> later / future), negative
-       * values shift the timestamp's value backwards (==> earlier / past)
+        
+      /** \brief Gets the timestamp's date as a single integer
+       * 
+       * The returned date is local date if a timezone was specified during construction.
+       * 
+       * \returns an integer representing the timestamp's date (e.g., 2018-02-24 = 20180224)
        */
-      void applyOffset(int64_t secs)
-      {
-        raw += boost::posix_time::seconds(secs);
+      int ymdInt() const {
+        const auto _ymd = ymd();
+        
+        // convert to plain  numbers using "operator unsigned()" type
+        // conversions that are defined for day, month etc.
+        const auto d = static_cast<unsigned>(_ymd.day());
+        const auto m = static_cast<unsigned>(_ymd.month());
+        const auto y = static_cast<int>(_ymd.year());
+        
+        return d + m * 100 + y * 10000;
       }
-
-    protected:
-      boost::posix_time::ptime raw;   ///< the internal representation of the timestamp as Boost's `ptime`
+      
+      /** \brief Gets the day-of-week for the timestamp as an int
+       * 
+       * \returns an integer representing the day-of-week (0 = Sunday, 1 = Monday, ...)
+       */
+      int dow() const {
+        const auto ymwd = date::year_month_weekday{ymd()};
+        return ymwd.weekday().c_encoding();
+      }
+      
+      /** \returns the timepoint in UTC
+       */
+      std::chrono::time_point<clock, Duration> utc() const { return tp; }
+      
+      /** \returns the timepoint as `time_t`
+       */
+      time_t to_time_t() const { return clock::to_time_t(tp); }
+      
+      template<typename Dur2>
+      bool operator>(const WallClockTimepoint<Dur2>& rhs) const {
+        return (tp > rhs.tp);
+      }
+      
+      template<typename Dur2>
+      bool operator<(const WallClockTimepoint<Dur2>& rhs) const {
+        return (tp < rhs.tp);
+      }
+      
+      template<typename Dur2>
+      bool operator>=(const WallClockTimepoint<Dur2>& rhs) const {
+        return (tp >= rhs.tp);
+      }
+      
+      template<typename Dur2>
+      bool operator<=(const WallClockTimepoint<Dur2>& rhs) const {
+        return (tp <= rhs.tp);
+      }
+      
+      template<typename Dur2>
+      bool operator==(const WallClockTimepoint<Dur2>& rhs) const {
+        return (tp == rhs.tp);
+      }
+      
+      template<typename Dur2>
+      bool operator!=(const WallClockTimepoint<Dur2>& rhs) const {
+        return (tp != rhs.tp);
+      }
+      
+      template<typename Dur2>
+      WallClockTimepoint<Duration>& operator+=(const Dur2& d) {
+        tp += std::chrono::duration_cast<Duration>(d);
+        return *this;
+      }
+      
+      template<typename Dur2>
+      WallClockTimepoint<Duration>& operator-=(const Dur2& d) {
+        tp -= std::chrono::duration_cast<Duration>(d);
+        return *this;
+      }
+      
+    private:
+      TpType tp;  // stores ALWAYS UTC time, never local time
+      const date::time_zone* tzPtr{nullptr};
     };
-
-    // forward; will be refined later in this file.
-    class UTCTimestamp;
-
-    /** \brief An extension of `CommonTimestamp` with a timestamp stored in local time.
+    
+    using WallClockTimepoint_secs = WallClockTimepoint<std::chrono::seconds>;
+    using WallClockTimepoint_ms = WallClockTimepoint<std::chrono::milliseconds>;
+    using WallClockTimepoint_us = WallClockTimepoint<std::chrono::microseconds>;
+    
+    /** \brief Checks wheter a tuple of hours, minutes and seconds forms a valid time in the 24h-format
+     * 
+     * This is basically a simple range check of the provided parameters.
+     *
+     * \returns `true` if the provided values for hours, minutes and seconds represent a valid time in 24h format; `false` otherwise
      */
-    class LocalTimestamp : public CommonTimestamp
-    {
-    public:
-      /** \brief Ctor from a 6-tuple of year, month, day, hour, minute and second
-       *
-       * \throws std::out_of_range if not 1400 <= year <= 9999, because that's a Boost limitation
-       * \throws std::invalid_argument if the values if year, month, day do not form a valid date
-       * \throws std::invalid_argument if the values if hour, minute, second do not form a valid time in 24h format
-       * \throws std::invalid_argument if no time zone pointer has been provided (=> `nullptr`)
-       * \throws std::invalid_argument if the combination of date, time and timezone does not yield a valid, unambiguous timestamp
-       * \throws (more) all the exceptions that Boost's ctors for `gregorian::date` and `posix_time::time_duration' can throw
-       */
-      LocalTimestamp(
-          int year,   ///< the year of the timestamp; shall be >= 1400 and <= 9999
-          int month,  ///< the month of the timestamp
-          int day,    ///< the day of the timestamp
-          int hour,   ///< hours
-          int min,    ///< minutes
-          int sec,     ///< seconds
-          boost::local_time::time_zone_ptr tzp   ///< a pointer to a time_zone instance representing the local time zone used for the timestamp
-          );
-
-      /** \brief Ctor from a UTC timestamp in epoch-seconds and a time zone
-       *
-       * \throws std::invalid_argument if no time zone pointer has been provided (=> `nullptr`)
-       * \throws (more) all the exceptions that Boost's ctors for `gregorian::date` and `posix_time::time_duration' can throw
-       *
-       */
-      LocalTimestamp(
-          time_t rawTimeInUTC,    ///< the timestamp in UTC as seconds since the epoch
-          boost::local_time::time_zone_ptr tzp   ///< a pointer to a time_zone object that defines the local time zone
-          );
-
-      /** Ctor for the current date/time ("now"), stored as values for a given local time zone
-       *
-       * \throws std::invalid_argument if no time zone pointer has been provided (=> `nullptr`)
-       */
-      LocalTimestamp(
-          boost::local_time::time_zone_ptr tzp   ///< a pointer to a time_zone object that defines the local time zone
-          );
-
-      /** \brief Retrieves an UTC representation of the local timestamp
-       *
-       * \returns an `UTCTimestamp` that contains the same time point as the local timestamp
-       */
-      UTCTimestamp toUTC() const;
-
-      /** \brief Factory function for creating a `LocalTimestamp' from an ISO date string, a time zone and a time
-       *
-       * \returns `nullptr` if one or more paramters was invalid
-       * \returns a new LocalTimestamp object wrapped in a `unique_otr` if all paramters were valid
-       */
-      static std::unique_ptr<LocalTimestamp> fromISODate(const std::string& isoDate, boost::local_time::time_zone_ptr tzp, int hour=12, int min=0, int sec=0);
-
-      /** \brief Retrieves an UTC representation (seconds since epoch) of the local timestamp
-       *
-       * \returns the number of seconds since the epoch that represent the same time point as the local timestamp
-       */
-      time_t getRawTime() const override;
-
-    protected:
-      boost::posix_time::ptime utc;   ///< the UTC representation of the local timestamp
-    };
-
-    /** \brief An extension of `CommonTimestamp` with a timestamp stored in UTC.
+    static bool isValidTime(
+      int hour,   ///< the hours value to check
+      int min,    ///< the minutes value to check
+      int sec     ///< the seconds value to check
+    );
+    
+    
+    /** \brief An enumeration of relations between a period and a single time point / sample
+     * 
+     * For open ended ranges, a sample can never be "after" and is always "in" if the sample
+     * is on or beyond the start.
      */
-    class UTCTimestamp : public CommonTimestamp
+    enum class RelationToPeriod
     {
-    public:
-      /** \brief Ctor from a 6-tuple of year, month, day, hour, minute and second
-       *
-       * \throws std::out_of_range if not 1400 <= year <= 9999, because that's a Boost limitation
-       * \throws std::invalid_argument if the values if year, month, day do not form a valid date
-       * \throws std::invalid_argument if the values if hour, minute, second do not form a valid time in 24h format
-       */
-      UTCTimestamp(
-          int year,   ///< the year of the timestamp; shall be >= 1400 and <= 9999
-          int month,  ///< the month of the timestamp
-          int day,    ///< the day of the timestamp
-          int hour,   ///< hours
-          int min,    ///< minutes
-          int sec     ///< seconds
-          );
-
-      /** \brief Ctor from a numeric date (e.g., 20180224 = "2018-02-24") and integer values for hour, minute, second
-       *
-       * Construction is delegated to the (int, int, int, int, int, int)-ctor and thus they both throw the same exceptions
-       */
-      UTCTimestamp(
-          int ymd,      ///< the integer-date for the timestamp
-          int hour=12,  ///< hours
-          int min=0,    ///< minutes
-          int sec=0     ///< seconds
-          );
-
-      /** \brief Ctor from a UTC timestamp in epoch-seconds
-       */
-      UTCTimestamp(time_t rawTimeInUTC);
-
-      /** \brief Ctor from a UTC timestamp stored in a Boost `ptime` object
-       */
-      UTCTimestamp(boost::posix_time::ptime utcTime);
-
-      /** \brief Ctor for "now"
-       */
-      UTCTimestamp();
-
-      /** \brief Retrieves a `LocalTimestamp` representation of the UTC timestamp
-       *
-       * \throws std::invalid_argument if the pointer to the time_zone object is null
-       */
-      LocalTimestamp toLocalTime (
-          boost::local_time::time_zone_ptr tzp   ///< a pointer to a `time_zone` instance representing the local time zone used for the conversion
-          ) const;
+      isBefore,    ///< the sample is before the period's start (sample < start)
+      isIn,        ///< start <= sample <= end
+      isAfter,     ///< the sample is after the period's end (sample > end)
+      _undefined   ///< undefind
     };
-
-    typedef std::unique_ptr<LocalTimestamp> upLocalTimestamp;
-    typedef std::unique_ptr<UTCTimestamp> upUTCTimestamp;
-
+    
     /** \brief A generic class for periods / ranges of any type.
      *
      * The class can be used with types that:
@@ -455,19 +440,6 @@ namespace Sloppy
     class GenericPeriod
     {
     public:
-      /** \brief An enumeration of relations between a period and a single time point / sample
-       *
-       * For open ended ranges, a sample can never be "after" and is always "in" if the sample
-       * is on or beyond the start.
-       */
-      enum class Relation
-      {
-        isBefore,    ///< the sample is before the period's start (sample < start)
-        isIn,        ///< start <= sample <= end
-        isAfter,     ///< the sample is after the period's end (sample > end)
-        _undefined   ///< undefind
-      };
-
       /** \brief Ctor for a period with defined start and end.
        *
        * The values for start and end are stored as a copy.
@@ -522,18 +494,18 @@ namespace Sloppy
        *
        * \returns an enum-value of type `Relation` that indicates how the sample relates to the period
        */
-      Relation determineRelationToPeriod(
+      RelationToPeriod determineRelationToPeriod(
           const T& sample   ///< the sample value to check
           ) const
       {
-        if (sample < start) return Relation::isBefore;
+        if (sample < start) return RelationToPeriod::isBefore;
 
         if (end.has_value())
         {
-          return (sample > *end) ? Relation::isAfter : Relation::isIn;
+          return (sample > *end) ? RelationToPeriod::isAfter : RelationToPeriod::isIn;
         }
 
-        return Relation::isIn;
+        return RelationToPeriod::isIn;
       }
 
       /** \brief Sets a new start value for the period
@@ -606,72 +578,75 @@ namespace Sloppy
       std::optional<T> end;   ///< the period's end value, potentially empty
     };
 
-    /** \brief A class for a time period that is defined by two `UTCTimestamp` values
+    /** \brief A class for a time period that is defined by two system_clock timepoints
      */
-    class TimePeriod : public GenericPeriod<UTCTimestamp>
+    template<class Duration>
+    class TimePeriod : public GenericPeriod<WallClockTimepoint<Duration>>
     {
     public:
+      using TpType = typename WallClockTimepoint<Duration>::TpType;
+      using ValueType = WallClockTimepoint<Duration>;
+      
       /** \brief Ctor for an open ended TimePeriod
        */
       TimePeriod(
-          const UTCTimestamp& _start   ///< the start timestamp for the TimePeriod
-          )
-        :GenericPeriod<UTCTimestamp>(_start){}
-
+        const ValueType& _start   ///< the start timestamp for the TimePeriod
+      )
+      :GenericPeriod<ValueType>(_start){}
+      
       /** \brief Ctor for a closed TimePeriod with defined start and end
        *
        * \throws std::invalid_argument if the end is before the start
        */
       TimePeriod(
-          const UTCTimestamp& _start,   ///< the start timestamp for the TimePeriod
-          const UTCTimestamp& _end      ///< the end timestamp for the TimePeriod
-          )
-        :GenericPeriod<UTCTimestamp>(_start, _end){}
-
-      /** \brief Retrieves a copy of the period as a `boost::posix_time::time_period`
-       *
-       * Since Boost does not support time periods with open ends, a `time_period` with
-       * invalid duration is returned in case of open ends.
-       *
-       * \returns a Boost `time_period` that represents this TimePeriod (with "invalid duration" in case of open ends)
-       */
-      inline boost::posix_time::time_period toBoost() const
+        const ValueType& _start,   ///< the start timestamp for the TimePeriod
+        const ValueType& _end      ///< the end timestamp for the TimePeriod
+      )
+      :GenericPeriod<ValueType>(_start, _end){}
+            
+      /** \returns the length of the time period in seconds; empty in case of open periods
+        */
+      std::optional<std::chrono::seconds> getLength_Sec() const
       {
-        boost::posix_time::ptime pStart = start.getRawPtime();
-
-        if (end.has_value())
-        {
-          boost::posix_time::ptime pEnd = end->getRawPtime();
-          pEnd += boost::posix_time::time_duration(0, 0, 0, 1);
-          return boost::posix_time::time_period(pStart, pEnd);
-        }
-
-        // return an invalid duration
-        return boost::posix_time::time_period(pStart, pStart);
+        if (this->hasOpenEnd()) return std::nullopt;
+        
+        return std::chrono::duration_cast<std::chrono::seconds>(this->end.value().utc() - this->start.utc());
       }
-
-      /** \returns the length of the time period in seconds or `-1` in case of open periods
+            
+      /** \returns the length of the time period in minutes (incl. digits) or empty in case of open periods
+        */
+      std::optional<std::chrono::duration<double, std::ratio<60>>> getLength_Minutes() const {
+        if (this->hasOpenEnd()) return std::nullopt;
+        
+        return std::chrono::duration_cast<std::chrono::duration<double, std::ratio<60>>>(this->end.value().utc() - this->start.utc());
+      }
+      
+      /** \returns the length of the time period in hours (incl. digits) or empty in case of open periods
        */
-      int64_t getLength_Sec() const;
-
-      /** \returns the length of the time period in minutes (incl. digits) or `-1` in case of open periods
+      std::optional<std::chrono::duration<double, std::ratio<3600>>> getLength_Hours() const {
+        if (this->hasOpenEnd()) return std::nullopt;
+        
+        return std::chrono::duration_cast<std::chrono::duration<double, std::ratio<3600>>>(this->end.value().utc() - this->start.utc());
+      }
+            
+      /** \returns the length of the time period in days (incl. digits) or empty in case of open periods
        */
-      double getLength_Minutes() const;
-
-      /** \returns the length of the time period in hours (incl. digits) or `-1` in case of open periods
+      std::optional<std::chrono::duration<double, std::ratio<86400>>> getLength_Days() const {
+        if (this->hasOpenEnd()) return std::nullopt;
+        
+        return std::chrono::duration_cast<std::chrono::duration<double, std::ratio<86400>>>(this->end.value().utc() - this->start.utc());
+      }
+      
+      /** \returns the length of the time period in weeks (incl. digits) or empty in case of open periods
        */
-      double getLength_Hours() const;
-
-      /** \returns the length of the time period in days (incl. digits) or `-1` in case of open periods
-       */
-      double getLength_Days() const;
-
-      /** \returns the length of the time period in weeks (incl. digits) or `-1` in case of open periods
-       */
-      double getLength_Weeks() const;
-
+      std::optional<std::chrono::duration<double, std::ratio<604800>>> getLength_Weeks() const {
+        if (this->hasOpenEnd()) return std::nullopt;
+        
+        return std::chrono::duration_cast<std::chrono::duration<double, std::ratio<604800>>>(this->end.value().utc() - this->start.utc());
+      }
+      
       /** \brief Applies an offset to the period's start
-       *
+       * 
        * Positive arguments shift the start forward (later / future), negative
        * arguments shift the start backwards (earlier / past).
        *
@@ -679,86 +654,40 @@ namespace Sloppy
        *
        * \returns `true` if the start has been updated or `false` if start+offset would be after the end
        */
-      bool applyOffsetToStart(int64_t secs);
-
+      template<class Dur2>
+      bool applyOffsetToStart(const Dur2& offset) {
+        WallClockTimepoint<Duration> newStart{this->start};  // copy the old start
+        newStart += offset;
+        
+        if (this->end.has_value() && (newStart > this->end.value())) return false;
+        
+        this->start = newStart;
+        return true;        
+      }
+      
       /** \brief Applies an offset to the period's end
-       *
+       * 
        * Positive arguments shift the end forward (later / future), negative
        * arguments shift the end backwards (earlier / past).
        *
-       * If the new end would be after the current start, the end remains untouched.
+       * If the new end would be before the current start, the end remains untouched.
        *
        * \returns `true` if the end has been updated or `false` if end+offset would be after the end or
        * the period has an open end
        */
-      bool applyOffsetToEnd(int64_t secs);
-    };
+      template<class Dur2>
+      bool applyOffsetToEnd(const Dur2& offset) {
+        if (this->hasOpenEnd()) return false;
+        
+        WallClockTimepoint<Duration> newEnd{this->end.value()};  // copy the old end
+        newEnd += offset;
+        
+        if (newEnd < this->start) return false;
+        
+        this->end = newEnd;
+        return true;
+      };
+  };
 
-    /** \brief A class for a date period that is defined by two `boost::gregorian::date` values
-     *
-     * \note Start day and end day are fully included in the period. Hence, a
-     * `DatePeriod` that starts and ends on the same day has a length of one (1) day.
-     */
-    class DatePeriod : public GenericPeriod<boost::gregorian::date>
-    {
-    public:
-      /** \brief Ctor for a closed date period
-       *
-       * \note Start day and end day are fully included in the period. Hence, a
-       * `DatePeriod` that starts and ends on the same day has a length of one (1) day.
-       *
-       * \throws std::invalid_argument if the end is before the start
-       */
-      DatePeriod(
-          const boost::gregorian::date& _start,   ///< the first day of the DatePeriod
-          const boost::gregorian::date& _end      ///< the last day of the DatePeriod
-          )
-        :GenericPeriod<boost::gregorian::date>(_start, _end) {}
-
-      /** \brief Ctor for an open ended date period
-       */
-      DatePeriod(
-          const boost::gregorian::date& _start   ///< the first day of the DatePeriod
-          )
-        :GenericPeriod<boost::gregorian::date>(_start) {}
-
-      /** \brief Retrieves a copy of the period as a `boost::gregorian::date_period`
-       *
-       * Since Boost does not support date periods with open ends, a `date_period` with
-       * invalid duration is returned in case of open ends.
-       *
-       * \returns a Boost `date_period` that represents this DatePeriod (with "invalid duration" in case of open ends)
-       */
-      boost::gregorian::date_period toBoost() const
-      {
-        if (end.has_value())
-        {
-          boost::gregorian::date oneDayAfterEnd = (*end) + boost::gregorian::date_duration(1);
-          return boost::gregorian::date_period(start, oneDayAfterEnd);
-        }
-
-        // return an invalid duration
-        return boost::gregorian::date_period(start, start);
-      }
-
-      /** \returns the length of the date period in days or `-1` in case of open periods
-       */
-      int64_t getLength_Days() const
-      {
-        if (!(end.has_value())) return -1;
-
-        auto dp = toBoost();
-        return dp.length().days();
-      }
-
-      /** \returns the length of the date period in weeks (incl. digits) or `-1` in case of open periods
-       */
-      inline double getLength__Weeks() const
-      {
-        return (!(end.has_value())) ? -1 : getLength_Days() / 7.0;
-      }
-    };
   }
 }
-
-#endif /* DATEANDTIME_H */

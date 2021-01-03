@@ -20,100 +20,62 @@
 
 #include <gtest/gtest.h>
 
-#include <boost/date_time/local_time/local_time.hpp>
-
 #include "../Sloppy/DateTime/DateAndTime.h"
 #include "BasicTestClass.h"
 
-using namespace boost::local_time;
 using namespace Sloppy::DateTime;
 
 TEST(Timestamps, testTimeConversion)
 {
   // create a fake localtime object
-  time_zone_ptr testZone{new posix_time_zone("TST-01:00:00")};
-  LocalTimestamp lt(2000, 1, 1, 12, 0, 0, testZone);
+  const auto testZone = date::locate_zone("Europe/Berlin");
+  WallClockTimepoint_secs lt(date::year{2000} / 1 / 1, 12h, 0min, 0s, testZone);
 
   // convert to raw time
-  time_t raw1 = lt.getRawTime();
+  time_t raw1 = lt.to_time_t();
 
   // construct UTC from this raw time
-  UTCTimestamp utc(raw1);
+  WallClockTimepoint_secs utc(raw1);
 
   // convert to raw again
-  time_t raw2 = utc.getRawTime();
+  time_t raw2 = utc.to_time_t();
 
   // both raws should be identical
   ASSERT_EQ(raw1, raw2);
-
-  // construct a new LocalTimestamp, this time from raw
-  LocalTimestamp lt2(raw2, testZone);
-
-  // conversion back to raw should give identical values
-  ASSERT_EQ(raw2, lt2.getRawTime());
 }
 
 //----------------------------------------------------------------------------
 
 TEST(Timestamps, testEpoch)
 {
-  tz_database tzdb;
-  tzdb.load_from_file("../tests/date_time_zonespec.csv");
-  time_zone_ptr tzCEST = tzdb.time_zone_from_region("Europe/Berlin");
+  const auto tzCEST = date::locate_zone("Europe/Berlin");
   ASSERT_TRUE(tzCEST != nullptr);
 
   // create a fake localtime object (CEST)
-  LocalTimestamp lt(2015, 6, 27, 12, 0, 0, tzCEST);
+  WallClockTimepoint_secs lt(date::year{2015} / 6 / 27, 12h, 0min, 0s, tzCEST);
 
   // 2015-06-27 is in summer time, so CEST applies
   //
   // CEST is 2 hours ahead of UTC / GMT, so the
   // equivalent UTC time is 2015-06-27, 10:00:00
-  UTCTimestamp utc(2015, 6, 27, 10, 0, 0);
+  WallClockTimepoint_secs utc(date::year{2015} / 6 / 27, 10h, 0min, 0s);
 
   // the epoch value for this UTC date is, according
   // to an internet converter:
   time_t expectedEpochVal = 1435399200;
 
   // convert local time to raw
-  time_t raw1 = lt.getRawTime();
+  time_t raw1 = lt.to_time_t();
   ASSERT_EQ(expectedEpochVal, raw1);
 
   // convert UTC time to raw
-  time_t raw2 = utc.getRawTime();
+  time_t raw2 = utc.to_time_t();
   ASSERT_EQ(expectedEpochVal, raw2);
 
   // create a timestamp from the epoch value
-  lt = LocalTimestamp(expectedEpochVal, tzCEST);
-  ASSERT_EQ("2015-06-27 12:00:00", lt.getTimestamp());
+  lt = WallClockTimepoint_secs(expectedEpochVal, tzCEST);
+  ASSERT_EQ("2015-06-27 12:00:00", lt.timestampString());
 
-  // repeat the test with a timestamp
-  // in CET (winter time)
-
-  // create a fake localtime object (CET)
-  lt = LocalTimestamp(2015, 1, 27, 11, 0, 0, tzCEST);
-
-  // 2015-01-27 is in winter time, to CET applies
-  //
-  // CET is 1 hour ahead of UTC / GMT, so the
-  // equivalent UTC time is 2015-01-27, 10:00:00
-  utc = UTCTimestamp(2015, 1, 27, 10, 0, 0);
-
-  // the epoch value for this UTC date is, according
-  // to an internet converter:
-  expectedEpochVal = 1422352800;
-
-  // convert local time to raw
-  raw1 = lt.getRawTime();
-  ASSERT_EQ(expectedEpochVal, raw1);
-
-  // convert UTC time to raw
-  raw2 = utc.getRawTime();
-  ASSERT_EQ(expectedEpochVal, raw2);
-
-  // create a timestamp from the epoch value
-  lt = LocalTimestamp(expectedEpochVal, tzCEST);
-  ASSERT_EQ("2015-01-27 11:00:00", lt.getTimestamp());
 }
 
 //----------------------------------------------------------------------------
@@ -121,60 +83,49 @@ TEST(Timestamps, testEpoch)
 TEST(Timestamps, testGetters)
 {
   // create a fake localtime object
-  time_zone_ptr testZone{new posix_time_zone("TST-01:00:00")};
-  LocalTimestamp lt(2000, 1, 1, 8, 3, 2, testZone);
+  const auto testZone = date::locate_zone("Europe/Berlin");
+  WallClockTimepoint_secs lt(date::year{2000} / 1 / 1, 8h, 3min, 2s, testZone);
 
-  ASSERT_EQ("2000-01-01", lt.getISODate());
-  ASSERT_EQ("08:03:02", lt.getTime());
-  ASSERT_EQ("2000-01-01 08:03:02", lt.getTimestamp());
-  ASSERT_EQ(20000101, lt.getYMD());
+  ASSERT_EQ("2000-01-01", lt.isoDateString());
+  ASSERT_EQ("08:03:02", lt.timeString());
+  ASSERT_EQ("2000-01-01 08:03:02", lt.timestampString());
+  ASSERT_EQ(20000101, lt.ymdInt());
 }
 
 //----------------------------------------------------------------------------
 
-TEST(Timestamps, testLocalTimestampFromISODate)
+TEST(Timestamps, testParseDateString)
 {
-  time_zone_ptr testZone{new posix_time_zone("TST-01:00:00")};
-
-  ASSERT_EQ(nullptr, LocalTimestamp::fromISODate("skjfh", testZone));
-  ASSERT_EQ(nullptr, LocalTimestamp::fromISODate("2000", testZone));
-  ASSERT_EQ(nullptr, LocalTimestamp::fromISODate("20000", testZone));
-  ASSERT_EQ(nullptr, LocalTimestamp::fromISODate("2000-", testZone));
-  ASSERT_EQ(nullptr, LocalTimestamp::fromISODate("2000-03", testZone));
-  ASSERT_EQ(nullptr, LocalTimestamp::fromISODate("2000-05-", testZone));
-  ASSERT_EQ(nullptr, LocalTimestamp::fromISODate("2000-05-sdfd", testZone));
-  ASSERT_EQ(nullptr, LocalTimestamp::fromISODate("200-05-03", testZone));
-  ASSERT_EQ(nullptr, LocalTimestamp::fromISODate("2000-15-03", testZone));
-
-  upLocalTimestamp t = LocalTimestamp::fromISODate("2000-05-03", testZone);
-  ASSERT_TRUE(t != nullptr);
-  ASSERT_EQ("2000-05-03", t->getISODate());
-  t = LocalTimestamp::fromISODate("2000-5-3", testZone);
-  ASSERT_TRUE(t != nullptr);
-  ASSERT_EQ("2000-05-03", t->getISODate());
+  for (const auto& s : {"skjfh", "2000","20000","2000-", "2000-03","2000-05-","2000-05-sdfd","200-05-03", "2000-15-03"}) {
+    ASSERT_FALSE(parseDateString(s));
+  }
+  
+  const auto ymd = parseDateString("2000-05-03");
+  ASSERT_TRUE(ymd);
+  ASSERT_EQ(date::year(2000) / 5 / 3, ymd);  
 }
 
 //----------------------------------------------------------------------------
 
 TEST(Timestamps, CommonTimestampSetTime)
 {
-  CommonTimestamp cs{2018,2,24,12,0,0};
+  WallClockTimepoint_secs cs{date::year{2018} / 2 / 24, 12h, 0min, 0s};
 
-  ASSERT_TRUE(cs.setTime(13,14,15));
-  ASSERT_EQ("13:14:15", cs.getTime());
+  cs.setTimeSinceMidnight(13h,14min,15s);
+  ASSERT_EQ("13:14:15", cs.timeString());
 
-  ASSERT_FALSE(cs.setTime(13,14,62));
-  ASSERT_EQ("13:14:15", cs.getTime());
+  cs.setTimeSinceMidnight(13h,14min,62s);
+  ASSERT_EQ("13:15:02", cs.timeString());
 
-  ASSERT_FALSE(cs.setTime(25,14,59));
-  ASSERT_EQ("13:14:15", cs.getTime());
+  cs.setTimeSinceMidnight(25h,14min,59s);
+  ASSERT_EQ("01:14:59", cs.timeString());  // NEXT DAY!!
 
-  ASSERT_FALSE(cs.setTime(-3,14,59));
-  ASSERT_EQ("13:14:15", cs.getTime());
+  cs.setTimeSinceMidnight(-3h,14min,59s);
+  ASSERT_EQ("21:14:59", cs.timeString());  // PREVIOUS DAY (relative) / original day (absolute)
 
-  ASSERT_TRUE(cs.setTime(0,0,0));
-  ASSERT_EQ("00:00:00", cs.getTime());
+  cs.setTimeSinceMidnight(0h,0min,0s);
+  ASSERT_EQ("00:00:00", cs.timeString());
 
-  ASSERT_TRUE(cs.setTime(23,59,59));
-  ASSERT_EQ("23:59:59", cs.getTime());
+  cs.setTimeSinceMidnight(23h,59min,59s);
+  ASSERT_EQ("23:59:59", cs.timeString());
 }

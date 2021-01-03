@@ -9,7 +9,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmakeModules/")
 find_package(Threads REQUIRED)
 set(LIBS ${LIBS} ${CMAKE_THREAD_LIBS_INIT})
 
-find_package(Boost REQUIRED COMPONENTS thread date_time filesystem system)
+find_package(Boost REQUIRED COMPONENTS filesystem system)
 include_directories(${Boost_INCLUDE_DIRS})
 set(LIBS ${LIBS} ${Boost_LIBRARIES})
 add_definitions(-DBOOST_LOG_DYN_LINK=1)  # linking fails if this is not set
@@ -38,7 +38,8 @@ set(LIB_SOURCES
     Sloppy/String.cpp
     Sloppy/Memory.cpp
     Sloppy/Utils.cpp
-    Sloppy/DateTime/Zonespec.cpp
+    #Sloppy/DateTime/Zonespec.cpp
+    Sloppy/DateTime/tz.cpp
     Sloppy/Crypto/MiniCert.cpp
     Sloppy/BasicException.h
     Sloppy/CyclicWorkerThread.h
@@ -152,7 +153,7 @@ set(LIB_SOURCES_TST
     tests/tstTimePeriods.cpp
     tests/tstArrayView.cpp
     tests/tstManagedArray.cpp
-    tests/tstDatePeriods.cpp
+    #tests/tstDatePeriods.cpp
     tests/tstRFC822.cpp
     tests/tstRFC2045.cpp
     tests/tstConfigParser.cpp
@@ -177,6 +178,7 @@ set(LIB_SOURCES_TST
     tests/tstNamedType.cpp
     tests/tstCSV.cpp
     tests/tstSubprocess.cpp
+    tests/tstWallclockTime.cpp
 )
 
 find_package(GTest)
@@ -194,7 +196,7 @@ if (GTEST_FOUND AND BUILD_TESTS)
       IMPORTED_LOCATION "${CMAKE_BINARY_DIR}/lib${PROJECT_NAME}.so"
     )
 
-    set(LIBS ${LIBS} ${PROJECT_NAME})
+    set(LIBS ${LIBS} ${PROJECT_NAME} curl)
     message("Using these libs: ${LIBS}")
     message("Writing unit test binary to: ${CMAKE_BINARY_DIR}")
 

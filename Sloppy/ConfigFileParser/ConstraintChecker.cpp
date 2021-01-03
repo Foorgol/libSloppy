@@ -26,7 +26,8 @@
 
 #include "ConstraintChecker.h"
 #include "../String.h"
-#include "../DateTime/DateAndTime.h"
+#include "../DateTime/tz.h"
+#include "../DateTime/date.h"
 
 namespace bfs = boost::filesystem;
 
@@ -205,16 +206,13 @@ namespace Sloppy
     // check against one of the compiled-in timezone specs
     if (c == ValueConstraint::StandardTimezone)
     {
-      auto db = DateTime::getPopulatedTzDatabase();
-      auto tz = db.time_zone_from_region(val);
-
-      bool isOkay =  (tz != nullptr);
-      if (!isOkay && (errMsg != nullptr))
-      {
-        *errMsg = "does not contain a known timezone name!";
+      try {
+        const auto tzPtr = date::locate_zone(val);
+        return (tzPtr != nullptr);
       }
-
-      return isOkay;
+      catch (...) {
+        return false;
+      }
     }
 
     // check ISO dates
@@ -232,7 +230,7 @@ namespace Sloppy
       int m = stoi(sm[2]);
       int d = stoi(sm[3]);
 
-      isOkay = DateTime::CommonTimestamp::isValidDate(y, m, d);
+      isOkay = (date::year{y} / m / d).ok();
       if (!isOkay && (errMsg != nullptr))
       {
        *errMsg = "does not contain a valid date!";

@@ -32,7 +32,14 @@
 namespace Sloppy
 {
   namespace DateTime {
-
+    
+    using MinuteDurationDouble = std::chrono::duration<double, std::ratio<60>>;
+    using HourDurationDouble = std::chrono::duration<double, std::ratio<3600>>;
+    using DayDurationInt = std::chrono::duration<int, std::ratio<86400>>;
+    using DayDurationDouble = std::chrono::duration<double, std::ratio<86400>>;
+    using WeekDurationInt = std::chrono::duration<int, std::ratio<604800>>;
+    using WeekDurationDouble = std::chrono::duration<double, std::ratio<604800>>;
+    
     /** \brief Converts a single integer into a 3-tuple of <year, month, day>,
      * represented as date::year_month_day
      *
@@ -448,45 +455,44 @@ namespace Sloppy
       TimeRange<Duration>& operator=(TimeRange<Duration>&& other) = default;
       ~TimeRange() = default;
       
-      /** \returns the length of the time period in seconds; empty in case of open periods
-        */
-      std::optional<std::chrono::seconds> getLength_Sec() const
-      {
+      /** \returns the length of the time period; empty in case of open periods
+       */
+      template<class Dur2>
+      std::optional<Dur2> length() const {
         if (this->hasOpenEnd()) return std::nullopt;
         
-        return std::chrono::duration_cast<std::chrono::seconds>(this->end.value().utc() - this->start.utc());
+        return std::chrono::duration_cast<Dur2>(this->end.value().utc() - this->start.utc());
+      }
+      
+      /** \returns the length of the time period in seconds; empty in case of open periods
+        */
+      inline std::optional<std::chrono::seconds> length_secs() const
+      {
+        return length<std::chrono::seconds>();
       }
             
       /** \returns the length of the time period in minutes (incl. digits) or empty in case of open periods
         */
-      std::optional<std::chrono::duration<double, std::ratio<60>>> getLength_Minutes() const {
-        if (this->hasOpenEnd()) return std::nullopt;
-        
-        return std::chrono::duration_cast<std::chrono::duration<double, std::ratio<60>>>(this->end.value().utc() - this->start.utc());
+      inline std::optional<MinuteDurationDouble> length_minutes() const {
+        return length<MinuteDurationDouble>();
       }
       
       /** \returns the length of the time period in hours (incl. digits) or empty in case of open periods
        */
-      std::optional<std::chrono::duration<double, std::ratio<3600>>> getLength_Hours() const {
-        if (this->hasOpenEnd()) return std::nullopt;
-        
-        return std::chrono::duration_cast<std::chrono::duration<double, std::ratio<3600>>>(this->end.value().utc() - this->start.utc());
+      inline std::optional<HourDurationDouble> length_hours() const {
+        return length<HourDurationDouble>();
       }
             
       /** \returns the length of the time period in days (incl. digits) or empty in case of open periods
        */
-      std::optional<std::chrono::duration<double, std::ratio<86400>>> getLength_Days() const {
-        if (this->hasOpenEnd()) return std::nullopt;
-        
-        return std::chrono::duration_cast<std::chrono::duration<double, std::ratio<86400>>>(this->end.value().utc() - this->start.utc());
+      inline std::optional<DayDurationDouble> length_days() const {
+        return length<DayDurationDouble>();
       }
       
       /** \returns the length of the time period in weeks (incl. digits) or empty in case of open periods
        */
-      std::optional<std::chrono::duration<double, std::ratio<604800>>> getLength_Weeks() const {
-        if (this->hasOpenEnd()) return std::nullopt;
-        
-        return std::chrono::duration_cast<std::chrono::duration<double, std::ratio<604800>>>(this->end.value().utc() - this->start.utc());
+      inline std::optional<WeekDurationDouble> length_weeks() const {
+        return length<WeekDurationDouble>();
       }
       
       /** \brief Applies an offset to the period's start
@@ -501,7 +507,7 @@ namespace Sloppy
       template<class Dur2>
       bool applyOffsetToStart(const Dur2& offset) {
         WallClockTimepoint<Duration> newStart{this->start};  // copy the old start
-        newStart += offset;
+        newStart += std::chrono::duration_cast<Duration>(offset);
         
         if (this->end.has_value() && (newStart > this->end.value())) return false;
         
@@ -524,7 +530,7 @@ namespace Sloppy
         if (this->hasOpenEnd()) return false;
         
         WallClockTimepoint<Duration> newEnd{this->end.value()};  // copy the old end
-        newEnd += offset;
+        newEnd += std::chrono::duration_cast<Duration>(offset);;
         
         if (newEnd < this->start) return false;
         
@@ -535,6 +541,60 @@ namespace Sloppy
   using TimeRange_secs = TimeRange<std::chrono::seconds>;
   using TimeRange_ms = TimeRange<std::chrono::milliseconds>;
   using TimeRange_us = TimeRange<std::chrono::microseconds>;
+  
+  /** \brief A class for a date period that is defined by two `date::year_month_day` values
+   * 
+   * \note Start day and end day are fully included in the period. Hence, a
+   * `DatePeriod` that starts and ends on the same day has a length of one (1) day.
+   */
+  class DateRange : public Sloppy::GenericRange<date::year_month_day>
+  {
+  public:
+    /** \brief Ctor for a closed date period
+     * 
+     * \note Start day and end day are fully included in the period. Hence, a
+     * `DatePeriod` that starts and ends on the same day has a length of one (1) day.
+     *
+     * \throws std::invalid_argument if the end is before the start
+     */
+    DateRange(
+      const date::year_month_day& _start,   ///< the first day of the DatePeriod
+      const date::year_month_day& _end      ///< the last day of the DatePeriod
+    )
+    :GenericRange<date::year_month_day>(_start, _end) {}
+    
+    /** \brief Ctor for an open ended date period
+     */
+    DateRange(
+      const date::year_month_day& _start   ///< the first day of the DatePeriod
+    )
+    :GenericRange<date::year_month_day>(_start) {}
+    
+    template<class Dur2>
+    std::optional<Dur2> length() const {
+      if (this->hasOpenEnd()) return std::nullopt;
+      
+      // convert start and end to UTC timestamps
+      const auto tpStart = date::sys_days{this->start};
+      const auto tpEnd = date::sys_days{this->end.value()};
+      
+      return std::chrono::duration_cast<Dur2>(tpEnd - tpStart + DayDurationInt{1});  // "+1" because "start == end" means "one day"      
+    }
+    
+    /** \returns the length of the date range in days (or empty in case of open periods)
+     */
+    std::optional<DayDurationInt> length_days() const
+    {
+      return length<DayDurationInt>();
+    }
+    
+    /** \returns the length of the date period in weeks (incl. digits) or `-1` in case of open periods
+     */
+    std::optional<WeekDurationDouble> length_weeks() const
+    {
+      return length<WeekDurationDouble>();
+    }
+  };
   
   }
 }

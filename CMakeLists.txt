@@ -38,7 +38,6 @@ set(LIB_SOURCES
     Sloppy/String.cpp
     Sloppy/Memory.cpp
     Sloppy/Utils.cpp
-    #Sloppy/DateTime/Zonespec.cpp
     Sloppy/DateTime/tz.cpp
     Sloppy/Crypto/MiniCert.cpp
     Sloppy/BasicException.h
@@ -154,7 +153,7 @@ set(LIB_SOURCES_TST
     tests/tstTimeRanges.cpp
     tests/tstArrayView.cpp
     tests/tstManagedArray.cpp
-    #tests/tstDatePeriods.cpp
+    tests/tstDateRanges.cpp
     tests/tstRFC822.cpp
     tests/tstRFC2045.cpp
     tests/tstConfigParser.cpp

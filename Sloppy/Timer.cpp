@@ -25,29 +25,28 @@ namespace Sloppy
 
   void Timer::stop()
   {
-    if (isStopped) return;
+    if (stopTime) return;
 
-    stopTime = chrono::high_resolution_clock::now();
-    isStopped = true;
+    stopTime = chrono::steady_clock::now();
   }
 
   //----------------------------------------------------------------------------
 
   void Timer::restart()
   {
-    startTime = chrono::high_resolution_clock::now();
-    isStopped = false;
+    startTime = chrono::steady_clock::now();
+    stopTime.reset();
   }
 
   //----------------------------------------------------------------------------
 
   bool Timer::isElapsed() const
   {
-    if (!hasTimeoutSet) return false;
+    if (!timeoutDuration) return false;
 
     chrono::nanoseconds elapsed = getTime<chrono::nanoseconds>();
 
-    return (elapsed >= timeoutDuration);
+    return (elapsed >= *timeoutDuration);
   }
 
 

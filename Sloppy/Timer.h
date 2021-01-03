@@ -16,29 +16,11 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-/*
- *    This is libSloppy, a library of sloppily implemented helper functions.
- *    Copyright (C) 2016 - 2019  Volker Knollmann
- *
- *    This program is free software: you can redistribute it and/or modify
- *    it under the terms of the GNU General Public License as published by
- *    the Free Software Foundation, either version 3 of the License, or
- *    any later version.
- *
- *    This program is distributed in the hope that it will be useful,
- *    but WITHOUT ANY WARRANTY; without even the implied warranty of
- *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *    GNU General Public License for more details.
- *
- *    You should have received a copy of the GNU General Public License
- *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
-
-#ifndef __LIBSLOPPY_TIMER_H
-#define __LIBSLOPPY_TIMER_H
+#pragma once
 
 #include <string>
 #include <chrono>
+#include <optional>
 
 namespace Sloppy
 {
@@ -52,7 +34,7 @@ namespace Sloppy
     /** \brief Ctor for a new timer that is started immediately and that
      * has no timeout set.
      */
-    Timer() : startTime{std::chrono::high_resolution_clock::now()}, isStopped{false}, hasTimeoutSet{false} {}
+    Timer() : startTime{std::chrono::steady_clock::now()} {}
 
     /** \brief Stops the timer.
      *
@@ -75,12 +57,12 @@ namespace Sloppy
     template<typename Resolution>
     Resolution getTime() const
     {
-      if (isStopped)
+      if (stopTime)
       {
-        return std::chrono::duration_cast<Resolution>(stopTime - startTime);
+        return std::chrono::duration_cast<Resolution>(*stopTime - startTime);
       }
 
-      std::chrono::high_resolution_clock::time_point now = std::chrono::high_resolution_clock::now();
+      std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
       return std::chrono::duration_cast<Resolution>(now - startTime);
     }
 
@@ -111,27 +93,36 @@ namespace Sloppy
     /** \brief Sets or updates the timeout duration in a custom resolution
      */
     template<typename Resolution>
-    void setTimeoutDuration(const Resolution& timeout)
+    void setTimeoutDuration(
+      const Resolution& timeout   ///< duration relative to the start time when the timeout shall occur
+    )
     {
       timeoutDuration = std::chrono::duration_cast<std::chrono::nanoseconds>(timeout);
-      hasTimeoutSet = true;
     }
 
     /** \brief Sets or updates the timeout duration in nanosecons
      */
-    void setTimeoutDuration__ns(int64_t ns) { setTimeoutDuration<std::chrono::nanoseconds>(std::chrono::nanoseconds{ns}); }
+    void setTimeoutDuration__ns(
+      int64_t ns     ///< duration relative to the start time when the timeout shall occur
+    ) { setTimeoutDuration<std::chrono::nanoseconds>(std::chrono::nanoseconds{ns}); }
 
     /** \brief Sets or updates the timeout duration in microseconds
      */
-    void setTimeoutDuration__us(int64_t us) { setTimeoutDuration<std::chrono::microseconds>(std::chrono::microseconds{us}); }
+    void setTimeoutDuration__us(
+      int64_t us     ///< duration relative to the start time when the timeout shall occur
+    ) { setTimeoutDuration<std::chrono::microseconds>(std::chrono::microseconds{us}); }
 
     /** \brief Sets or updates the timeout duration in milliseconds
      */
-    void setTimeoutDuration__ms(int64_t ms) { setTimeoutDuration<std::chrono::milliseconds>(std::chrono::milliseconds{ms}); }
+    void setTimeoutDuration__ms(
+      int64_t ms     ///< duration relative to the start time when the timeout shall occur
+    ) { setTimeoutDuration<std::chrono::milliseconds>(std::chrono::milliseconds{ms}); }
 
     /** \brief Sets or updates the timeout duration in seconds
      */
-    void setTimeoutDuration__secs(int64_t s) { setTimeoutDuration<std::chrono::seconds>(std::chrono::seconds{s}); }
+    void setTimeoutDuration__secs(
+      int64_t s     ///< duration relative to the start time when the timeout shall occur
+    ) { setTimeoutDuration<std::chrono::seconds>(std::chrono::seconds{s}); }
 
     /** \returns `true` if a timeout has been set and if at least the timeout duration
      * has passed since timer construction or the last restart.
@@ -144,13 +135,13 @@ namespace Sloppy
     template<typename Resolution>
     int64_t getRemainingTime() const
     {
-      if (!hasTimeoutSet) return -1;
+      if (!timeoutDuration) return -1;
 
       std::chrono::nanoseconds elapsed = getTime<std::chrono::nanoseconds>();
 
-      if (elapsed >= timeoutDuration) return 0;
+      if (elapsed >= *timeoutDuration) return 0;
 
-      std::chrono::nanoseconds remain = timeoutDuration - elapsed;
+      std::chrono::nanoseconds remain = *timeoutDuration - elapsed;
 
       return (std::chrono::duration_cast<Resolution>(remain)).count();
     }
@@ -196,12 +187,8 @@ namespace Sloppy
     }
 
   private:
-    std::chrono::high_resolution_clock::time_point startTime;
-    std::chrono::high_resolution_clock::time_point stopTime;
-    bool isStopped;
-    std::chrono::nanoseconds timeoutDuration;
-    bool hasTimeoutSet;
+    std::chrono::steady_clock::time_point startTime;
+    std::optional<std::chrono::steady_clock::time_point> stopTime;
+    std::optional<std::chrono::nanoseconds> timeoutDuration;
   };
 }
-
-#endif

@@ -2397,7 +2397,7 @@ namespace Sloppy
       DH_SharedSecret sh;
 
       sodium.crypto_scalarmult(sh.to_ucPtr_rw(), mySecretKey.to_ucPtr_ro(), othersPublicKey.to_ucPtr_ro());
-      return std::move(sh);
+      return sh;
     }
 
     //----------------------------------------------------------------------------
@@ -2413,7 +2413,7 @@ namespace Sloppy
 
       sodium.crypto_scalarmult_base(pk.to_ucPtr_rw(), sk.to_ucPtr_ro());
 
-      return std::move(pk);
+      return pk;
     }
 
     //----------------------------------------------------------------------------

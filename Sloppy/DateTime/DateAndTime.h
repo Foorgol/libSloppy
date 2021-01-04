@@ -536,7 +536,7 @@ namespace Sloppy
         
         this->end = newEnd;
         return true;
-      };
+      }
   };
   using TimeRange_secs = TimeRange<std::chrono::seconds>;
   using TimeRange_ms = TimeRange<std::chrono::milliseconds>;

@@ -286,9 +286,8 @@ namespace Sloppy
      * \returns `true` if the data has been fully written to the descriptor
      * or `false` otherwise (bytes written != bytes provided).
      */
-    bool blockingWrite(
-        const char* ptr,   ///< pointer to a memory section with data
-        size_t len   ///< length of memory section
+    bool blockingWrite(const char* ptr,   ///< pointer to a memory section with data
+        const size_t len   ///< length of memory section
         );
 
     /** \brief Executes a blocking read operation on the descriptor using `read()'
@@ -314,8 +313,8 @@ namespace Sloppy
      * \returns a heap allocated buffer that contains the received data
      */
     MemArray blockingRead(size_t minLen,   ///< the minimal number of bytes to read; if zero, we'll wait for at least one byte
-        size_t maxLen = 0,   ///< the maximum of bytes to read from the descriptor; if zero, we read as much as possible until we have at least `minLen`
-        int timeout_ms = 0   ///< the timeout (0 = return immediatly, even if no data is avail; < 0 = wait infinitely)
+        const size_t maxLen = 0,   ///< the maximum of bytes to read from the descriptor; if zero, we read as much as possible until we have at least `minLen`
+        const int timeout_ms = 0   ///< the timeout (0 = return immediatly, even if no data is avail; < 0 = wait infinitely)
         );
 
     /** \brief Executes a blocking read operation on the descriptor using `read()'

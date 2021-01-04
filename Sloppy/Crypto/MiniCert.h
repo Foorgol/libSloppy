@@ -227,7 +227,7 @@ namespace Sloppy
       std::string cn;  ///< the subject's "Common Name" (CN)
       Sloppy::Crypto::SodiumLib::AsymCrypto_PublicKey cryptoPubKey;   ///< the public key used for encryption
       Sloppy::Crypto::SodiumLib::AsymSign_PublicKey signPubKey;   ///< the public key used for signing cleartext
-      Sloppy::DateTime::WallClockTimepoint_secs signatureTimestamp;   ///< the time in UTC when the request was signed by the client
+      Sloppy::DateTime::WallClockTimepoint_secs signatureTimestamp{};   ///< the time in UTC when the request was signed by the client
       nlohmann::json addSubjectInfo;   ///< any other data that should become part of the subject description
 
       bool isValid() const;

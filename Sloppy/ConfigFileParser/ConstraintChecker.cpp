@@ -249,7 +249,7 @@ namespace Sloppy
 
   //----------------------------------------------------------------------------
 
-  bool checkConstraint_IntRange(const std::optional<estring>& val, const std::optional<int>& minVal, const std::optional<int> maxVal, std::string* errMsg)
+  bool checkConstraint_IntRange(const std::optional<estring>& val, const std::optional<int>& minVal, const std::optional<int>& maxVal, std::string* errMsg)
   {
     if (!val.has_value())
     {

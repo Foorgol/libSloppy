@@ -155,7 +155,7 @@ namespace Sloppy
 
         // is there an unhandled section before the current match?
         // if yes, it MUST be static data
-        if (sm.position() != curSectionStart)
+        if (static_cast<size_t>(sm.position()) != curSectionStart)
         {
           SyntaxTreeItem sti;
           sti.t = SyntaxTreeItemType::Static;
@@ -863,9 +863,8 @@ namespace Sloppy
               if ((!(list.empty())) && (list.is_array()))
               {
                 // iterate over the array contents
-                for (int idx=0; idx < list.size(); ++idx)
+                for (const auto& subList : list)
                 {
-                  const json& subList = list.at(idx);
                   localScopeVars.emplace(sti.varName, subList);
                   result += getSyntaxSubtree(tree, sti.idxFirstChild, dic, localScopeVars, visitedTemplates);
                   localScopeVars.erase(sti.varName);

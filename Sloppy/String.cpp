@@ -387,7 +387,7 @@ namespace Sloppy
       if (tag.val != lowestArgNum) continue;
 
       // append everything before the tag
-      if (srcPos < tag.idxStart)
+      if (srcPos < static_cast<size_t>(tag.idxStart))
       {
         tmp.append(slice(srcPos, tag.idxStart - 1));
       }

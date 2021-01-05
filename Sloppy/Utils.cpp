@@ -18,7 +18,6 @@
 
 #include <sys/stat.h>                       // for stat, S_ISDIR, S_ISREG
 #include <unistd.h>                         // for pipe, getcwd
-#include <boost/algorithm/string/trim.hpp>  // for trim
 #include <cstdint>                          // for int64_t, uint8_t
 #include <cstdio>                           // for size_t, snprintf
 #include <filesystem>                       // for directory_iterator, direc...
@@ -61,9 +60,54 @@ namespace Sloppy
 
   //----------------------------------------------------------------------------
 
+  void trimLeft(string& s)
+  {
+    if (s.empty()) return;
+
+    // find the first non-whitespace character
+    auto it = std::find_if_not(s.cbegin(), s.cend(), [](const char& c) {
+      return isspace(static_cast<unsigned char>(c));
+    });
+
+    if (it == s.cbegin()) return;  // nothing to trim
+    if (it == s.cend())
+    {
+      // the string consists only of white spaces
+      s.clear();
+      return;
+    }
+
+    // erase everything from the start up to 'it'
+    s.erase(s.begin(), it);
+  }
+
+  //----------------------------------------------------------------------------
+
+  void trimRight(string& s)
+  {
+    if (s.empty()) return;
+
+    // find the first non-whitespace character
+    auto it = std::find_if_not(s.crbegin(), s.crend(), [](const char& c) {
+      return isspace(static_cast<unsigned char>(c));
+    });
+
+    if (it == s.crbegin()) return;  // nothing to trim
+    if (it == s.crend())
+    {
+      // the string consists only of white spaces
+      s.clear();
+    }
+
+    // erase everything starting from 'it' to the end
+    s.erase(it.base(), s.end());
+  }
+
+  //----------------------------------------------------------------------------
+
   bool trimAndCheckString(string& s, size_t maxLen)
   {
-    boost::trim(s);
+    trim(s);
     return (maxLen > 0) ? (!(s.empty() || (s.length() > maxLen))) : (!(s.empty()));
   }
 
@@ -334,6 +378,7 @@ namespace Sloppy
 
     return make_pair(std::move(fdRead), std::move(fdWrite));
   }
+
 #endif
 
   //----------------------------------------------------------------------------

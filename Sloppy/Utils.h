@@ -40,9 +40,6 @@
 
 namespace std
 {
-  class MemArray;
-  class MemView;
-
   /** \brief A helper function in namespace `std` provided by libSloppy for easy conversion
    * of string literals to `string` objects; useful in template functions because we can call
    * 'to_string()` on a broader range of types.
@@ -196,6 +193,21 @@ namespace Sloppy
     size_t newSize = vec.size();
 
     return oldSize - newSize;
+  }
+
+  /** \brief Trims a std-string in place by removing all whitespace on the left
+   */
+  void trimLeft(std::string& s);
+
+  /** \brief Trims a std-string in place by removing all whitespace on the right
+   */
+  void trimRight(std::string& s);
+
+  /** \brief Trims both sides of a string in place
+   */
+  inline void trim(std::string& s) {
+    trimLeft(s);
+    trimRight(s);
   }
 
   /** \brief Trim a string and checks that it's not too long or empty.

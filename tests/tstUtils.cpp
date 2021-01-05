@@ -101,6 +101,38 @@ TEST(Utils, EraseFromVector)
 
 //----------------------------------------------------------------------------
 
+TEST(Utils, TrimString) {
+  const std::vector<std::vector<std::string>> tstData = {
+    {"abc", "abc", "abc", "abc"},
+    {"ab c", "ab c", "ab c", "ab c"},
+    {" abc", "abc", " abc", "abc"},
+    {"  abc", "abc", "  abc", "abc"},
+    {"abc ", "abc ", "abc", "abc"},
+    {"abc  ", "abc  ", "abc", "abc"},
+    {"\tabc ", "abc ", "\tabc", "abc"},
+    {"\tabc\r", "abc\r", "\tabc", "abc"},
+    {"", "", "", ""},
+    {" ", "", "", ""},
+    {"\t\r\n", "", "", ""},
+  };
+
+  for (const auto& sArray : tstData) {
+    std::string s = sArray[0];
+    Sloppy::trimLeft(s);
+    ASSERT_EQ(sArray[1], s);
+
+    s = sArray[0];
+    Sloppy::trimRight(s);
+    ASSERT_EQ(sArray[2], s);
+
+    s = sArray[0];
+    Sloppy::trim(s);
+    ASSERT_EQ(sArray[3], s);
+  }
+}
+
+//----------------------------------------------------------------------------
+
 TEST(Utils, TrimAndCheckString)
 {
   string s = " 123 ";

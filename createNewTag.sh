@@ -9,7 +9,7 @@ fi
 
 # make sure we're on branch "master"
 out=$(git branch --show-current)
-if [ $out != "dev" ]; then
+if [ $out != "master" ]; then
   echo
   echo "Must be on branch 'master'"
   echo
@@ -21,15 +21,15 @@ fi
 # assumption: if there are any fragments with string length
 # "1" or "2" and it is not "??", we assume that it indicates
 # a pending change (e.g., "A", "AM", "D", ...)
-#for tag in $(git status --porcelain); do
-#  tagLen=$(expr length $tag)
-#  if [ $tagLen -lt 3 -a $tag != "??" ]; then
-#    echo
-#    echo "Work dir not clean; all changes must have been committed!"
-#    echo
-#    exit 1
-#  fi
-#done
+for tag in $(git status --porcelain); do
+  tagLen=$(expr length $tag)
+  if [ $tagLen -lt 3 -a $tag != "??" ]; then
+    echo
+    echo "Work dir not clean; all changes must have been committed!"
+    echo
+    exit 1
+  fi
+done
 
 echo
 echo "Have all changes in branch 'dev' been merged into master?"

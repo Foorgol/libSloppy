@@ -19,11 +19,12 @@
 #ifndef SLOPPY__HTML__TABLE_H
 #define SLOPPY__HTML__TABLE_H
 
-#include <string>
-#include <vector>
-#include <unordered_map>
+#include <stddef.h>         // for size_t
+#include <string>           // for string
+#include <utility>          // for forward
+#include <vector>           // for vector
 
-#include "StyledElement.h"
+#include "StyledElement.h"  // for StyledElement
 
 namespace Sloppy
 {

@@ -16,10 +16,9 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <stdexcept>
-#include <cctype>
-#include <algorithm>
-#include <regex>
+#include <algorithm>  // for all_of, find_if_not, for_each, max, count
+#include <cctype>     // for isdigit, isspace, tolower, toupper
+#include <stdexcept>  // for invalid_argument
 
 #include "String.h"
 
@@ -44,14 +43,14 @@ namespace Sloppy
 
   estring estring::right(estring::size_type n) const {
     if (n == 0) return estring{};
-    return (n >= length()) ? *this : estring{std::move(substr(length() - n, n))};
+    return (n >= length()) ? *this : estring{substr(length() - n, n)};
   }
 
   //----------------------------------------------------------------------------
 
   estring estring::left(estring::size_type n) const {
     if (n == 0) return estring{};
-    return (n >= length()) ? *this : estring{std::move(substr(0, n))};
+    return (n >= length()) ? *this : estring{substr(0, n)};
   }
 
   //----------------------------------------------------------------------------

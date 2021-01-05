@@ -19,11 +19,9 @@
 #ifndef SLOPPY__HTML__BASIC_ELEMENTS_H
 #define SLOPPY__HTML__BASIC_ELEMENTS_H
 
-#include <string>
-#include <vector>
-#include <unordered_map>
+#include <string>           // for allocator, string, operator+, to_string
 
-#include "StyledElement.h"
+#include "StyledElement.h"  // for Alignment, Alignment::Default, StyledElement
 
 namespace Sloppy
 {

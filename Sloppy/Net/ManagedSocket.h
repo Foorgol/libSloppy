@@ -19,8 +19,15 @@
 #ifndef SLOPPY__MANAGED_SOCKET_H
 #define SLOPPY__MANAGED_SOCKET_H
 
-#include "../ManagedFileDescriptor.h"
-#include "Net.h"
+#include <stddef.h>                    // for size_t
+#include <sys/socket.h>                // for socket, AF_INET, SOCK_DGRAM
+#include <string>                      // for string
+#include <type_traits>                 // for remove_reference<>::type
+#include <utility>                     // for move, pair
+
+#include "../ManagedFileDescriptor.h"  // for ManagedFileDescriptor
+
+struct sockaddr_in;
 
 namespace Sloppy
 {

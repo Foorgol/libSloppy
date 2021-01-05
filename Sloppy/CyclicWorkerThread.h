@@ -19,14 +19,12 @@
 #ifndef __LIBSLOPPY_CYCLIC_WORKER_THREAD_H
 #define __LIBSLOPPY_CYCLIC_WORKER_THREAD_H
 
-#include <string>
-#include <thread>
-#include <mutex>
-#include <atomic>
-#include <condition_variable>
+#include <atomic>              // for atomic
+#include <condition_variable>  // for condition_variable
+#include <mutex>               // for mutex, lock_guard, unique_lock
+#include <thread>              // for thread
 
-#include "Timer.h"
-#include "ThreadStats.h"
+#include "ThreadStats.h"       // for CyclicThreadStats
 
 namespace Sloppy
 {

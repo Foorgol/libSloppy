@@ -16,7 +16,8 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <stdexcept>
+#include <iosfwd>     // for std
+#include <stdexcept>  // for invalid_argument
 
 #include "StyledElement.h"
 

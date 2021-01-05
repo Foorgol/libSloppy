@@ -19,12 +19,10 @@
 #ifndef SLOPPY__HTML__BOOTSTRAP_H
 #define SLOPPY__HTML__BOOTSTRAP_H
 
-#include <string>
-#include <vector>
-#include <unordered_map>
+#include <string>           // for allocator, string
 
-#include "StyledElement.h"
-#include "BasicElements.h"
+#include "BasicElements.h"  // for Anchor
+#include "StyledElement.h"  // for StyledElement
 
 namespace Sloppy
 {

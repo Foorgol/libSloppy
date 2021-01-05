@@ -23,6 +23,7 @@
 #include <gtest/gtest.h>
 
 #include "../Sloppy/CyclicWorkerThread.h"
+#include "../Sloppy/Timer.h"
 
 using namespace std;
 

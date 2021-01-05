@@ -16,7 +16,8 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <stdexcept>
+#include <cstddef>    // for size_t, std
+#include <stdexcept>  // for invalid_argument
 
 #include "Table.h"
 

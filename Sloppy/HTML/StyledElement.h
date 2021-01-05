@@ -19,9 +19,10 @@
 #ifndef SLOPPY__HTML__STYLED_ELEMENT_H
 #define SLOPPY__HTML__STYLED_ELEMENT_H
 
-#include <string>
-#include <vector>
-#include <unordered_map>
+#include <string>         // for string, basic_string, hash
+#include <unordered_map>  // for unordered_map
+#include <utility>        // for forward
+#include <vector>         // for vector
 
 namespace Sloppy
 {

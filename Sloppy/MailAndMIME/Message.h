@@ -19,11 +19,10 @@
 #ifndef SLOPPY__MAIL_AND_MIME__MESSAGE_H
 #define SLOPPY__MAIL_AND_MIME__MESSAGE_H
 
-#include <memory>
+#include <memory>    // for unique_ptr
+#include <string>    // for string
 
-#include "MailAndMIME.h"
-#include "Header.h"
-#include "../String.h"
+#include "Header.h"  // for Header
 
 namespace Sloppy
 {

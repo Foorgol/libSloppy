@@ -19,14 +19,14 @@
 #ifndef SLOPPY__MAIL_AND_MIME__MIME_MESSAGE_H
 #define SLOPPY__MAIL_AND_MIME__MIME_MESSAGE_H
 
-#include <string>
-#include <memory>
-#include <unordered_map>
+#include <stddef.h>       // for size_t
+#include <string>         // for string, operator==
+#include <unordered_map>  // for unordered_map
+#include <vector>         // for vector
 
-#include "MailAndMIME.h"
-#include "Header.h"
-#include "Message.h"
-#include "../String.h"
+#include "../String.h"    // for estring, hash
+
+namespace Sloppy { namespace RFC822 { class Message; } }
 
 namespace Sloppy
 {

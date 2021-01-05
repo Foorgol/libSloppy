@@ -16,6 +16,14 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <netinet/in.h>
+#include <strings.h>
+#include <cstddef>
+#include <stdexcept>
+
+#include "../ManagedFileDescriptor.h"
+#include "Net.h"
+
 #include "ManagedSocket.h"
 
 using namespace std;

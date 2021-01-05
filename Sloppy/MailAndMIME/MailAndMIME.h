@@ -19,8 +19,6 @@
 #ifndef SLOPPY__MAIL_AND_MIME_H
 #define SLOPPY__MAIL_AND_MIME_H
 
-#include <string>
-
 namespace Sloppy
 {
   namespace RFC822

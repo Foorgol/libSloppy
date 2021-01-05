@@ -19,13 +19,17 @@
 #ifndef __LIBSLOPPY_CSV_H
 #define __LIBSLOPPY_CSV_H
 
-#include <vector>
-#include <variant>
-#include <string>
-#include <optional>
-#include <unordered_map>
+#include <algorithm>      // for max
+#include <cstdint>        // for int64_t
+#include <optional>       // for optional
+#include <string>         // for string, basic_string, allocator, hash
+#include <type_traits>    // for remove_reference<>::type
+#include <unordered_map>  // for unordered_map
+#include <utility>        // for move
+#include <variant>        // for variant
+#include <vector>         // for vector
 
-#include "String.h"
+#include "String.h"       // for estring
 
 namespace Sloppy
 {

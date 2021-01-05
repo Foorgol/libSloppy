@@ -16,18 +16,17 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <string>
-#include <regex>
-#include <iostream>
-#include <sstream>
-#include <fstream>
-
-#include <filesystem>
+#include <filesystem>          // for is_directory, is_regular_file, path
+#include <initializer_list>    // for initializer_list
+#include <regex>               // for regex_match, match_results<>::_Base_type
+#include <stdexcept>           // for range_error
+#include <string>              // for string, allocator, char_traits, stoi
+#include <vector>              // for vector
 
 #include "ConstraintChecker.h"
-#include "../String.h"
-#include "../DateTime/tz.h"
-#include "../DateTime/date.h"
+#include "../DateTime/date.h"  // for operator/, year, year_month, year_mont...
+#include "../DateTime/tz.h"    // for locate_zone
+#include "../String.h"         // for estring
 
 namespace Sloppy
 {

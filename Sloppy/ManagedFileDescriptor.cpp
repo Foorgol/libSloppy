@@ -16,15 +16,17 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <iostream>
-#include <cstdlib>
-#include <sys/select.h>
-#include <sys/time.h>
-#include <unistd.h>
-#include <thread>
+#include <poll.h>        // for pollfd, poll, POLLERR, POLLHUP, POLLIN, POLL...
+#include <sys/select.h>  // for select, FD_SET, FD_ZERO, fd_set
+#include <sys/time.h>    // for timeval
+#include <unistd.h>      // for close, read, write
+#include <iostream>      // for operator<<, basic_ostream, endl, basic_ostre...
+#include <iterator>      // for advance
+#include <stdexcept>     // for runtime_error, out_of_range
+
+#include "Timer.h"       // for Timer
 
 #include "ManagedFileDescriptor.h"
-#include "Timer.h"
 
 using namespace std;
 

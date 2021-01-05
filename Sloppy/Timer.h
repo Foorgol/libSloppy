@@ -18,9 +18,10 @@
 
 #pragma once
 
-#include <string>
-#include <chrono>
-#include <optional>
+#include <stdint.h>  // for int64_t
+#include <chrono>    // for nanoseconds, duration, microseconds, milliseconds
+#include <optional>  // for optional
+#include <ratio>     // for milli, ratio
 
 namespace Sloppy
 {

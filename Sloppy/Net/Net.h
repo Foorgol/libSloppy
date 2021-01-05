@@ -19,8 +19,14 @@
 #ifndef SLOPPY__NET_H
 #define SLOPPY__NET_H
 
-#include <string>
-#include <vector>
+#include <netinet/in.h>  // for htonl, sockaddr_in
+#include <stddef.h>      // for size_t
+#include <cstdint>       // for uint8_t, uint64_t, uint32_t, uint16_t
+#include <string>        // for string, basic_string
+#include <vector>        // for vector
+
+#include "../Memory.h"   // for MemView, MemArray
+#include "../String.h"   // for estring
 
 #ifndef WIN32
 #include <netdb.h>
@@ -30,8 +36,6 @@
 #include <winsock2.h>   // for htonl() etc.
 #endif
 
-#include "../String.h"
-#include "../Memory.h"
 
 namespace Sloppy
 {

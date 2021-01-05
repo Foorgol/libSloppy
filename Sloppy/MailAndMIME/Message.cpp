@@ -16,10 +16,10 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <algorithm>
+#include <cstddef>        // for size_t, std
 
-#include "MailAndMIME.h"
 #include "Message.h"
+#include "MailAndMIME.h"  // for sCRLFCRLF
 
 using namespace std;
 

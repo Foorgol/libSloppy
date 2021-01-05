@@ -19,10 +19,14 @@
 #ifndef __LIBSLOPPY_STRING_H
 #define __LIBSLOPPY_STRING_H
 
-#include <string>
-#include <vector>
-#include <tuple>
-#include <string_view>
+#include <stdint.h>     // for int64_t, uint8_t
+#include <stdio.h>      // for snprintf
+#include <cstddef>      // for size_t
+#include <string>       // for string, basic_string<>::size_type, to_string
+#include <string_view>  // for string_view, hash
+#include <tuple>        // for tuple
+#include <utility>      // for pair, move
+#include <vector>       // for vector
 
 namespace Sloppy
 {

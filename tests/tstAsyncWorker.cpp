@@ -23,6 +23,7 @@
 #include <gtest/gtest.h>
 
 #include "../Sloppy/AsyncWorker.h"
+#include "../Sloppy/ThreadSafeQueue.h"
 #include "../Sloppy/Timer.h"
 
 using namespace std;

@@ -37,18 +37,19 @@
 #ifndef __LIBSLOPPY_ASYNCWORKER_H
 #define __LIBSLOPPY_ASYNCWORKER_H
 
-#include <string>
-#include <chrono>
-#include <thread>
-#include <atomic>
-#include <climits>
-#include <type_traits>
+#include <atomic>         // for atomic_bool
+#include <chrono>         // for milliseconds
+#include <mutex>          // for mutex, lock_guard
+#include <thread>         // for thread, sleep_for
+#include <type_traits>    // for is_copy_assignable, is_default_constructible
 
-#include "ThreadSafeQueue.h"
-#include "ThreadStats.h"
+#include "ThreadStats.h"  // for AsyncWorkerStats
+#include "Timer.h"        // for Timer
 
 namespace Sloppy
 {
+  template <typename T> class ThreadSafeQueue;
+
   /** \brief Template class for a "data consumer" or "worker" that takes input
    * data from an input queue, processes it async to the "feeder thread"
    * and stores the result in an output queue.

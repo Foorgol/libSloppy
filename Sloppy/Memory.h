@@ -19,10 +19,13 @@
 #ifndef LIBSLOPPY_MEMORY_H
 #define LIBSLOPPY_MEMORY_H
 
-#include <memory>
-#include <stdexcept>
-#include <string.h>    // for memcpy
-#include <limits.h>
+#include <stdint.h>     // for uint8_t, int64_t, uint64_t
+#include <string.h>     // for size_t, memcpy
+#include <new>          // for bad_alloc
+#include <stdexcept>    // for out_of_range, invalid_argument, runtime_error
+#include <string>       // for string
+#include <type_traits>  // for remove_reference<>::type
+#include <utility>      // for move
 
 namespace Sloppy
 {

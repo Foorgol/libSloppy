@@ -16,15 +16,10 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <stdexcept>
-#include <ctime>
-#include <cstring>
-#include <memory>
-#include <iostream>
-#include <chrono>
+#include <sstream>    // for basic_stringbuf<>::int_type, basic_stringbuf<>:...
+#include <stdexcept>  // for out_of_range
 
 #include "DateAndTime.h"
-#include "../String.h"
 
 namespace Sloppy
 {

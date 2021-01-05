@@ -16,6 +16,8 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <iosfwd>      // for std
+
 #include "Memory.h"
 
 // support of memory mapped files if for non-Windows builds only

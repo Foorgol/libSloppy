@@ -16,8 +16,17 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <stdexcept>
-#include <string.h>
+#include <netdb.h>                                     // for gethostbyname
+#include <stdint.h>                                    // for uint32_t, uint...
+#include <string.h>                                    // for size_t, memcpy
+#include <strings.h>                                   // for bcopy, bzero
+#include <sys/socket.h>                                // for AF_INET
+#include <iosfwd>                                      // for std
+#include <stdexcept>                                   // for out_of_range
+#include <utility>                                     // for move
+
+#include "../Memory.h"  // for MemView, MemArray
+#include "../String.h"  // for estring
 
 #include "Net.h"
 

@@ -19,15 +19,14 @@
 #ifndef __LIBSLOPPY_MANAGEDFD_H
 #define __LIBSLOPPY_MANAGEDFD_H
 
-#include <string>
-#include <cstring>
-#include <optional>
-#include <mutex>
-#include <atomic>
-#include <signal.h>
-#include <poll.h>
+#include <errno.h>   // for errno
+#include <atomic>    // for atomic
+#include <cstring>   // for size_t, strerror
+#include <mutex>     // for mutex
+#include <optional>  // for optional
+#include <string>    // for string, allocator
 
-#include "Memory.h"
+#include "Memory.h"  // for MemArray, MemView
 
 namespace Sloppy
 {

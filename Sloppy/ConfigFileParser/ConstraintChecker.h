@@ -19,9 +19,11 @@
 #ifndef SLOPPY__CONSTRAINT_CHECKER_H
 #define SLOPPY__CONSTRAINT_CHECKER_H
 
-#include <optional>
+#include <stddef.h>     // for size_t
+#include <optional>     // for optional
+#include <string>       // for string
 
-#include "../String.h"
+#include "../String.h"  // for estring
 
 namespace Sloppy
 {

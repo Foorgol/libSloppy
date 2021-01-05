@@ -16,10 +16,18 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <cstring>
-#include <vector>
-#include <chrono>
-#include <iostream>
+#include <math.h>                                      // for ceil
+#include <stdint.h>                                    // for uint8_t, uint64_t
+#include <stdio.h>                                     // for sprintf
+#include <chrono>                                      // for duration, syst...
+#include <cstring>                                     // for size_t, memcpy
+#include <iostream>                                    // for operator<<, endl
+#include <new>                                         // for bad_alloc
+#include <stdexcept>                                   // for invalid_argument
+#include <type_traits>                                 // for __strip_refere...
+#include <vector>                                      // for vector
+
+#include "../Memory.h"  // for MemView, MemArray
 
 #include "Crypto.h"
 

@@ -18,11 +18,18 @@
 
 #pragma once
 
-#include <vector>
-#include <algorithm>
-#include <string>
-#include <sstream>
-#include <iomanip>
+
+#include <stddef.h>                 // for size_t
+#include <initializer_list>         // for initializer_list
+#include <iomanip>                  // for operator<<, setfill, setw
+#include <sstream>                  // for ostringstream, basic_ostream, ope...
+#include <string>                   // for string, allocator
+#include <type_traits>              // for is_integral, is_signed
+#include <utility>                  // for pair
+#include <vector>                   // for vector
+#include "ManagedFileDescriptor.h"  // for ManagedFileDescriptor
+#include "String.h"                 // for StringList
+#include "json.hpp"                 // for json
 
 // we include some special file functions for
 // non-Windows builds only
@@ -31,12 +38,11 @@
 #include <unistd.h>
 #endif
 
-#include "String.h"
-#include "ManagedFileDescriptor.h"
-#include "json.hpp"
-
 namespace std
 {
+  class MemArray;
+  class MemView;
+
   /** \brief A helper function in namespace `std` provided by libSloppy for easy conversion
    * of string literals to `string` objects; useful in template functions because we can call
    * 'to_string()` on a broader range of types.

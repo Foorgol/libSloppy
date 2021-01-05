@@ -16,18 +16,20 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <regex>
-#include <iostream>
-#include <cstdio>
-#include <tuple>
+#include <sys/stat.h>                       // for stat, S_ISDIR, S_ISREG
+#include <unistd.h>                         // for pipe, getcwd
+#include <boost/algorithm/string/trim.hpp>  // for trim
+#include <cstdint>                          // for int64_t, uint8_t
+#include <cstdio>                           // for size_t, snprintf
+#include <filesystem>                       // for directory_iterator, direc...
+#include <regex>                            // for regex_match, match_result...
+#include <stdexcept>                        // for invalid_argument
 
-#include <boost/algorithm/string.hpp>
-#include <filesystem>
+#include "ManagedFileDescriptor.h"          // for ManagedFileDescriptor
+#include "Memory.h"                         // for MemArray, MemView
+#include "json.hpp"                         // for json, iter_impl, basic_json
 
 #include "Utils.h"
-#include "json.hpp"
-#include "ManagedFileDescriptor.h"
-#include "Memory.h"
 
 using json = nlohmann::json;
 using namespace std;

@@ -18,9 +18,9 @@
 
 #pragma once
 
-#include <string>
+#include <string>  // for string
 
-#include "../DateTime/tz.h"
+namespace date { class time_zone; }
 
 namespace Sloppy
 {

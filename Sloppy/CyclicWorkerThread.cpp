@@ -16,6 +16,12 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <chrono>     // for milliseconds, steady_clock
+#include <iosfwd>     // for std
+#include <stdexcept>  // for runtime_error
+
+#include "Timer.h"    // for Timer
+
 #include "CyclicWorkerThread.h"
 
 using namespace std;

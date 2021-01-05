@@ -19,12 +19,12 @@
 #ifndef SLOPPY__CRYPTO_H
 #define SLOPPY__CRYPTO_H
 
-#include <string>
-#include <tuple>
-#include <random>
-#include <chrono>
+#include <stddef.h>     // for size_t
+#include <random>       // for mt19937_64
+#include <string>       // for string
+#include <utility>      // for pair
 
-#include "../Memory.h"
+#include "../Memory.h"  // for MemView, MemArray
 
 namespace Sloppy
 {

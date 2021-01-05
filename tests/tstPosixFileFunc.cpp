@@ -1,6 +1,6 @@
 /*
  *    This is libSloppy, a library of sloppily implemented helper functions.
- *    Copyright (C) 2016 - 2019  Volker Knollmann
+ *    Copyright (C) 2016 - 2021  Volker Knollmann
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -18,16 +18,13 @@
 
 #include <string>
 #include <iostream>
-
-#include <boost/filesystem.hpp>
+#include <filesystem>
 
 #include <gtest/gtest.h>
 
 #include "../Sloppy/Utils.h"
 
 using namespace std;
-
-namespace boostfs = boost::filesystem;
 
 //-------------------------------------------------
 //
@@ -38,10 +35,10 @@ namespace boostfs = boost::filesystem;
 
 TEST(PosixFileFunc, GetCWD)
 {
-  auto cwdPath = boostfs::current_path();
+  auto cwdPath = std::filesystem::current_path();
   string cwd = cwdPath.native();
-  cerr << "Workdir from boost: " << cwd << endl;
-  cerr << "Workdir from Sloppy: " << Sloppy::getCurrentWorkDir() << endl;
+  cerr << "Workdir from standard file system lib: " << cwd << endl;
+  cerr << "Workdir from Sloppy via getcwd(): " << Sloppy::getCurrentWorkDir() << endl;
 
   ASSERT_EQ(cwd, Sloppy::getCurrentWorkDir());
 }
@@ -54,7 +51,7 @@ TEST(PosixFileFunc, isFile)
   string f{"/usr/bin/bash"};
   ASSERT_TRUE(Sloppy::isFile(f));
 
-  // this file is certain to NOT exist
+  // this file does certain to NOT exist
   f = "/usr/sdfkjhskfhs";
   ASSERT_FALSE(Sloppy::isFile(f));
 

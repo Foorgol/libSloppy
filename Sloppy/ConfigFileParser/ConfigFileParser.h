@@ -1,6 +1,6 @@
 /*
  *    This is libSloppy, a library of sloppily implemented helper functions.
- *    Copyright (C) 2016 - 2019  Volker Knollmann
+ *    Copyright (C) 2016 - 2021  Volker Knollmann
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -19,17 +19,19 @@
 #ifndef SLOPPY__CONFIG_FILE_PARSER_H
 #define SLOPPY__CONFIG_FILE_PARSER_H
 
-#include <memory>
-#include <istream>
-#include <vector>
-#include <unordered_map>
-#include <optional>
+#include <stddef.h>             // for size_t
+#include <istream>              // for istream
+#include <optional>             // for optional
+#include <string>               // for string, basic_string, hash
+#include <unordered_map>        // for unordered_map
+#include <vector>               // for vector
 
-#include "ConstraintChecker.h"
-#include "../String.h"
+#include "ConstraintChecker.h"  // for ValueConstraint
 
 namespace Sloppy
 {
+  class estring;
+
   static constexpr const char* defaultSectionName = "__DEFAULT__";
 
   using KeyValueMap = std::unordered_map<std::string, std::string>;

@@ -1,6 +1,6 @@
 /*
  *    This is libSloppy, a library of sloppily implemented helper functions.
- *    Copyright (C) 2016 - 2019  Volker Knollmann
+ *    Copyright (C) 2016 - 2021  Volker Knollmann
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -19,11 +19,10 @@
 #ifndef SLOPPY__MAIL_AND_MIME__MESSAGE_H
 #define SLOPPY__MAIL_AND_MIME__MESSAGE_H
 
-#include <memory>
+#include <memory>    // for unique_ptr
+#include <string>    // for string
 
-#include "MailAndMIME.h"
-#include "Header.h"
-#include "../String.h"
+#include "Header.h"  // for Header
 
 namespace Sloppy
 {

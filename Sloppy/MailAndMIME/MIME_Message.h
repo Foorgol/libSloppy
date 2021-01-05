@@ -1,6 +1,6 @@
 /*
  *    This is libSloppy, a library of sloppily implemented helper functions.
- *    Copyright (C) 2016 - 2019  Volker Knollmann
+ *    Copyright (C) 2016 - 2021  Volker Knollmann
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -19,14 +19,14 @@
 #ifndef SLOPPY__MAIL_AND_MIME__MIME_MESSAGE_H
 #define SLOPPY__MAIL_AND_MIME__MIME_MESSAGE_H
 
-#include <string>
-#include <memory>
-#include <unordered_map>
+#include <stddef.h>       // for size_t
+#include <string>         // for string, operator==
+#include <unordered_map>  // for unordered_map
+#include <vector>         // for vector
 
-#include "MailAndMIME.h"
-#include "Header.h"
-#include "Message.h"
-#include "../String.h"
+#include "../String.h"    // for estring, hash
+
+namespace Sloppy { namespace RFC822 { class Message; } }
 
 namespace Sloppy
 {

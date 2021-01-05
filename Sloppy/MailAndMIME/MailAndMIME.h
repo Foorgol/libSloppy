@@ -1,6 +1,6 @@
 /*
  *    This is libSloppy, a library of sloppily implemented helper functions.
- *    Copyright (C) 2016 - 2019  Volker Knollmann
+ *    Copyright (C) 2016 - 2021  Volker Knollmann
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -18,8 +18,6 @@
 
 #ifndef SLOPPY__MAIL_AND_MIME_H
 #define SLOPPY__MAIL_AND_MIME_H
-
-#include <string>
 
 namespace Sloppy
 {

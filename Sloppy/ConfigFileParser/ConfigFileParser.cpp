@@ -1,6 +1,6 @@
 /*
  *    This is libSloppy, a library of sloppily implemented helper functions.
- *    Copyright (C) 2016 - 2019  Volker Knollmann
+ *    Copyright (C) 2016 - 2021  Volker Knollmann
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -16,15 +16,18 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <string>
-#include <regex>
-#include <iostream>
-#include <sstream>
-#include <fstream>
+#include <algorithm>         // for max
+#include <initializer_list>  // for initializer_list
+#include <iostream>          // for cerr
+#include <fstream>           // for ifstream
+#include <memory>            // for allocator
+#include <regex>             // for regex_search, match_results<>::_Base_type
+#include <stdexcept>         // for invalid_argument, range_error
+#include <string>            // for string, basic_string, operator==, operator+
+#include <utility>           // for pair
 
 #include "ConfigFileParser.h"
-#include "../String.h"
-#include "../DateTime/DateAndTime.h"
+#include "../String.h"       // for estring
 
 using namespace std;
 
@@ -356,7 +359,7 @@ namespace Sloppy
       return msg;
     };
 
-    const estring& v = getValue(secName, keyName).value();
+    const estring v = getValue(secName, keyName).value();
 
     if (hasMin && (*minLen > 0))
     {

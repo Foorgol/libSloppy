@@ -1,6 +1,6 @@
 /*
  *    This is libSloppy, a library of sloppily implemented helper functions.
- *    Copyright (C) 2016 - 2019  Volker Knollmann
+ *    Copyright (C) 2016 - 2021  Volker Knollmann
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -16,21 +16,23 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <fstream>
-#include <sstream>
-#include <vector>
-#include <algorithm>
+#include <filesystem>
 #include <iostream>
+#include <iterator>
+#include <stdexcept>
+#include <utility>
+#include <vector>
+#include <fstream>
 
-#include <boost/filesystem.hpp>
+#include "../Utils.h"
+#include "../json.hpp"
+#include "../ConfigFileParser/ConfigFileParser.h"
+#include "../json_fwd.hpp"
 
 #include "TemplateSys.h"
-#include "../json.hpp"
-#include "../Utils.h"
 
 using namespace std;
 using json = nlohmann::json;
-namespace bfs = boost::filesystem;
 
 namespace Sloppy
 {
@@ -156,7 +158,7 @@ namespace Sloppy
 
         // is there an unhandled section before the current match?
         // if yes, it MUST be static data
-        if (sm.position() != curSectionStart)
+        if (static_cast<size_t>(sm.position()) != curSectionStart)
         {
           SyntaxTreeItem sti;
           sti.t = SyntaxTreeItemType::Static;
@@ -542,12 +544,12 @@ namespace Sloppy
     TemplateStore::TemplateStore(const string& rootDir, const StringList& extList)
       :langCode{}
     {
-      bfs::path rootPath{rootDir};
-      if (!(bfs::exists(rootPath)))
+      std::filesystem::path rootPath{rootDir};
+      if (!(std::filesystem::exists(rootPath)))
       {
         throw std::invalid_argument("TemplateStore initialized with invalid base dir");
       }
-      if (!(bfs::is_directory(rootPath)))
+      if (!(std::filesystem::is_directory(rootPath)))
       {
         throw std::invalid_argument("TemplateStore initialized with invalid base dir");
       }
@@ -564,7 +566,7 @@ namespace Sloppy
         while (it != allFiles.end())
         {
           const string& s = *it;
-          bfs::path p{s};
+          std::filesystem::path p{s};
           string ext = p.extension().string();
           if ((!(ext.empty())) && (ext[0] == '.'))
           {
@@ -610,7 +612,7 @@ namespace Sloppy
           continue;
         }
 
-        string relPath = bfs::path{p}.lexically_relative(rootPath).string();
+        string relPath = std::filesystem::path{p}.lexically_relative(rootPath).string();
         docs.emplace(relPath, t);
       }
 
@@ -864,9 +866,8 @@ namespace Sloppy
               if ((!(list.empty())) && (list.is_array()))
               {
                 // iterate over the array contents
-                for (int idx=0; idx < list.size(); ++idx)
+                for (const auto& subList : list)
                 {
-                  const json& subList = list.at(idx);
                   localScopeVars.emplace(sti.varName, subList);
                   result += getSyntaxSubtree(tree, sti.idxFirstChild, dic, localScopeVars, visitedTemplates);
                   localScopeVars.erase(sti.varName);

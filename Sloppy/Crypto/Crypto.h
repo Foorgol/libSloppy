@@ -1,6 +1,6 @@
 /*
  *    This is libSloppy, a library of sloppily implemented helper functions.
- *    Copyright (C) 2016 - 2019  Volker Knollmann
+ *    Copyright (C) 2016 - 2021  Volker Knollmann
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -19,12 +19,12 @@
 #ifndef SLOPPY__CRYPTO_H
 #define SLOPPY__CRYPTO_H
 
-#include <string>
-#include <tuple>
-#include <random>
-#include <chrono>
+#include <stddef.h>     // for size_t
+#include <random>       // for mt19937_64
+#include <string>       // for string
+#include <utility>      // for pair
 
-#include "../Memory.h"
+#include "../Memory.h"  // for MemView, MemArray
 
 namespace Sloppy
 {

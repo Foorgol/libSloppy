@@ -1,6 +1,6 @@
 /*
  *    This is libSloppy, a library of sloppily implemented helper functions.
- *    Copyright (C) 2016 - 2019  Volker Knollmann
+ *    Copyright (C) 2016 - 2021  Volker Knollmann
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -15,6 +15,12 @@
  *    You should have received a copy of the GNU General Public License
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+
+#include <chrono>     // for milliseconds, steady_clock
+#include <iosfwd>     // for std
+#include <stdexcept>  // for runtime_error
+
+#include "Timer.h"    // for Timer
 
 #include "CyclicWorkerThread.h"
 
@@ -170,7 +176,7 @@ namespace Sloppy
   void CyclicWorkerThread::mainLoop()
   {
     // short-cut
-    using Clock = chrono::high_resolution_clock;
+    using Clock = chrono::steady_clock;
 
     // initially lock the mutex because that's a pre-condition
     // when starting the while loop

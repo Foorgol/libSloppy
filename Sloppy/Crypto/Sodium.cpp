@@ -1,6 +1,6 @@
 /*
  *    This is libSloppy, a library of sloppily implemented helper functions.
- *    Copyright (C) 2016 - 2019  Volker Knollmann
+ *    Copyright (C) 2016 - 2021  Volker Knollmann
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -2397,7 +2397,7 @@ namespace Sloppy
       DH_SharedSecret sh;
 
       sodium.crypto_scalarmult(sh.to_ucPtr_rw(), mySecretKey.to_ucPtr_ro(), othersPublicKey.to_ucPtr_ro());
-      return std::move(sh);
+      return sh;
     }
 
     //----------------------------------------------------------------------------
@@ -2413,7 +2413,7 @@ namespace Sloppy
 
       sodium.crypto_scalarmult_base(pk.to_ucPtr_rw(), sk.to_ucPtr_ro());
 
-      return std::move(pk);
+      return pk;
     }
 
     //----------------------------------------------------------------------------

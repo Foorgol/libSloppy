@@ -1,6 +1,6 @@
 /*
  *    This is libSloppy, a library of sloppily implemented helper functions.
- *    Copyright (C) 2016 - 2019  Volker Knollmann
+ *    Copyright (C) 2016 - 2021  Volker Knollmann
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -19,13 +19,17 @@
 #ifndef __LIBSLOPPY_CSV_H
 #define __LIBSLOPPY_CSV_H
 
-#include <vector>
-#include <variant>
-#include <string>
-#include <optional>
-#include <unordered_map>
+#include <algorithm>      // for max
+#include <cstdint>        // for int64_t
+#include <optional>       // for optional
+#include <string>         // for string, basic_string, allocator, hash
+#include <type_traits>    // for remove_reference<>::type
+#include <unordered_map>  // for unordered_map
+#include <utility>        // for move
+#include <variant>        // for variant
+#include <vector>         // for vector
 
-#include "String.h"
+#include "String.h"       // for estring
 
 namespace Sloppy
 {

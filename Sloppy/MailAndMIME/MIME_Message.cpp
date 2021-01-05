@@ -1,6 +1,6 @@
 /*
  *    This is libSloppy, a library of sloppily implemented helper functions.
- *    Copyright (C) 2016 - 2019  Volker Knollmann
+ *    Copyright (C) 2016 - 2021  Volker Knollmann
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -16,9 +16,17 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <regex>
+#include <algorithm>                                   // for max
+#include <cstddef>                                     // for size_t, std
+#include <initializer_list>                            // for initializer_list
+#include <memory>                                      // for allocator, all...
+#include <regex>                                       // for regex, regex_i...
+#include <utility>                                     // for pair
 
 #include "MIME_Message.h"
+#include "/home/volker/src/libSloppy/Sloppy/String.h"  // for estring, Strin...
+#include "Header.h"                                    // for Header
+#include "Message.h"                                   // for Message
 
 using namespace std;
 
@@ -57,7 +65,7 @@ namespace Sloppy
 
     string MIME_Message::getPart(size_t i) const
     {
-      return (i >= static_cast<int>(parts.size())) ? string{} : parts[i].getContent();
+      return (i >= parts.size()) ? string{} : parts[i].getContent();
     }
 
     //----------------------------------------------------------------------------

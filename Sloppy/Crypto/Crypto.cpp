@@ -1,6 +1,6 @@
 /*
  *    This is libSloppy, a library of sloppily implemented helper functions.
- *    Copyright (C) 2016 - 2019  Volker Knollmann
+ *    Copyright (C) 2016 - 2021  Volker Knollmann
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -16,10 +16,18 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <cstring>
-#include <vector>
-#include <chrono>
-#include <iostream>
+#include <math.h>                                      // for ceil
+#include <stdint.h>                                    // for uint8_t, uint64_t
+#include <stdio.h>                                     // for sprintf
+#include <chrono>                                      // for duration, syst...
+#include <cstring>                                     // for size_t, memcpy
+#include <iostream>                                    // for operator<<, endl
+#include <new>                                         // for bad_alloc
+#include <stdexcept>                                   // for invalid_argument
+#include <type_traits>                                 // for __strip_refere...
+#include <vector>                                      // for vector
+
+#include "../Memory.h"  // for MemView, MemArray
 
 #include "Crypto.h"
 

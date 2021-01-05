@@ -1,6 +1,6 @@
 /*
  *    This is libSloppy, a library of sloppily implemented helper functions.
- *    Copyright (C) 2016 - 2019  Volker Knollmann
+ *    Copyright (C) 2016 - 2021  Volker Knollmann
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -16,14 +16,20 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __LIBSLOPPY_UTILS_H
-#define __LIBSLOPPY_UTILS_H
+#pragma once
 
-#include <vector>
-#include <algorithm>
-#include <string>
-#include <sstream>
-#include <iomanip>
+
+#include <stddef.h>                 // for size_t
+#include <initializer_list>         // for initializer_list
+#include <iomanip>                  // for operator<<, setfill, setw
+#include <sstream>                  // for ostringstream, basic_ostream, ope...
+#include <string>                   // for string, allocator
+#include <type_traits>              // for is_integral, is_signed
+#include <utility>                  // for pair
+#include <vector>                   // for vector
+#include "ManagedFileDescriptor.h"  // for ManagedFileDescriptor
+#include "String.h"                 // for StringList
+#include "json.hpp"                 // for json
 
 // we include some special file functions for
 // non-Windows builds only
@@ -32,15 +38,11 @@
 #include <unistd.h>
 #endif
 
-#include "String.h"
-#include "ManagedFileDescriptor.h"
-#include "json.hpp"
-
-// a forward declaration
-namespace boost { namespace filesystem { class path; }}
-
 namespace std
 {
+  class MemArray;
+  class MemView;
+
   /** \brief A helper function in namespace `std` provided by libSloppy for easy conversion
    * of string literals to `string` objects; useful in template functions because we can call
    * 'to_string()` on a broader range of types.
@@ -218,10 +220,6 @@ namespace Sloppy
           const std::string& baseDir,   ///< the root of the recursive search, either as absolute path or relative to the current work dir
           bool includeDirNameInList=false   ///< set to `true` to include directory names in the result list; if `false`, only files will be returned
           );
-
-  /** \brief Helper function for `getAllFilesInDirTree`; not to be called directly
-   */
-  void getAllFilesInDirTree_Recursion(const boost::filesystem::path& basePath, StringList& resultList, bool includeDirNameInList);
 
   // we include some special file functions for
   // non-Windows builds only
@@ -511,4 +509,3 @@ namespace Sloppy
 
 }
 
-#endif

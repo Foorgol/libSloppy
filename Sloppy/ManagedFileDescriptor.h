@@ -1,6 +1,6 @@
 /*
  *    This is libSloppy, a library of sloppily implemented helper functions.
- *    Copyright (C) 2016 - 2019  Volker Knollmann
+ *    Copyright (C) 2016 - 2021  Volker Knollmann
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -19,15 +19,14 @@
 #ifndef __LIBSLOPPY_MANAGEDFD_H
 #define __LIBSLOPPY_MANAGEDFD_H
 
-#include <string>
-#include <cstring>
-#include <optional>
-#include <mutex>
-#include <atomic>
-#include <signal.h>
-#include <poll.h>
+#include <errno.h>   // for errno
+#include <atomic>    // for atomic
+#include <cstring>   // for size_t, strerror
+#include <mutex>     // for mutex
+#include <optional>  // for optional
+#include <string>    // for string, allocator
 
-#include "Memory.h"
+#include "Memory.h"  // for MemArray, MemView
 
 namespace Sloppy
 {
@@ -286,9 +285,8 @@ namespace Sloppy
      * \returns `true` if the data has been fully written to the descriptor
      * or `false` otherwise (bytes written != bytes provided).
      */
-    bool blockingWrite(
-        const char* ptr,   ///< pointer to a memory section with data
-        size_t len   ///< length of memory section
+    bool blockingWrite(const char* ptr,   ///< pointer to a memory section with data
+        const size_t len   ///< length of memory section
         );
 
     /** \brief Executes a blocking read operation on the descriptor using `read()'
@@ -314,8 +312,8 @@ namespace Sloppy
      * \returns a heap allocated buffer that contains the received data
      */
     MemArray blockingRead(size_t minLen,   ///< the minimal number of bytes to read; if zero, we'll wait for at least one byte
-        size_t maxLen = 0,   ///< the maximum of bytes to read from the descriptor; if zero, we read as much as possible until we have at least `minLen`
-        int timeout_ms = 0   ///< the timeout (0 = return immediatly, even if no data is avail; < 0 = wait infinitely)
+        const size_t maxLen = 0,   ///< the maximum of bytes to read from the descriptor; if zero, we read as much as possible until we have at least `minLen`
+        const int timeout_ms = 0   ///< the timeout (0 = return immediatly, even if no data is avail; < 0 = wait infinitely)
         );
 
     /** \brief Executes a blocking read operation on the descriptor using `read()'

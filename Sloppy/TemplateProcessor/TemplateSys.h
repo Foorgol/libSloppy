@@ -1,6 +1,6 @@
 /*
  *    This is libSloppy, a library of sloppily implemented helper functions.
- *    Copyright (C) 2016 - 2019  Volker Knollmann
+ *    Copyright (C) 2016 - 2021  Volker Knollmann
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -19,15 +19,19 @@
 #ifndef SLOPPY__TEMPLATE_SYSTEM_H
 #define SLOPPY__TEMPLATE_SYSTEM_H
 
-#include <istream>
-#include <unordered_map>
-#include <memory>
-#include <vector>
-#include <regex>
-#include <optional>
+#include <stddef.h>                                    // for size_t
+#include <istream>                                     // for istream
+#include <memory>                                      // for allocator, uni...
+#include <optional>                                    // for optional
+#include <regex>                                       // for regex, regex_i...
+#include <string>                                      // for string, basic_...
+#include <tuple>                                       // for tuple
+#include <unordered_map>                               // for unordered_map
+#include <vector>                                      // for vector
 
-#include "../json_fwd.hpp"
-#include "../ConfigFileParser/ConfigFileParser.h"
+#include "../ConfigFileParser/ConfigFileParser.h"      // for Parser
+#include "../json_fwd.hpp"                             // for json
+#include "../String.h"  // for estring, Strin...
 
 namespace Sloppy
 {

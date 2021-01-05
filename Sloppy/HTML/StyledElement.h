@@ -1,6 +1,6 @@
 /*
  *    This is libSloppy, a library of sloppily implemented helper functions.
- *    Copyright (C) 2016 - 2019  Volker Knollmann
+ *    Copyright (C) 2016 - 2021  Volker Knollmann
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -19,9 +19,10 @@
 #ifndef SLOPPY__HTML__STYLED_ELEMENT_H
 #define SLOPPY__HTML__STYLED_ELEMENT_H
 
-#include <string>
-#include <vector>
-#include <unordered_map>
+#include <string>         // for string, basic_string, hash
+#include <unordered_map>  // for unordered_map
+#include <utility>        // for forward
+#include <vector>         // for vector
 
 namespace Sloppy
 {

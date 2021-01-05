@@ -1,6 +1,6 @@
 /*
  *    This is libSloppy, a library of sloppily implemented helper functions.
- *    Copyright (C) 2016 - 2019  Volker Knollmann
+ *    Copyright (C) 2016 - 2021  Volker Knollmann
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -19,10 +19,14 @@
 #ifndef __LIBSLOPPY_STRING_H
 #define __LIBSLOPPY_STRING_H
 
-#include <string>
-#include <vector>
-#include <tuple>
-#include <string_view>
+#include <stdint.h>     // for int64_t, uint8_t
+#include <stdio.h>      // for snprintf
+#include <cstddef>      // for size_t
+#include <string>       // for string, basic_string<>::size_type, to_string
+#include <string_view>  // for string_view, hash
+#include <tuple>        // for tuple
+#include <utility>      // for pair, move
+#include <vector>       // for vector
 
 namespace Sloppy
 {
@@ -66,7 +70,7 @@ namespace Sloppy
     explicit estring(
         size_t cnt  ///< the number of characters to allocate
         )
-      : std::string{cnt} {}
+      : std::string(cnt, 0) {}
 
     /// ctor from an C-style string (zero-terminated)
     estring(const char* s) : std::string(s) {}

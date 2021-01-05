@@ -1,6 +1,6 @@
 /*
  *    This is libSloppy, a library of sloppily implemented helper functions.
- *    Copyright (C) 2016 - 2019  Volker Knollmann
+ *    Copyright (C) 2016 - 2021  Volker Knollmann
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -16,15 +16,17 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <iostream>
-#include <cstdlib>
-#include <sys/select.h>
-#include <sys/time.h>
-#include <unistd.h>
-#include <thread>
+#include <poll.h>        // for pollfd, poll, POLLERR, POLLHUP, POLLIN, POLL...
+#include <sys/select.h>  // for select, FD_SET, FD_ZERO, fd_set
+#include <sys/time.h>    // for timeval
+#include <unistd.h>      // for close, read, write
+#include <iostream>      // for operator<<, basic_ostream, endl, basic_ostre...
+#include <iterator>      // for advance
+#include <stdexcept>     // for runtime_error, out_of_range
+
+#include "Timer.h"       // for Timer
 
 #include "ManagedFileDescriptor.h"
-#include "Timer.h"
 
 using namespace std;
 
@@ -68,7 +70,7 @@ namespace Sloppy
 
   //----------------------------------------------------------------------------
 
-  bool ManagedFileDescriptor::blockingWrite(const char* ptr, size_t len)
+  bool ManagedFileDescriptor::blockingWrite(const char* ptr, const size_t len)
   {
     // wait for the fd to become available
     lock_guard<mutex> lockFd{fdMutex};
@@ -82,25 +84,25 @@ namespace Sloppy
 
     // do the actual write
     st = State::Writing;
-    int n = write(fd, ptr, len);
+    const int n = write(fd, ptr, len);
     st = State::Idle;
 
     if (n < 0)
     {
       throw IOError{};
     }
-    if (n != len)
+    if (static_cast<size_t>(n) != len)
     {
       cerr << "FD write: only " << n << " of " << len << " bytes written!" << endl;
     }
 
-    return (n == len);
+    return (static_cast<size_t>(n) == len);
   }
 
 
   //----------------------------------------------------------------------------
 
-  MemArray ManagedFileDescriptor::blockingRead(size_t minLen, size_t maxLen, int timeout_ms)
+  MemArray ManagedFileDescriptor::blockingRead(size_t minLen, const size_t maxLen, const int timeout_ms)
   {
     if (minLen == 0) minLen = 1;   // zero means: no min length which is equivalent to "at least one byte"
     if ((maxLen > 0) && (minLen > maxLen))
@@ -156,7 +158,7 @@ namespace Sloppy
         }
 
         // calcuate the remaining time
-        int actualTimeout = timeout_ms - static_cast<int>(readTimer.getTime__ms());
+        actualTimeout = timeout_ms - static_cast<int>(readTimer.getTime__ms());
         if (actualTimeout < 0) actualTimeout = 0;   // avoid blocking if the time has elapsed in the meantime
       }
 

@@ -1,6 +1,6 @@
 /*
  *    This is libSloppy, a library of sloppily implemented helper functions.
- *    Copyright (C) 2016 - 2019  Volker Knollmann
+ *    Copyright (C) 2016 - 2021  Volker Knollmann
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -16,20 +16,21 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <regex>
-#include <iostream>
-#include <cstdio>
-#include <tuple>
+#include <sys/stat.h>                       // for stat, S_ISDIR, S_ISREG
+#include <unistd.h>                         // for pipe, getcwd
+#include <boost/algorithm/string/trim.hpp>  // for trim
+#include <cstdint>                          // for int64_t, uint8_t
+#include <cstdio>                           // for size_t, snprintf
+#include <filesystem>                       // for directory_iterator, direc...
+#include <regex>                            // for regex_match, match_result...
+#include <stdexcept>                        // for invalid_argument
 
-#include <boost/algorithm/string.hpp>
-#include <boost/filesystem.hpp>
+#include "ManagedFileDescriptor.h"          // for ManagedFileDescriptor
+#include "Memory.h"                         // for MemArray, MemView
+#include "json.hpp"                         // for json, iter_impl, basic_json
 
 #include "Utils.h"
-#include "json.hpp"
-#include "ManagedFileDescriptor.h"
-#include "Memory.h"
 
-namespace bfs = boost::filesystem;
 using json = nlohmann::json;
 using namespace std;
 
@@ -55,7 +56,6 @@ namespace Sloppy
                  regex::icase};
 
     string e{email};
-    boost::to_upper(e);
     return regex_match(e, reEmail);
   }
 
@@ -69,33 +69,33 @@ namespace Sloppy
 
   //----------------------------------------------------------------------------
 
+  void getAllFilesInDirTree_Recursion(const std::filesystem::path & basePath, StringList& resultList, bool includeDirNameInList)
+  {
+    
+    for (std::filesystem::directory_iterator it{basePath}; it != std::filesystem::directory_iterator{}; ++it)
+    {
+      if (std::filesystem::is_directory(it->status()))
+      {
+        getAllFilesInDirTree_Recursion(it->path(), resultList, includeDirNameInList);
+        
+        if (!includeDirNameInList) continue;
+      }
+      
+      resultList.push_back(it->path().string());
+    }
+  }
+  
+  //----------------------------------------------------------------------------
+  
   StringList getAllFilesInDirTree(const string& baseDir, bool includeDirNameInList)
   {
-    bfs::path root{baseDir};
-    if (!(bfs::exists(root))) return StringList{};
+    std::filesystem::path root{baseDir};
+    if (!(std::filesystem::exists(root))) return StringList{};
 
     StringList result;
     getAllFilesInDirTree_Recursion(root, result, includeDirNameInList);
 
     return result;
-  }
-
-  //----------------------------------------------------------------------------
-
-  void getAllFilesInDirTree_Recursion(const bfs::path & basePath, StringList& resultList, bool includeDirNameInList)
-  {
-
-    for (bfs::directory_iterator it{basePath}; it != bfs::directory_iterator{}; ++it)
-    {
-      if (bfs::is_directory(it->status()))
-      {
-        getAllFilesInDirTree_Recursion(it->path(), resultList, includeDirNameInList);
-
-        if (!includeDirNameInList) continue;
-      }
-
-      resultList.push_back(it->path().string());
-    }
   }
 
   //----------------------------------------------------------------------------

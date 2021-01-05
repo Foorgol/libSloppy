@@ -1,6 +1,6 @@
 /*
  *    This is libSloppy, a library of sloppily implemented helper functions.
- *    Copyright (C) 2016 - 2019  Volker Knollmann
+ *    Copyright (C) 2016 - 2021  Volker Knollmann
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -16,12 +16,21 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <sys/wait.h>
-#include <unistd.h>
+#include <ext/alloc_traits.h>       // for __alloc_traits<>::value_type
+#include <stddef.h>                 // for size_t
+#include <sys/wait.h>               // for waitpid, WEXITSTATUS, WIFEXITED
+#include <unistd.h>                 // for close, dup2, pipe, execv, fork
+#include <algorithm>                // for copy
+#include <initializer_list>         // for initializer_list
+#include <iterator>                 // for back_insert_iterator, back_inserter
+#include <memory>                   // for allocator_traits<>::value_type
+#include <optional>                 // for optional
+#include <stdexcept>                // for runtime_error, invalid_argument
 
-#include "ManagedFileDescriptor.h"
+#include "ManagedFileDescriptor.h"  // for PollFlags, ManagedFileDescriptor
+#include "Memory.h"                 // for MemArray, ManagedArray
+
 #include "SubProcess.h"
-#include "Memory.h"
 
 namespace Sloppy
 {

@@ -1,6 +1,6 @@
 /*
  *    This is libSloppy, a library of sloppily implemented helper functions.
- *    Copyright (C) 2016 - 2019  Volker Knollmann
+ *    Copyright (C) 2016 - 2021  Volker Knollmann
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -16,12 +16,11 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __LIBSLOPPY_LOGGER_H
-#define __LIBSLOPPY_LOGGER_H
+#pragma once
 
-#include <string>
+#include <string>  // for string
 
-#include <boost/date_time/local_time/local_time.hpp>
+namespace date { class time_zone; }
 
 namespace Sloppy
 {
@@ -152,9 +151,8 @@ namespace Sloppy
       std::string sender{};
       SeverityLevel defaultLvl = SeverityLevel::normal;
       SeverityLevel minLvl = SeverityLevel::normal;
-      boost::local_time::time_zone_ptr tzp{nullptr};
+      const date::time_zone* tzPtr{nullptr};
 
     };
   }
 }
-#endif

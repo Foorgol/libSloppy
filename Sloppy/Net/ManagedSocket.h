@@ -1,6 +1,6 @@
 /*
  *    This is libSloppy, a library of sloppily implemented helper functions.
- *    Copyright (C) 2016 - 2019  Volker Knollmann
+ *    Copyright (C) 2016 - 2021  Volker Knollmann
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -19,8 +19,15 @@
 #ifndef SLOPPY__MANAGED_SOCKET_H
 #define SLOPPY__MANAGED_SOCKET_H
 
-#include "../ManagedFileDescriptor.h"
-#include "Net.h"
+#include <stddef.h>                    // for size_t
+#include <sys/socket.h>                // for socket, AF_INET, SOCK_DGRAM
+#include <string>                      // for string
+#include <type_traits>                 // for remove_reference<>::type
+#include <utility>                     // for move, pair
+
+#include "../ManagedFileDescriptor.h"  // for ManagedFileDescriptor
+
+struct sockaddr_in;
 
 namespace Sloppy
 {

@@ -1,6 +1,6 @@
 /*
  *    This is libSloppy, a library of sloppily implemented helper functions.
- *    Copyright (C) 2016 - 2019  Volker Knollmann
+ *    Copyright (C) 2016 - 2021  Volker Knollmann
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -16,24 +16,22 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <string>
-#include <regex>
-#include <iostream>
-#include <sstream>
-#include <fstream>
-
-#include <boost/filesystem.hpp>
+#include <filesystem>          // for is_directory, is_regular_file, path
+#include <initializer_list>    // for initializer_list
+#include <regex>               // for regex_match, match_results<>::_Base_type
+#include <stdexcept>           // for range_error
+#include <string>              // for string, allocator, char_traits, stoi
+#include <vector>              // for vector
 
 #include "ConstraintChecker.h"
-#include "../String.h"
-#include "../DateTime/DateAndTime.h"
-
-namespace bfs = boost::filesystem;
+#include "../DateTime/date.h"  // for operator/, year, year_month, year_mont...
+#include "../DateTime/tz.h"    // for locate_zone
+#include "../String.h"         // for estring
 
 namespace Sloppy
 {
 
-  bool checkConstraint(const std::optional<estring>& val, Sloppy::ValueConstraint c, std::string* errMsg)
+  bool checkConstraint(const std::optional<estring>& val, ValueConstraint c, std::string* errMsg)
   {
     // first basic check: does the value exist at all?
     if (!(val.has_value()))
@@ -174,12 +172,12 @@ namespace Sloppy
       return isOkay;
     }
 
-    // check the file constraint using Boost's file system implementation
+    // check the file constraint using
     if (c == ValueConstraint::File)
     {
       const std::string& s{val};
-      bfs::path p{s};
-      bool isOkay = bfs::is_regular_file(p);
+      std::filesystem::path p{s};
+      bool isOkay = std::filesystem::is_regular_file(p);
       if (!isOkay && (errMsg != nullptr))
       {
         *errMsg = "does not point to an existing, regular file!";
@@ -188,12 +186,12 @@ namespace Sloppy
       return isOkay;
     }
 
-    // check the directory constraint using Boost's file system implementation
+    // check the directory constraint
     if (c == ValueConstraint::Directory)
     {
       const std::string& s{val};
-      bfs::path p{s};
-      bool isOkay = bfs::is_directory(p);
+      std::filesystem::path p{s};
+      bool isOkay = std::filesystem::is_directory(p);
       if (!isOkay && (errMsg != nullptr))
       {
         *errMsg = "does not point to an existing directory!";
@@ -205,16 +203,13 @@ namespace Sloppy
     // check against one of the compiled-in timezone specs
     if (c == ValueConstraint::StandardTimezone)
     {
-      auto db = DateTime::getPopulatedTzDatabase();
-      auto tz = db.time_zone_from_region(val);
-
-      bool isOkay =  (tz != nullptr);
-      if (!isOkay && (errMsg != nullptr))
-      {
-        *errMsg = "does not contain a known timezone name!";
+      try {
+        const auto tzPtr = date::locate_zone(val);
+        return (tzPtr != nullptr);
       }
-
-      return isOkay;
+      catch (...) {
+        return false;
+      }
     }
 
     // check ISO dates
@@ -232,7 +227,7 @@ namespace Sloppy
       int m = stoi(sm[2]);
       int d = stoi(sm[3]);
 
-      isOkay = DateTime::CommonTimestamp::isValidDate(y, m, d);
+      isOkay = (date::year{y} / m / d).ok();
       if (!isOkay && (errMsg != nullptr))
       {
        *errMsg = "does not contain a valid date!";
@@ -253,7 +248,7 @@ namespace Sloppy
 
   //----------------------------------------------------------------------------
 
-  bool checkConstraint_IntRange(const std::optional<estring>& val, const std::optional<int>& minVal, const std::optional<int> maxVal, std::string* errMsg)
+  bool checkConstraint_IntRange(const std::optional<estring>& val, const std::optional<int>& minVal, const std::optional<int>& maxVal, std::string* errMsg)
   {
     if (!val.has_value())
     {

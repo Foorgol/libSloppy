@@ -1,6 +1,6 @@
 /*
  *    This is libSloppy, a library of sloppily implemented helper functions.
- *    Copyright (C) 2016 - 2019  Volker Knollmann
+ *    Copyright (C) 2016 - 2021  Volker Knollmann
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -16,6 +16,8 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <iosfwd>  // for std
+
 #include "Timer.h"
 
 using namespace std;
@@ -25,29 +27,28 @@ namespace Sloppy
 
   void Timer::stop()
   {
-    if (isStopped) return;
+    if (stopTime) return;
 
-    stopTime = chrono::high_resolution_clock::now();
-    isStopped = true;
+    stopTime = chrono::steady_clock::now();
   }
 
   //----------------------------------------------------------------------------
 
   void Timer::restart()
   {
-    startTime = chrono::high_resolution_clock::now();
-    isStopped = false;
+    startTime = chrono::steady_clock::now();
+    if (stopTime) stopTime.reset();
   }
 
   //----------------------------------------------------------------------------
 
   bool Timer::isElapsed() const
   {
-    if (!hasTimeoutSet) return false;
+    if (!timeoutDuration) return false;
 
     chrono::nanoseconds elapsed = getTime<chrono::nanoseconds>();
 
-    return (elapsed >= timeoutDuration);
+    return (elapsed >= timeoutDuration.value());
   }
 
 

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-if [ $0 != "./createNewTag.sh" ]; then
+if [ $0 != "./releaseNewVersion.sh" ]; then
   echo
   echo "Please call the script from the repository's root directory"
   echo
@@ -72,8 +72,14 @@ sed -i -- "s/LIB_VERSION_MAJOR [[:digit:]][[:digit:]]*/LIB_VERSION_MAJOR $VER_MA
 sed -i -- "s/LIB_VERSION_MINOR [[:digit:]][[:digit:]]*/LIB_VERSION_MINOR $VER_MI/" CMakeLists.txt
 sed -i -- "s/LIB_VERSION_PATCH [[:digit:]][[:digit:]]*/LIB_VERSION_PATCH $VER_PA/" CMakeLists.txt
 
+# update the PKGBUILD file
+pushd dist
+cp PKGBUILD PKGBUILD~
+sed -i -- "s/pkgver=.*/pkgver=$VER_FULL/" PKGBUILD
+popd
+
 # commit the change and create the tag
-git commit -m "Release of version $VER_FULL" CMakeLists.txt
+git commit -m "Release of version $VER_FULL" CMakeLists.txt dist/PKGBUILD
 if [ $? -ne 0 ];
   echo
   echo "'git commit' failed!"

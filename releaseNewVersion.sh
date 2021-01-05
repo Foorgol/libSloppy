@@ -80,7 +80,7 @@ popd
 
 # commit the change and create the tag
 git commit -m "Release of version $VER_FULL" CMakeLists.txt dist/PKGBUILD
-if [ $? -ne 0 ];
+if [ $? -ne 0 ]; then
   echo
   echo "'git commit' failed!"
   echo
@@ -88,7 +88,7 @@ if [ $? -ne 0 ];
 fi
 
 git tag $VER_FULL
-if [ $? -ne 0 ];
+if [ $? -ne 0 ]; then
   echo
   echo "'git tag' failed!"
   echo

@@ -46,12 +46,12 @@ namespace Sloppy
      *
      * The integer representation is quite simple, e.g. "20160801" = 2016-08-01
      *
-     * Assuming a minimum date of 1-1-1, the minimum value of ymd is 10000101.
+     * Assuming a minimum date of 1-1-1, the minimum value of ymd is 10101.
      *
      * \note Besides the check for a minimun value, this function does not apply any
      * other consistency checks of the resulting date! Garbage in, garbage out...
      *
-     * \throws std::out_of_range if the parameter value is less than 100000101
+     * \throws std::out_of_range if the parameter value is less than 10101
      */
     date::year_month_day ymdFromInt(
         int ymd  ///< the integer-date to convert

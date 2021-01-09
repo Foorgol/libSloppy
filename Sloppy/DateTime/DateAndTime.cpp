@@ -27,7 +27,7 @@ namespace Sloppy
   {
     date::year_month_day ymdFromInt(int ymd)
     {
-      if (ymd < 100000101)
+      if (ymd < 10101)
       {
         throw std::out_of_range("Invalid integer for conversion into year, month, day");
       }

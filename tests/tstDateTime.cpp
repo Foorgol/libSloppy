@@ -49,6 +49,34 @@ TEST(CommonTimestamp, ValidDate)
 
 //----------------------------------------------------------------------------
 
+TEST(CommonTimestamp, DateFromInt)
+{
+  const date::year_month_day minDate{date::year{1} / 01 / 01};
+
+  auto tstDate = Sloppy::DateTime::ymdFromInt(10101);
+  ASSERT_EQ(minDate, tstDate);
+
+  ASSERT_EQ(date::year{2021} / 1 / 9, Sloppy::DateTime::ymdFromInt(20210109));
+
+  // invalid inputs
+  // conversion doesn't throw, but result is invalid
+  tstDate = Sloppy::DateTime::ymdFromInt(20210100);   // day = zero
+  ASSERT_FALSE(tstDate.ok());
+  tstDate = Sloppy::DateTime::ymdFromInt(20210010);   // month = zero
+  ASSERT_FALSE(tstDate.ok());
+  tstDate = Sloppy::DateTime::ymdFromInt(20190229);   // no leap year
+  ASSERT_FALSE(tstDate.ok());
+
+  // valid leap year
+  tstDate = Sloppy::DateTime::ymdFromInt(20200229);   // leap year
+  ASSERT_TRUE(tstDate.ok());
+
+
+  ASSERT_THROW(Sloppy::DateTime::ymdFromInt(10100), std::out_of_range);
+}
+
+//----------------------------------------------------------------------------
+
 TEST(CommonTimestamp, Comparison)
 {
   WallClockTimepoint_ms t1(date::year{2009} / 01 / 01, 0h, 0min, 9s, "Europe/Berlin");

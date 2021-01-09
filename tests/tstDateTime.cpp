@@ -49,8 +49,11 @@ TEST(CommonTimestamp, ValidDate)
 
 //----------------------------------------------------------------------------
 
-TEST(CommonTimestamp, DateFromInt)
+TEST(CommonTimestamp, DateToIntConversion)
 {
+  //
+  // conversion int -> date
+  //
   const date::year_month_day minDate{date::year{1} / 01 / 01};
 
   auto tstDate = Sloppy::DateTime::ymdFromInt(10101);
@@ -71,8 +74,16 @@ TEST(CommonTimestamp, DateFromInt)
   tstDate = Sloppy::DateTime::ymdFromInt(20200229);   // leap year
   ASSERT_TRUE(tstDate.ok());
 
-
   ASSERT_THROW(Sloppy::DateTime::ymdFromInt(10100), std::out_of_range);
+
+  //
+  // conversion date -> int
+  //
+  ASSERT_EQ(20210109, Sloppy::DateTime::intFromYmd(date::year{2021} / 1 / 9));
+  ASSERT_EQ(10101, Sloppy::DateTime::intFromYmd(date::year{1} / 1 / 1));
+  ASSERT_EQ(20200229, Sloppy::DateTime::intFromYmd(date::year{2020} / 2 / 29));  // leap year
+  ASSERT_THROW(Sloppy::DateTime::intFromYmd(date::year{2019} / 2 / 29), std::invalid_argument);  // no leap year
+  ASSERT_THROW(Sloppy::DateTime::intFromYmd(date::year{2019} / 3 / 33), std::invalid_argument);  // nonsense date
 }
 
 //----------------------------------------------------------------------------

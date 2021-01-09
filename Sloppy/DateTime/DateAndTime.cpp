@@ -41,6 +41,21 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
+    int intFromYmd(const date::year_month_day& d)
+    {
+      if (!d.ok()) {
+        throw std::invalid_argument("year_month_day parameter invalid, can't convert to int");
+      }
+
+      const auto y = static_cast<int>(d.year());
+      const auto m = static_cast<unsigned>(d.month());
+      const auto day = static_cast<unsigned>(d.day());
+
+      return y * 10000 + m * 100 + day;
+    }
+
+    //----------------------------------------------------------------------------
+
     bool isValidTime(int hour, int min, int sec)
     {
       return ((hour >= 0) && (hour < 24) && (min >=0) && (min < 60) && (sec >= 0) && (sec < 60));
@@ -86,6 +101,7 @@ namespace Sloppy
       
       return (outStream.str() == in) ? result : std::optional<date::year_month_day>{};
     }
+
     
     //----------------------------------------------------------------------------
     //----------------------------------------------------------------------------

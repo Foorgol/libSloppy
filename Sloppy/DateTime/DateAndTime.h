@@ -57,6 +57,16 @@ namespace Sloppy
         int ymd  ///< the integer-date to convert
         );
 
+    /** \brief Converts a date into a single integer
+     *
+     * The integer representation is quite simple, e.g. "20160801" = 2016-08-01
+     *
+     * \throws std::invalid_argument if the provided date is not valid (call to .ok() fails)
+     */
+    int intFromYmd(
+        const date::year_month_day& d   ///< the date that shall be converted
+        );
+
     /** \brief Converts a string with custom formatting into a data::year_month_day
      *
      *  The format of the conversion string can be found
@@ -94,6 +104,14 @@ namespace Sloppy
       int month,  ///< the month value of the date to check
       int day     ///< the day value of date to check
     );
+
+    /** Checks whether three integers form a valid time in 24-h-format
+     *
+     *  This is a simple range check.
+     *
+     *  \returns `true` if all three integers are in a valid range (0 - 23 or 0 - 59)
+     */
+    bool isValidTime(int hour, int min, int sec);
     
     /** \brief Checks whether a given year is a leap year or not
      * 
@@ -417,7 +435,7 @@ namespace Sloppy
      *
      * \returns `true` if the provided values for hours, minutes and seconds represent a valid time in 24h format; `false` otherwise
      */
-    static bool isValidTime(
+    bool isValidTime(
       int hour,   ///< the hours value to check
       int min,    ///< the minutes value to check
       int sec     ///< the seconds value to check

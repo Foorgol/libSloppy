@@ -7,11 +7,11 @@ if [ $0 != "./releaseNewVersion.sh" ]; then
   exit 1
 fi
 
-# make sure we're on branch "master"
+# make sure we're on branch "dev"
 out=$(git branch --show-current)
-if [ $out != "master" ]; then
+if [ $out != "dev" ]; then
   echo
-  echo "Must be on branch 'master'"
+  echo "Must be on branch 'dev'"
   echo
   exit 1
 fi
@@ -30,11 +30,6 @@ for tag in $(git status --porcelain); do
     exit 1
   fi
 done
-
-echo
-echo "Have all changes in branch 'dev' been merged into master?"
-echo "--> Enter = proceed, Ctrl-C = cancel"
-read
 
 # show the most recent version numbers before asking
 # for the new version
@@ -78,7 +73,7 @@ cp PKGBUILD PKGBUILD~
 sed -i -- "s/pkgver=.*/pkgver=$VER_FULL/" PKGBUILD
 popd
 
-# commit the change and create the tag
+# commit the version changes
 git commit -m "Release of version $VER_FULL" CMakeLists.txt dist/PKGBUILD
 if [ $? -ne 0 ]; then
   echo
@@ -87,6 +82,29 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
+# switch to master and merge all changes
+echo
+echo "Ready to merge all changes from dev with master?"
+echo "--> Enter = proceed, Ctrl-C = cancel"
+read
+
+git checkout master
+if [ $? -ne 0 ]; then
+  echo
+  echo "Changing the current branch to 'master' failed"
+  echo
+  exit 1
+fi
+
+git merge dev
+if [ $? -ne 0 ]; then
+  echo
+  echo "Merging 'master' and 'dev' failed"
+  echo
+  exit 1
+fi
+
+# create the tag
 git tag $VER_FULL
 if [ $? -ne 0 ]; then
   echo
@@ -99,7 +117,7 @@ fi
 git checkout dev
 
 echo
-echo "!!! Commit succeeded ; switched back to DEV BRANCH !!!"
+echo "!!! All good ; switched back to DEV BRANCH !!!"
 echo
 
 exit 0

@@ -105,7 +105,7 @@ target_compile_options(${PROJECT_NAME}
     PRIVATE "-Wno-unused"
     PRIVATE "-Wno-format-nonliteral"
     )
-set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 17)
+set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 20)
 set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD_REQUIRED ON)
 
 set(LIB_VERSION_MAJOR 0)

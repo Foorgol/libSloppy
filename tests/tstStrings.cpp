@@ -206,42 +206,6 @@ TEST(Strings, ChopLeftCopy)
 
 //----------------------------------------------------------------------------
 
-TEST(Strings, StartsWith)
-{
-  estring e{"0123456789"};
-
-  ASSERT_TRUE(e.startsWith("012"));
-  ASSERT_FALSE(e.startsWith("ab"));
-  ASSERT_FALSE(e.startsWith("0123456789sdjkfhsd"));
-  ASSERT_TRUE(e.startsWith(""));
-
-  estring e2{"01234"};
-  ASSERT_TRUE(e.startsWith(e2));
-
-  string s{"0"};
-  ASSERT_TRUE(e.startsWith(s));
-}
-
-//----------------------------------------------------------------------------
-
-TEST(Strings, EndsWith)
-{
-  estring e{"0123456789"};
-
-  ASSERT_TRUE(e.endsWith("789"));
-  ASSERT_FALSE(e.endsWith("ab"));
-  ASSERT_FALSE(e.endsWith("0123456789sdjkfhsd"));
-  ASSERT_TRUE(e.endsWith(""));
-
-  estring e2{"89"};
-  ASSERT_TRUE(e.endsWith(e2));
-
-  string s{"9"};
-  ASSERT_TRUE(e.endsWith(s));
-}
-
-//----------------------------------------------------------------------------
-
 TEST(Strings, TrimLeft)
 {
   estring e{"\t x "};

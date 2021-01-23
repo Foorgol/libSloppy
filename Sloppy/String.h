@@ -195,34 +195,6 @@ namespace Sloppy
 
     //----------------------------------------------------------------------------
 
-    /** \brief Checks whether a string starts with a certain character sequence
-     *
-     *  Using an empty reference string always returns 'true'
-     *
-     *  \note We're using string& for the comparison (not estring&) for compatibility
-     *  with other string sources
-     *
-     * \returns `true` if the string start with the reference string; `false` otherwise
-     */
-    bool startsWith(const std::string& ref    ///< the reference string used for the comparision
-                       ) const;
-
-    //----------------------------------------------------------------------------
-
-    /** \brief Checks whether a string ends with a certain character sequence
-     *
-     *  Using an empty reference string always returns 'true'
-     *
-     *  \note We're using string& for the comparison (not estring&) for compatibility
-     *  with other string sources
-     *
-     * \returns `true` if the string ends with the reference string; `false` otherwise
-     */
-    bool endsWith(const std::string& ref    ///< the reference string used for the comparision
-                       ) const;
-
-    //----------------------------------------------------------------------------
-
     /** \brief Removes all whitespace characters on the left; the string is modified in place
      *
      *  Uses std::isspace() for whitespace detection

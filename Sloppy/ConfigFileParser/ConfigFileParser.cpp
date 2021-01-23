@@ -440,7 +440,7 @@ namespace Sloppy
       if (line.empty()) continue;
 
       // ignore comments
-      if (line.startsWith("#") || line.startsWith(";")) continue;
+      if (line.starts_with('#') || line.starts_with(';')) continue;
 
       // check for a new section
       smatch sm;

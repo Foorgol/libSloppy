@@ -109,22 +109,6 @@ namespace Sloppy
 
   //----------------------------------------------------------------------------
 
-  bool estring::startsWith(const string& ref) const
-  {
-    return (compare(0, ref.length(), ref) == 0);
-  }
-
-  //----------------------------------------------------------------------------
-
-  bool estring::endsWith(const string& ref) const
-  {
-    if (ref.size() > size()) return false;
-
-    return (compare(size() - ref.size(), ref.length(), ref) == 0);
-  }
-
-  //----------------------------------------------------------------------------
-
   estring& estring::trimLeft()
   {
     // find the first non-whitespace character

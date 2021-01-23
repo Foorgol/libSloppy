@@ -21,7 +21,7 @@
 #include <functional>                                  // for function
 
 #include "Header.h"
-#include "/home/volker/src/libSloppy/Sloppy/String.h"  // for estring, Strin...
+#include "../String.h"  // for estring, Strin...
 #include "MailAndMIME.h"                               // for sCRLF
 
 using namespace std;

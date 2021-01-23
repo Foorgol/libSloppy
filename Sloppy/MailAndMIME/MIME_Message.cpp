@@ -24,7 +24,7 @@
 #include <utility>                                     // for pair
 
 #include "MIME_Message.h"
-#include "/home/volker/src/libSloppy/Sloppy/String.h"  // for estring, Strin...
+#include "../String.h"  // for estring, Strin...
 #include "Header.h"                                    // for Header
 #include "Message.h"                                   // for Message
 

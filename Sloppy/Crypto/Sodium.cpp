@@ -267,7 +267,7 @@ namespace Sloppy
         // try to load the library; use different names for
         // Windows and Linux
         void *handle = nullptr;
-        for (const string& libName : {"libsodium.so", "libsodium-23.dll"})
+        for (const string libName : {"libsodium.so", "libsodium-23.dll"})
         {
           handle = dlopen(libName.c_str(), RTLD_LAZY);
           if (handle != nullptr) break;

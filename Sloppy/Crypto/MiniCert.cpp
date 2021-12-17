@@ -313,7 +313,7 @@ namespace Sloppy
 
         // remove the standard fields from the JSON add check if
         // there is any additional data left
-        for (const string& k : {"cn", "sts", "cpk", "spk"})
+        for (const string k : {"cn", "sts", "cpk", "spk"})
         {
           if (j.erase(k) != 1)
           {
@@ -446,7 +446,7 @@ namespace Sloppy
       {
         throw BadKey("MiniCert ctor", "", "invalid public signing key");
       }
-      for (const string& k : {"cn", "cpk", "spk"})
+      for (const string k : {"cn", "cpk", "spk"})
       {
         jSub.erase(k);
       }

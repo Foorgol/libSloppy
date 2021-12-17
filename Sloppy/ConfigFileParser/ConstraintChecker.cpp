@@ -144,7 +144,7 @@ namespace Sloppy
       tmp.toLower();
 
       bool isOkay{false};
-      for (const std::string& permitted : {"1", "true", "on", "yes"})
+      for (const std::string permitted : {"1", "true", "on", "yes"})
       {
         if (tmp == permitted)
         {
@@ -154,7 +154,7 @@ namespace Sloppy
       }
       if (!isOkay)
       {
-        for (const std::string& permitted : {"0", "false", "off", "no"})
+        for (const std::string permitted : {"0", "false", "off", "no"})
         {
           if (tmp == permitted)
           {

@@ -48,6 +48,7 @@ set(LIB_SOURCES
     Sloppy/GenericRange.h
     Sloppy/CSV.h
     Sloppy/CSV.cpp
+    Sloppy/ResultOrError.h
 )
 
 #
@@ -174,6 +175,7 @@ set(LIB_SOURCES_TST
     tests/tstCSV.cpp
     tests/tstSubprocess.cpp
     tests/tstWallclockTime.cpp
+    tests/tstResultOrError.cpp
 )
 
 find_package(GTest)

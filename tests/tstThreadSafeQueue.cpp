@@ -18,6 +18,7 @@
 
 #include <string>
 #include <thread>
+#include <vector>
 
 #include <gtest/gtest.h>
 
@@ -28,84 +29,94 @@ using namespace std;
 
 TEST(ThreadSafeQueue, BasicUsage)
 {
-  Sloppy::ThreadSafeQueue<int> q;
+  Sloppy::ThreadSafeQueue<int> q1;
+  Sloppy::ThreadSafeQueue_PipeSynced<int> q2;
 
-  ASSERT_EQ(0, q.size());
-  ASSERT_TRUE(q.empty());
-  ASSERT_FALSE(q.hasData());
+  std::vector<Sloppy::AbstractThreadSafeQueue<int>*> ptrList;
+  ptrList.push_back(&q1);
+  ptrList.push_back(&q2);
 
-  // get with timeout on empty queue
-  static constexpr int timeoutMs = 10;
-  int data{-42};
-  Sloppy::Timer t;
-  ASSERT_FALSE(q.get(data, timeoutMs));
-  ASSERT_TRUE(t.getTime__ms() >= timeoutMs);
-  ASSERT_TRUE(t.getTime__ms() <= (timeoutMs + 1));
-  ASSERT_EQ(-42, data);  // variable has not been altered
+  for (auto qPtr : ptrList) {
+    ASSERT_EQ(0, qPtr->size());
+    ASSERT_TRUE(qPtr->empty());
+    ASSERT_FALSE(qPtr->hasData());
 
-  // get without timeout on empty queue
-  t.restart();
-  ASSERT_FALSE(q.get(data, 0));
-  ASSERT_TRUE(t.getTime__us() <= 1);
-  ASSERT_EQ(-42, data);  // variable has not been altered
+    // get with timeout on empty queue
+    static constexpr int timeoutMs = 10;
+    Sloppy::Timer t;
+    ASSERT_FALSE(qPtr->get(timeoutMs));
+    ASSERT_TRUE(t.getTime__ms() >= timeoutMs);
+    ASSERT_TRUE(t.getTime__ms() <= (timeoutMs + 1));
 
-  // push some data
-  q.put(99);
-  ASSERT_EQ(1, q.size());
-  ASSERT_FALSE(q.empty());
-  ASSERT_TRUE(q.hasData());
+    // get without timeout on empty queue
+    t.restart();
+    ASSERT_FALSE(qPtr->get(0));
+    ASSERT_TRUE(t.getTime__us() <= 5);
 
-  // get the data
-  t.restart();
-  ASSERT_TRUE(q.get(data, timeoutMs));
-  ASSERT_TRUE(t.getTime__ms() < 1);
-  ASSERT_EQ(99, data);
+    // push some data
+    qPtr->put(99);
+    ASSERT_EQ(1, qPtr->size());
+    ASSERT_FALSE(qPtr->empty());
+    ASSERT_TRUE(qPtr->hasData());
 
-  ASSERT_EQ(0, q.size());
-  ASSERT_TRUE(q.empty());
-  ASSERT_FALSE(q.hasData());
+    // get the data
+    t.restart();
+    ASSERT_EQ(99, qPtr->get(timeoutMs));
+    ASSERT_TRUE(t.getTime__ms() < 1);
+
+    ASSERT_EQ(0, qPtr->size());
+    ASSERT_TRUE(qPtr->empty());
+    ASSERT_FALSE(qPtr->hasData());
+  }
 }
 
 //----------------------------------------------------------------------------
 
 TEST(ThreadSafeQueue, Notifications)
 {
-  Sloppy::ThreadSafeQueue<int> q;
+  Sloppy::ThreadSafeQueue<int> q1;
+  Sloppy::ThreadSafeQueue_PipeSynced<int> q2;
+
+  std::vector<Sloppy::AbstractThreadSafeQueue<int>*> ptrList;
+  ptrList.push_back(&q1);
+  ptrList.push_back(&q2);
 
   // a lambda for filling the queue
   // with element by element, each
   // with a delay
   static constexpr int elemCnt = 100;
   static constexpr int insertionDelay_ms = 2;
-  auto filler = [&]()
+  auto filler = [&](Sloppy::AbstractThreadSafeQueue<int>* qPtr)
   {
     for (int i =0; i < elemCnt; ++i)
     {
-      q.put(i);
+      qPtr->put(i);
       this_thread::sleep_for(chrono::milliseconds{insertionDelay_ms});
     }
   };
 
-  thread fillerThread(filler);
+  for (auto qPtr : ptrList) {
+    thread fillerThread(filler, qPtr);
 
-  bool hasData = true;
-  int cnt = 0;
-  while (hasData)
-  {
-    Sloppy::Timer t;
-    int data{-42};
-    hasData = q.get(data, 2 * insertionDelay_ms);
-
-    if (hasData)
+    int cnt = 0;
+    while (true)
     {
-      ASSERT_TRUE(t.getTime__ms() <= insertionDelay_ms);
-      ASSERT_EQ(data, cnt);
-      ++cnt;
-    } else {
-      ASSERT_TRUE(t.getTime__ms() >= (2 * insertionDelay_ms));
-      ASSERT_EQ(elemCnt, cnt);
+      Sloppy::Timer t;
+      auto optData = qPtr->get(2 * insertionDelay_ms);
+
+      if (optData)
+      {
+        ASSERT_TRUE(t.getTime__ms() <= insertionDelay_ms);
+        ASSERT_EQ(*optData, cnt);
+        ++cnt;
+      } else {
+        ASSERT_TRUE(t.getTime__ms() >= (2 * insertionDelay_ms));
+        ASSERT_EQ(elemCnt, cnt);
+        break;
+      }
     }
+
+    fillerThread.join();
   }
 
-  fillerThread.join();
 }

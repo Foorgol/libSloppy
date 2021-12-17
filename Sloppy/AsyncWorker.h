@@ -184,12 +184,11 @@ namespace Sloppy
         }
 
         // execute the worker
-        InputDataType inData;
-        bool hasData = inPtr->get(inData, preemptionTime_ms);
-        if (hasData)
+        const auto optData = inPtr->get(preemptionTime_ms);
+        if (optData)
         {
           Sloppy::Timer t;
-          OutputDataType outData = worker(inData);
+          OutputDataType outData = worker(*optData);
           int execTime = t.getTime__ms();
           if (outPtr != nullptr) outPtr->put(outData);
 

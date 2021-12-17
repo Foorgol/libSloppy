@@ -18,6 +18,7 @@
 
 #include <iostream>
 #include <future>
+#include <thread>
 
 #include <gtest/gtest.h>
 

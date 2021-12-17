@@ -103,9 +103,8 @@ TEST(AsyncWorker, BasicUsage)
   int cnt{0};
   while (true)
   {
-    int out;
-    bool hasData = oq.get(out, PreemptionTime_ms + WorkerDuration_ms);
-    if (!hasData) break;
+    const auto optData = oq.get(PreemptionTime_ms + WorkerDuration_ms);
+    if (!optData) break;
 
     ASSERT_EQ(cnt + 100 + 2 * cnt, out);
     ++cnt;

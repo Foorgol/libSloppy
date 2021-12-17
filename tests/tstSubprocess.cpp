@@ -38,7 +38,7 @@ TEST(SubProcess, HappyPath)
 
 TEST(SubProcess, LongRunningMuchData)
 {
-  auto cmdResult = Sloppy::execCmd({"/usr/bin/find", "/"});
+  auto cmdResult = Sloppy::execCmd({"/usr/bin/find", "/usr"});
   ASSERT_EQ(1, cmdResult.rc);
   cout << "execCmd() successfully read " << cmdResult.out.size() << " lines of data!" << std::endl;
 }

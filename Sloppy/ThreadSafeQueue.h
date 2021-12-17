@@ -87,7 +87,7 @@ namespace Sloppy
      *  the oldest data entry in the queue
      */
     T get() {
-      return get(-1);
+      return *get(-1);
     }
 
     std::optional<T> get(int timeout_ms) {

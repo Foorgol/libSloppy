@@ -71,8 +71,7 @@ TEST(AsyncWorker, BasicUsage)
   Sloppy::Timer t;
   iq.put(inData);
 
-  int out{-42};
-  oq.get(out);
+  int out = oq.get();
   int execTime = t.getTime__ms();
   ASSERT_TRUE(execTime < (PreemptionTime_ms + WorkerDuration_ms));
   ASSERT_EQ(50, out);
@@ -106,7 +105,7 @@ TEST(AsyncWorker, BasicUsage)
     const auto optData = oq.get(PreemptionTime_ms + WorkerDuration_ms);
     if (!optData) break;
 
-    ASSERT_EQ(cnt + 100 + 2 * cnt, out);
+    ASSERT_EQ(cnt + 100 + 2 * cnt, *optData);
     ++cnt;
   }
   ASSERT_FALSE(iq.hasData());

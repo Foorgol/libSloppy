@@ -61,6 +61,18 @@ namespace Sloppy
   public:
     using DataType = T;
 
+    AbstractThreadSafeQueue() = default;
+    virtual ~AbstractThreadSafeQueue() = default;
+
+    // no copy operations because we own a mutex
+    AbstractThreadSafeQueue(const AbstractThreadSafeQueue&) = delete;
+    AbstractThreadSafeQueue& operator=(const AbstractThreadSafeQueue&) = delete;
+
+    // standard move operations
+    AbstractThreadSafeQueue(AbstractThreadSafeQueue&&) = default;
+    AbstractThreadSafeQueue& operator=(AbstractThreadSafeQueue&&) = default;
+
+
     /** \brief Copy-append data to the end of the queue
      */
     void put(
